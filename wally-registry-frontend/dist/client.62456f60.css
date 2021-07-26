@@ -1,0 +1,84 @@
+._Header_abc6a {
+  font-size: 2rem;
+  background-color: #badffd;
+  font-weight: bold;
+}
+
+._Header_abc6a h1 {
+  max-width: 60rem;
+  margin: 0 auto;
+}
+
+._Main_abc6a > * {
+  max-width: 60rem;
+  margin: 0 auto;
+}
+
+._CenterContent_abc6a {
+  text-align: center;
+  margin-top: 1rem;
+}
+
+._PlaceholderButton_abc6a {
+  cursor: pointer;
+  padding: 0.5rem;
+  border: 1px solid black;
+  border-radius: 3px;
+}
+
+._PlaceholderButton_abc6a:hover {
+  background-color: #eee;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: inherit;
+  background: none;
+  text-decoration: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+}
+
+html {
+  box-sizing: border-box;
+  height: 100%;
+}
+
+body {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+#app {
+  flex: 1 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#app > * {
+  width: 100%;
+}
+
+:root {
+  /* TODO: Put some theme variables here */
+}
+
+:root {
+  font-family: sans-serif;
+  font-weight: 300;
+  font-size: 20px;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+body {
+  background-color: var(--uplift-white);
+  color: var(--uplift-mauve);
+}
+
+
+/*# sourceMappingURL=/client.62456f60.css.map */

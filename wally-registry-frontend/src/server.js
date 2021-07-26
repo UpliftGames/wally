@@ -1,25 +1,36 @@
 import React from "react"
 import ReactDOMServer from "react-dom/server"
+import { StaticRouter as Router } from "react-router-dom"
 import fastify from "fastify"
 import fastifyStatic from "fastify-static"
 import path from "path"
+import { readFileSync } from "fs"
 
 import App from "./components/App"
-import index from "./index.html"
+
+const staticFolder = path.join(__dirname, "../static")
+const index = readFileSync(path.join(staticFolder, "index.html"), "utf8")
+
+const renderRoute = route => {
+  const body = ReactDOMServer.renderToString(
+      <Router location={route}>
+        <App />
+      </Router>
+  )
+
+  return index.replace(`<div id="app"></div>`, `<div id="app">${ body }</div>`)
+}
 
 const app = fastify({ logger: true })
 
 app.register(fastifyStatic, {
-  root: path.join(process.cwd(), "static"),
+  root: staticFolder,
   prefix: "/static",
 })
 
 app.get("/", async (request, reply) => {
-  const appOutput = ReactDOMServer.renderToString(<App />)
-  const body = index.replace(`<div id="root"></div>`, `<div id="root">${ appOutput }</div>`)
-
   reply.type("text/html")
-  return body
+  return renderRoute("/")
 })
 
 const start = async () => {

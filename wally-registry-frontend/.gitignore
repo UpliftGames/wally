@@ -1,4 +1,8 @@
+# npm packages
 /node_modules
+
+# Build output
+/build
+
+# Parcel cache
 /.cache
-/dist
-/static
