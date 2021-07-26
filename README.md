@@ -68,8 +68,6 @@ Parity with:
 ### `wally publish`
 Publish the current package.
 
-Should the user explicitly specify a registry?
-
 Parity with:
 * `cargo publish`
 * `npm publish`
@@ -146,7 +144,7 @@ realm = "shared"
 # Wally supports multiple registries.
 # This feature can be used to have split public/private registries to
 # keep internal code private and isolated.
-registry = "https://github.com/dreamcraft-studio/wally-index"
+registry = "https://github.com/upliftgames/wally-index"
 
 [dependencies]
 # Most dependencies will look like this.
