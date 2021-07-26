@@ -1,0 +1,32 @@
+# This is the main configuration for the Wally Registry Backend.
+# We use Figment (https://docs.rs/figment) because of Rocket, our web framework.
+
+[default]
+address = "0.0.0.0"
+port = 8000
+
+[debug]
+# The storage backend that the registry will use.
+# We default to local storage:
+storage = { type = "local" }
+#
+# ...but Uplift uses Google Cloud Storage in production:
+# storage = { type = "gcs", bucket = "GCS-BUCKET-NAME" }
+
+# The authentication strategy that the registry will use.
+# In 'unauthenticated' mode, all packages are public but read only.
+#
+auth = { type = "unauthenticated" }
+# In production, we recommend configuring an API key.
+# auth = { type = "api-key", value = "SOME-SECRET-KEY" }
+#
+# In the future, we'll support authenticating with GitHub.
+
+# The package index to use to store all of the package metadata.
+index_url = "https://github.com/UpliftGames/wally-test-index"
+#
+# Here's the production config:
+# index_url = "https://github.com/UpliftGames/wally-index"
+
+[release]
+log_level = "normal"

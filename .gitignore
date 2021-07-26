@@ -1,0 +1,5 @@
+# Cargo build output
+/target
+
+# Insta uncommitted snapshots
+*.snap.new

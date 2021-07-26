@@ -1,0 +1,33 @@
+---
+source: src/resolution.rs
+expression: resolve
+
+---
+activated:
+  - biff/a@1.0.0
+  - biff/b@1.0.0
+  - biff/c@1.0.0
+  - biff/d@1.0.0
+metadata:
+  biff/a@1.0.0:
+    realm: shared
+    server_only: false
+  biff/b@1.0.0:
+    realm: shared
+    server_only: false
+  biff/c@1.0.0:
+    realm: shared
+    server_only: false
+  biff/d@1.0.0:
+    realm: shared
+    server_only: false
+shared_dependencies:
+  biff/a@1.0.0:
+    B: biff/b@1.0.0
+    C: biff/c@1.0.0
+  biff/b@1.0.0:
+    D: biff/d@1.0.0
+  biff/c@1.0.0:
+    D: biff/d@1.0.0
+server_dependencies: {}
+

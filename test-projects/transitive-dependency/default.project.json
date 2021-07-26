@@ -1,0 +1,6 @@
+{
+	"name": "transitive-dependency",
+	"tree": {
+		"$path": "src"
+	}
+}

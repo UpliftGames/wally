@@ -1,0 +1,34 @@
+[package]
+name = "wally-registry-backend"
+version = "0.1.0"
+authors = ["Lucien Greathouse <lucien@playadopt.me>"]
+edition = "2018"
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+wally = { path = ".." }
+
+# cloud-storage = { path = "../../cloud-storage-rs", version = "0.8.4", default-features = false, features = ["rustls-tls", "global-client"] }
+
+anyhow = "1.0.38"
+async-trait = "0.1.42"
+cloud-storage-lite = "0.1.7"
+constant_time_eq = "0.1.5"
+figment = "0.10.3"
+fs-err = "2.5.0"
+futures = "0.3.13"
+git2 = "0.13.17"
+rocket = { git = "https://github.com/SergioBenitez/Rocket", rev = "2893ce754d6535e0a752586e60d7e292343016c0" }
+rocket_contrib = { git = "https://github.com/SergioBenitez/Rocket", rev = "2893ce754d6535e0a752586e60d7e292343016c0" }
+semver = "0.11.0"
+serde = { version = "1.0.120", features = ["derive"] }
+serde_json = "1.0.61"
+tokio = "1.1.1"
+url = { version =  "2.2.1", features = ["serde"] }
+zip = "0.5.11"
+
+[dev-dependencies]
+tempfile = "3.1.0"
+glob = "0.3.0"

@@ -1,0 +1,18 @@
+{
+  "name": "wally-frontend",
+  "version": "1.0.0",
+  "description": "Frontend for Wally registry",
+  "license": "MPL-2.0",
+  "author": "Lucien Greathouse <lucien@uplift.games>",
+  "main": "index.js",
+  "scripts": {
+    "build": "parcel build --target node src/server.js --public-url /static && parcel build --out-dir static src/index.html --public-url /static"
+  },
+  "dependencies": {
+    "fastify": "^3.12.0",
+    "fastify-static": "^4.0.1",
+    "parcel-bundler": "^1.12.4",
+    "react": "^17.0.1",
+    "react-dom": "^17.0.1"
+  }
+}
