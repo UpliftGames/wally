@@ -20,14 +20,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-      with:
-        token: ${{ secrets.ACCESS_TOKEN }}
-        submodules: true
-
-        # Fetch the entire history of submodules; we depend on being able to
-        # clone full repositories from them, which is not supported from shallow
-        # clones.
-        fetch-depth: 0
 
     - name: Setup Rust toolchain
       run: rustup default ${{ matrix.rust_version }}
