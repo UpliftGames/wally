@@ -16,7 +16,7 @@ impl LoginSubcommand {
             Some(token) => token,
             None => {
                 println!("Wally currently authenticates to registries with an API token.");
-                println!("In the future, Wally will support GitHub authentication.")
+                println!("In the future, Wally will support GitHub authentication.");
                 println!();
                 rpassword::prompt_password_stdout("Enter token: ")?
             }
