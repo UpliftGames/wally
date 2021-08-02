@@ -10,7 +10,7 @@ use crate::manifest::MANIFEST_FILE_NAME;
 const DEFAULT_MANIFEST: &str = r#"[package]
 name = "placeholder/placeholder"
 version = "0.1.0"
-registry = "https://github.com/UpliftGames/wally-test-index"
+registry = "https://github.com/UpliftGames/wally-index"
 realm = "shared"
 
 [dependencies]

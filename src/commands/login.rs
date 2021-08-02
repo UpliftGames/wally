@@ -15,10 +15,8 @@ impl LoginSubcommand {
         let token = match self.token {
             Some(token) => token,
             None => {
-                println!(
-                    "Wally currently authenticates to the registry server with an \
-                 API token. Check 1Password to find it!"
-                );
+                println!("Wally currently authenticates to registries with an API token.");
+                println!("In the future, Wally will support GitHub authentication.")
                 println!();
                 rpassword::prompt_password_stdout("Enter token: ")?
             }
