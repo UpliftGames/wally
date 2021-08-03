@@ -15,6 +15,7 @@ use crate::config::Config;
 #[serde(tag = "type", content = "value", rename_all = "kebab-case")]
 pub enum AuthMode {
     ApiKey(String),
+    DoubleApiKey { read: Option<String>, write: String },
     Unauthenticated,
 }
 
@@ -22,6 +23,7 @@ impl fmt::Debug for AuthMode {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match self {
             AuthMode::ApiKey(_) => write!(formatter, "API key"),
+            AuthMode::DoubleApiKey { .. } => write!(formatter, "double API key"),
             AuthMode::Unauthenticated => write!(formatter, "no authentication"),
         }
     }
@@ -62,6 +64,10 @@ impl<'r> FromRequest<'r> for ReadAccess {
         match &config.auth {
             AuthMode::Unauthenticated => Outcome::Success(Self { _dummy: 0 }),
             AuthMode::ApiKey(key) => match_api_key(request, key, Self { _dummy: 0 }),
+            AuthMode::DoubleApiKey { read, .. } => match read {
+                None => Outcome::Success(Self { _dummy: 0 }),
+                Some(key) => match_api_key(request, key, Self { _dummy: 0 }),
+            },
         }
     }
 }
@@ -86,6 +92,9 @@ impl<'r> FromRequest<'r> for WriteAccess {
                 format_err!("Invalid API key for write access"),
             )),
             AuthMode::ApiKey(key) => match_api_key(request, key, Self { _dummy: 0 }),
+            AuthMode::DoubleApiKey { write, .. } => {
+                match_api_key(request, write, Self { _dummy: 0 })
+            }
         }
     }
 }
