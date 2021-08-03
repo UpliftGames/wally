@@ -177,6 +177,47 @@ fn publish() {
 }
 
 #[test]
+fn read_write_double_key() {
+    let client = new_client(AuthMode::DoubleApiKey {
+        read: None,
+        write: String::from("A write key"),
+    });
+
+    // We can read with no API key
+    let response = client
+        .get("/v1/package-contents/biff/minimal/0.1.0")
+        .dispatch();
+
+    Expectation {
+        status: Status::Ok,
+        content_type: ContentType::GZIP,
+    }
+    .assert(response);
+
+    // But we can't write with no API key
+    let response = client.post("/v1/publish").header(Accept::JSON).dispatch();
+    Expectation {
+        status: Status::Unauthorized,
+        content_type: ContentType::JSON,
+    }
+    .assert(response);
+
+    // Unless it's the correct API key
+    let contents = PackageBuilder::new("biff/hello@1.0.0").contents();
+    let response = client
+        .post("/v1/publish")
+        .header(Accept::JSON)
+        .body(contents.data())
+        .header(Header::new("Authorization", "Bearer A write key"))
+        .dispatch();
+    Expectation {
+        status: Status::Ok,
+        content_type: ContentType::JSON,
+    }
+    .assert(response);
+}
+
+#[test]
 fn publish_duplicate() {
     let contents = PackageBuilder::new("biff/hello@0.1.0").contents();
     let client = new_client(AuthMode::ApiKey(String::from("hello")));
