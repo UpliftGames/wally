@@ -181,15 +181,21 @@ impl InstallationContext {
         realm: Realm,
         dependencies: impl IntoIterator<Item = (K, &'a PackageId)>,
     ) -> anyhow::Result<()> {
+        log::debug!("Writing root package links");
+
         let base_path = match realm {
             Realm::Shared => &self.shared_dir,
             Realm::Server => &self.server_dir,
         };
 
+        log::trace!("Creating directory {}", base_path.display());
+        fs::create_dir_all(base_path)?;
+
         for (dep_name, dep_package_id) in dependencies {
             let path = base_path.join(format!("{}.lua", dep_name));
             let contents = self.link_root_same_index(dep_package_id);
 
+            log::trace!("Writing {}", path.display());
             fs::write(path, contents)?;
         }
 
@@ -203,6 +209,8 @@ impl InstallationContext {
         dependencies: impl IntoIterator<Item = (K, &'a PackageId)>,
         dependencies_realm: Realm,
     ) -> anyhow::Result<()> {
+        log::debug!("Writing package links for {}", package_id);
+
         let mut base_path = match package_realm {
             Realm::Shared => self.shared_index_dir.clone(),
             Realm::Server => self.server_index_dir.clone(),
@@ -210,6 +218,7 @@ impl InstallationContext {
 
         base_path.push(package_id_file_name(package_id));
 
+        log::trace!("Creating directory {}", base_path.display());
         fs::create_dir_all(&base_path)?;
 
         for (dep_name, dep_package_id) in dependencies {
@@ -221,6 +230,7 @@ impl InstallationContext {
                 (_, Realm::Shared) => self.link_shared_index(dep_package_id)?,
             };
 
+            log::trace!("Writing {}", path.display());
             fs::write(path, contents)?;
         }
 
