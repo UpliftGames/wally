@@ -195,21 +195,27 @@ fn read_write_double_key() {
     .assert(response);
 
     // But we can't write with no API key
-    let response = client.post("/v1/publish").header(Accept::JSON).dispatch();
+    let contents = PackageBuilder::new("biff/hello@1.0.0").contents();
+    let response = client
+        .post("/v1/publish")
+        .header(Accept::JSON)
+        .body(contents.data())
+        .dispatch();
+
     Expectation {
         status: Status::Unauthorized,
         content_type: ContentType::JSON,
     }
     .assert(response);
 
-    // Unless it's the correct API key
-    let contents = PackageBuilder::new("biff/hello@1.0.0").contents();
+    // Unless we use the correct API key
     let response = client
         .post("/v1/publish")
         .header(Accept::JSON)
         .body(contents.data())
         .header(Header::new("Authorization", "Bearer A write key"))
         .dispatch();
+
     Expectation {
         status: Status::Ok,
         content_type: ContentType::JSON,

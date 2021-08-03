@@ -23,7 +23,7 @@ impl fmt::Debug for AuthMode {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match self {
             AuthMode::ApiKey(_) => write!(formatter, "API key"),
-            AuthMode::DoubleApiKey { read: _, write: _ } => write!(formatter, "Double API key"),
+            AuthMode::DoubleApiKey { read: _, write: _ } => write!(formatter, "double API key"),
             AuthMode::Unauthenticated => write!(formatter, "no authentication"),
         }
     }
