@@ -39,13 +39,14 @@ impl AuthStore {
         let contents = Self::contents(&path)?;
 
         let mut auth: Document = contents.parse().unwrap();
-        let key = format!("\"{}\"", key);
+        let key = format!("\"{}\"", key); // toml_edit won't automatically put our key in quotes
 
-        if let Some(token) = token {
-            auth["tokens"][key] = value(token);
-        } else {
-            if let Some(tokens) = auth["tokens"].as_table_mut() {
-                tokens.remove(&key);
+        if let Some(tokens) = auth["tokens"].as_table_mut() {
+            // We need to remove the key before writing, toml_edit will write duplicate keys
+            tokens.remove(&key);
+
+            if let Some(token) = token {
+                auth["tokens"][key] = value(token);
             }
         }
 

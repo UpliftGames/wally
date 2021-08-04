@@ -38,7 +38,7 @@ enum AuthResponse {
     Err { error: String },
 }
 
-fn await_github_auth(
+fn wait_for_github_auth(
     device_code_response: DeviceCodeResponse,
     oauth_id: &str,
 ) -> anyhow::Result<DeviceCodeAuth> {
@@ -60,7 +60,7 @@ fn await_github_auth(
     match response {
         AuthResponse::Ok(auth) => Ok(auth),
         AuthResponse::Err { error } => match error.as_ref() {
-            "authorization_pending" => await_github_auth(device_code_response, oauth_id),
+            "authorization_pending" => wait_for_github_auth(device_code_response, oauth_id),
             _ => Err(format_err!("Oauth request error: {}", error)),
         },
     }
@@ -88,12 +88,13 @@ fn prompt_github_auth(api: url::Url, oauth_id: &str) -> anyhow::Result<()> {
 
     println!("Go to {}", device_code_response.verification_uri);
     println!("And enter the code: {}", device_code_response.user_code);
+    println!();
 
     webbrowser::open(&device_code_response.verification_uri).ok();
 
     println!("Awaiting authorization...");
 
-    match await_github_auth(device_code_response, oauth_id) {
+    match wait_for_github_auth(device_code_response, oauth_id) {
         Ok(auth) => {
             println!("Authorization successful!");
             AuthStore::set_token(api.as_str(), Some(&auth.access_token))?;
