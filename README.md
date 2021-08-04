@@ -156,7 +156,7 @@ registry = "https://github.com/upliftgames/wally-index"
 #   "SCOPE/NAME@VERSION_REQ"
 # Versions are SemVer version requirements. The default behavior matches
 # Cargo, or npm with the `^` version specifier.
-Roact = "Roblox/roact@1.2.0"
+Roact = "roblox/roact@1.2.0"
 Promise = "evaera/promise@2.0.1"
 
 # In the future, it'll be possible to pull dependencies from Git.
@@ -169,14 +169,14 @@ CoolThing = { git = "https://github.com/Roblox/cool-thing.git", branch = "pr-123
 # based on a similar feature in Cargo that is useful for having multiple
 # packages in the same repository, like the client and server halves of the
 # same codebase.
-MonoThing = { registry = "Roblox/mono-thing@1.3.2", path = "../MonoThing" }
+MonoThing = { registry = "roblox/mono-thing@1.3.2", path = "../MonoThing" }
 
 # Any dependency that we use only for testing goes in a special section.
 #
 # These dependencies will not be shipped with the production version of a
 # project.
 [dev-dependencies]
-TestEZ = "Roblox/testez@1.6.3"
+TestEZ = "roblox/testez@1.6.3"
 ```
 
 ## Lockfile Format
@@ -189,9 +189,9 @@ Lockfiles are written in [TOML][toml] and stored in a file named `wally.lock`. T
 name = "registry:lpghatguy/asink"
 version = "2.0.7"
 dependencies = [
- "registry:Roblox/roact",
+ "registry:roblox/roact",
  "registry:evaera/roblox-lua-promise",
- "registry:Roblox/mono-thing",
+ "registry:roblox/mono-thing",
  "git:https://github.com/Roblox/cool-thing.git",
 ]
 
@@ -201,7 +201,7 @@ version = "2.1.0"
 checksum = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
 [[package]]
-name = "registry:Roblox/mono-thing"
+name = "registry:roblox/mono-thing"
 version = "1.3.2"
 checksum = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
