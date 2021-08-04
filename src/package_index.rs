@@ -18,6 +18,7 @@ use crate::package_name::PackageName;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PackageIndexConfig {
     pub api: Url,
+    pub oauth_id: Option<String>,
 }
 
 pub struct PackageIndex {

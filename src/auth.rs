@@ -1,6 +1,7 @@
 //! Defines storage of authentication information when interacting with
 //! registries.
 
+use std::collections::HashMap;
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -9,13 +10,13 @@ use serde::{Deserialize, Serialize};
 use toml_edit::{value, Document};
 
 const DEFAULT_AUTH_TOML: &str = r#"
-# This is where Wally stores details for authenticating with regstries.
+# This is where Wally stores details for authenticating with registries.
 # It can be updated using `wally login` and `wally logout`.
 "#;
 
 #[derive(Serialize, Deserialize)]
 pub struct AuthStore {
-    pub token: Option<String>,
+    pub tokens: HashMap<String, String>,
 }
 
 impl AuthStore {
@@ -33,16 +34,19 @@ impl AuthStore {
         Ok(auth)
     }
 
-    pub fn set_token(token: Option<&str>) -> anyhow::Result<()> {
+    pub fn set_token(key: &str, token: Option<&str>) -> anyhow::Result<()> {
         let path = file_path()?;
         let contents = Self::contents(&path)?;
 
         let mut auth: Document = contents.parse().unwrap();
+        let key = format!("\"{}\"", key);
 
         if let Some(token) = token {
-            auth["token"] = value(token);
+            auth["tokens"][key] = value(token);
         } else {
-            auth.as_table_mut().remove("token");
+            if let Some(tokens) = auth["tokens"].as_table_mut() {
+                tokens.remove(&key);
+            }
         }
 
         fs_err::create_dir_all(path.parent().unwrap())?;
