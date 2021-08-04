@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::io::{BufReader, Write};
+use std::io::{BufReader, ErrorKind, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -102,6 +102,45 @@ impl PackageIndex {
         Ok(serde_json::from_str(&contents)?)
     }
 
+    /// Add an owner to a scope's owner file
+    /// Similar to publish this first applies the change to our local copy
+    /// and then attempts to push it to the remote index
+    pub fn add_scope_owner(&self, scope: &str, owner_id: &u64) -> anyhow::Result<()> {
+        let repo = self.repository.lock().unwrap();
+        let mut path = self.path.clone();
+        path.push(scope);
+        path.push("owners.json");
+
+        // This package might not exist yet, so create its containing directory.
+        create_dir_all(path.parent().unwrap())?;
+
+        {
+            let mut owners = match self.get_scope_owners(&scope)? {
+                None => Vec::new(),
+                Some(owners) => owners,
+            };
+            owners.push(*owner_id);
+
+            let mut file = OpenOptions::new().write(true).create(true).open(&path)?;
+            let entry = serde_json::to_string(&owners)?;
+            file.write_all(entry.as_bytes())?;
+        }
+
+        let message = format!("Add owner for {}/*", scope);
+
+        // libgit2 only accepts a relative path
+        let relative_path = path.strip_prefix(&self.path).with_context(|| {
+            format!(
+                "Path {} was not relative to package path {}",
+                path.display(),
+                self.path.display()
+            )
+        })?;
+        git_util::commit_and_push(&repo, self.access_token.clone(), &message, relative_path)?;
+
+        Ok(())
+    }
+
     /// Publish a package to the local copy of the index and attempt to push it
     /// to the remote index, allowing a certain number of retries.
     ///
@@ -181,6 +220,32 @@ impl PackageIndex {
             package_cache.insert(name.clone(), Arc::clone(&metadata));
 
             Ok(metadata)
+        }
+    }
+
+    /// Read the list of owners for a scope from the index
+    pub fn get_scope_owners(&self, scope: &str) -> anyhow::Result<Option<Vec<u64>>> {
+        let mut path = self.path.clone();
+        path.push(scope);
+        path.push("owners.json");
+
+        let file = match File::open(path) {
+            Ok(file) => Ok(Some(file)),
+            Err(error) => match error.kind() {
+                ErrorKind::NotFound => Ok(None),
+                _ => Err(error)
+                    .with_context(|| format!("failed to read owner file for scope {}", scope)),
+            },
+        }?;
+
+        match file {
+            None => Ok(None),
+            Some(file) => {
+                let owners: Vec<u64> = serde_json::from_reader(file)
+                    .with_context(|| format!("could not parse owner file for scope {}", scope))?;
+
+                Ok(Some(owners))
+            }
         }
     }
 

@@ -16,7 +16,24 @@ use crate::config::Config;
 pub enum AuthMode {
     ApiKey(String),
     DoubleApiKey { read: Option<String>, write: String },
+    GithubOAuth(String),
     Unauthenticated,
+}
+
+#[derive(Deserialize)]
+pub struct GithubInfo {
+    login: String,
+    id: u64,
+}
+
+impl GithubInfo {
+    pub fn login(&self) -> &str {
+        &self.login
+    }
+
+    pub fn id(&self) -> &u64 {
+        &self.id
+    }
 }
 
 impl fmt::Debug for AuthMode {
@@ -24,6 +41,7 @@ impl fmt::Debug for AuthMode {
         match self {
             AuthMode::ApiKey(_) => write!(formatter, "API key"),
             AuthMode::DoubleApiKey { .. } => write!(formatter, "double API key"),
+            AuthMode::GithubOAuth(_) => write!(formatter, "Github OAuth"),
             AuthMode::Unauthenticated => write!(formatter, "no authentication"),
         }
     }
@@ -47,6 +65,38 @@ fn match_api_key<T>(request: &Request<'_>, key: &str, result: T) -> Outcome<T, a
     }
 }
 
+async fn verify_github_token(
+    request: &Request<'_>,
+    client_id: &str,
+    result: WriteAccess,
+) -> Outcome<WriteAccess, anyhow::Error> {
+    let token: String = match request.headers().get_one("authorization") {
+        Some(key) if key.starts_with("Bearer ") => (key[6..].trim()).to_owned(),
+        _ => {
+            return Outcome::Failure((Status::Unauthorized, format_err!("Github auth required")));
+        }
+    };
+
+    let client = reqwest::Client::new();
+    let response = client
+        .get("https://api.github.com/user")
+        .header("accept", "application/json")
+        .header("user-agent", "wally")
+        .bearer_auth(token)
+        .send()
+        .await
+        .unwrap()
+        .json::<GithubInfo>()
+        .await;
+
+    match response {
+        Err(err) => Outcome::Failure((Status::Unauthorized, format_err!("Github auth failed"))),
+        Ok(github_info) => Outcome::Success(WriteAccess {
+            github: Some(github_info),
+        }),
+    }
+}
+
 pub struct ReadAccess {
     _dummy: i32,
 }
@@ -63,6 +113,7 @@ impl<'r> FromRequest<'r> for ReadAccess {
 
         match &config.auth {
             AuthMode::Unauthenticated => Outcome::Success(Self { _dummy: 0 }),
+            AuthMode::GithubOAuth(_) => Outcome::Success(Self { _dummy: 0 }),
             AuthMode::ApiKey(key) => match_api_key(request, key, Self { _dummy: 0 }),
             AuthMode::DoubleApiKey { read, .. } => match read {
                 None => Outcome::Success(Self { _dummy: 0 }),
@@ -73,7 +124,13 @@ impl<'r> FromRequest<'r> for ReadAccess {
 }
 
 pub struct WriteAccess {
-    _dummy: i32,
+    github: Option<GithubInfo>,
+}
+
+impl WriteAccess {
+    pub fn github(&self) -> &Option<GithubInfo> {
+        &self.github
+    }
 }
 
 #[rocket::async_trait]
@@ -91,9 +148,12 @@ impl<'r> FromRequest<'r> for WriteAccess {
                 Status::Unauthorized,
                 format_err!("Invalid API key for write access"),
             )),
-            AuthMode::ApiKey(key) => match_api_key(request, key, Self { _dummy: 0 }),
+            AuthMode::ApiKey(key) => match_api_key(request, key, Self { github: None }),
             AuthMode::DoubleApiKey { write, .. } => {
-                match_api_key(request, write, Self { _dummy: 0 })
+                match_api_key(request, write, Self { github: None })
+            }
+            AuthMode::GithubOAuth(client_id) => {
+                verify_github_token(request, client_id, Self { github: None }).await
             }
         }
     }
