@@ -1,9 +1,9 @@
 use anyhow::format_err;
+use opener;
 use serde::Deserialize;
 use std::path::PathBuf;
 use std::{thread, time};
 use structopt::StructOpt;
-use webbrowser;
 
 use crate::{auth::AuthStore, manifest::Manifest, package_index::PackageIndex};
 
@@ -91,7 +91,7 @@ fn prompt_github_auth(api: url::Url, oauth_id: &str) -> anyhow::Result<()> {
     println!("And enter the code: {}", device_code_response.user_code);
     println!();
 
-    webbrowser::open(&device_code_response.verification_uri).ok();
+    opener::open(&device_code_response.verification_uri).ok();
 
     println!("Awaiting authorization...");
 
