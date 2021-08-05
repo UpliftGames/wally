@@ -86,6 +86,7 @@ fn prompt_github_auth(api: url::Url, oauth_id: &str) -> anyhow::Result<()> {
         .send()?
         .json::<DeviceCodeResponse>()?;
 
+    println!();
     println!("Go to {}", device_code_response.verification_uri);
     println!("And enter the code: {}", device_code_response.user_code);
     println!();

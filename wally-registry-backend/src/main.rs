@@ -98,27 +98,7 @@ async fn publish(
     let manifest = get_manifest(&mut archive).status(Status::BadRequest)?;
     let package_id = manifest.package_id();
 
-    let scope = package_id.name().scope();
-    let package_owners = index.get_scope_owners(&scope)?;
-
-    let has_authorization = match authorization.github() {
-        None => Ok(()), // We authenticated using another method
-        Some(github_info) => match package_owners {
-            None if github_info.login() == scope => {
-                index
-                    .add_scope_owner(scope, github_info.id())
-                    .context("Could not add owner to scope")?;
-                Ok(())
-            }
-            None => Err("you cannot claim this scope"),
-            Some(owners) => match owners.iter().any(|owner| owner == github_info.id()) {
-                true => Ok(()),
-                false => Err("you do not own this scope"),
-            },
-        },
-    };
-
-    if let Err(message) = has_authorization {
+    if let Err(message) = authorization.can_write_package(&package_id, &index) {
         return Err(format_err!(message).status(Status::Unauthorized));
     }
 

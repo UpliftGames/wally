@@ -1,7 +1,8 @@
 use std::fmt;
 
-use anyhow::format_err;
+use anyhow::{format_err, Context};
 use constant_time_eq::constant_time_eq;
+use libwally::{package_id::PackageId, package_index::PackageIndex};
 use rocket::{
     http::Status,
     request::{FromRequest, Outcome},
@@ -130,6 +131,32 @@ pub struct WriteAccess {
 impl WriteAccess {
     pub fn github(&self) -> &Option<GithubInfo> {
         &self.github
+    }
+
+    pub fn can_write_package(
+        &self,
+        package_id: &PackageId,
+        index: &PackageIndex,
+    ) -> anyhow::Result<()> {
+        let scope = package_id.name().scope();
+        let package_owners = index.get_scope_owners(&scope)?;
+
+        match self.github() {
+            None => Ok(()), // We authenticated using another method
+            Some(github_info) => match package_owners {
+                None if github_info.login() == scope => {
+                    index
+                        .add_scope_owner(scope, github_info.id())
+                        .context("Could not add owner to scope")?;
+                    Ok(())
+                }
+                None => Err(format_err!("you cannot claim this scope")),
+                Some(owners) => match owners.iter().any(|owner| owner == github_info.id()) {
+                    true => Ok(()),
+                    false => Err(format_err!("you do not own this scope")),
+                },
+            },
+        }
     }
 }
 
