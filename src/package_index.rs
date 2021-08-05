@@ -116,10 +116,7 @@ impl PackageIndex {
         create_dir_all(path.parent().unwrap())?;
 
         {
-            let mut owners = match self.get_scope_owners(&scope)? {
-                None => Vec::new(),
-                Some(owners) => owners,
-            };
+            let mut owners = self.get_scope_owners(&scope)?;
             owners.push(*owner_id);
 
             let mut file = OpenOptions::new().write(true).create(true).open(&path)?;
@@ -225,28 +222,20 @@ impl PackageIndex {
     }
 
     /// Read the list of owners for a scope from the index
-    pub fn get_scope_owners(&self, scope: &str) -> anyhow::Result<Option<Vec<u64>>> {
+    pub fn get_scope_owners(&self, scope: &str) -> anyhow::Result<Vec<u64>> {
         let mut path = self.path.clone();
         path.push(scope);
         path.push("owners.json");
 
-        let file = match File::open(path) {
-            Ok(file) => Ok(Some(file)),
+        match File::open(path) {
+            Ok(file) => serde_json::from_reader(file)
+                .with_context(|| format!("could not parse owner file for scope {}", scope)),
+
             Err(error) => match error.kind() {
-                ErrorKind::NotFound => Ok(None),
+                ErrorKind::NotFound => Ok(Vec::new()),
                 _ => Err(error)
                     .with_context(|| format!("failed to read owner file for scope {}", scope)),
             },
-        }?;
-
-        match file {
-            None => Ok(None),
-            Some(file) => {
-                let owners: Vec<u64> = serde_json::from_reader(file)
-                    .with_context(|| format!("could not parse owner file for scope {}", scope))?;
-
-                Ok(Some(owners))
-            }
         }
     }
 

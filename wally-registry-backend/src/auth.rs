@@ -17,7 +17,7 @@ use crate::config::Config;
 pub enum AuthMode {
     ApiKey(String),
     DoubleApiKey { read: Option<String>, write: String },
-    GithubOAuth(String),
+    GithubOAuth,
     Unauthenticated,
 }
 
@@ -42,7 +42,7 @@ impl fmt::Debug for AuthMode {
         match self {
             AuthMode::ApiKey(_) => write!(formatter, "API key"),
             AuthMode::DoubleApiKey { .. } => write!(formatter, "double API key"),
-            AuthMode::GithubOAuth(_) => write!(formatter, "Github OAuth"),
+            AuthMode::GithubOAuth => write!(formatter, "Github OAuth"),
             AuthMode::Unauthenticated => write!(formatter, "no authentication"),
         }
     }
@@ -66,11 +66,7 @@ fn match_api_key<T>(request: &Request<'_>, key: &str, result: T) -> Outcome<T, a
     }
 }
 
-async fn verify_github_token(
-    request: &Request<'_>,
-    client_id: &str,
-    result: WriteAccess,
-) -> Outcome<WriteAccess, anyhow::Error> {
+async fn verify_github_token(request: &Request<'_>) -> Outcome<WriteAccess, anyhow::Error> {
     let token: String = match request.headers().get_one("authorization") {
         Some(key) if key.starts_with("Bearer ") => (key[6..].trim()).to_owned(),
         _ => {
@@ -91,7 +87,7 @@ async fn verify_github_token(
         .await;
 
     match response {
-        Err(err) => Outcome::Failure((Status::Unauthorized, format_err!("Github auth failed"))),
+        Err(_) => Outcome::Failure((Status::Unauthorized, format_err!("Github auth failed"))),
         Ok(github_info) => Outcome::Success(WriteAccess {
             github: Some(github_info),
         }),
@@ -114,7 +110,7 @@ impl<'r> FromRequest<'r> for ReadAccess {
 
         match &config.auth {
             AuthMode::Unauthenticated => Outcome::Success(Self { _dummy: 0 }),
-            AuthMode::GithubOAuth(_) => Outcome::Success(Self { _dummy: 0 }),
+            AuthMode::GithubOAuth => Outcome::Success(Self { _dummy: 0 }),
             AuthMode::ApiKey(key) => match_api_key(request, key, Self { _dummy: 0 }),
             AuthMode::DoubleApiKey { read, .. } => match read {
                 None => Outcome::Success(Self { _dummy: 0 }),
@@ -142,20 +138,21 @@ impl WriteAccess {
         let package_owners = index.get_scope_owners(&scope)?;
 
         match self.github() {
-            None => Ok(()), // We authenticated using another method
-            Some(github_info) => match package_owners {
-                None if github_info.login() == scope => {
-                    index
-                        .add_scope_owner(scope, github_info.id())
-                        .context("Could not add owner to scope")?;
-                    Ok(())
-                }
-                None => Err(format_err!("you cannot claim this scope")),
-                Some(owners) => match owners.iter().any(|owner| owner == github_info.id()) {
+            None => Ok(()), // We authenticated using an api key
+            Some(github_info) => {
+                let is_owner = package_owners.iter().any(|owner| owner == github_info.id());
+
+                match is_owner {
                     true => Ok(()),
-                    false => Err(format_err!("you do not own this scope")),
-                },
-            },
+                    false if github_info.login() == scope => {
+                        index
+                            .add_scope_owner(scope, github_info.id())
+                            .context(format!("Could not add owner to scope {}", scope))?;
+                        Ok(())
+                    }
+                    false => Err(format_err!("you do not own the scope {}", scope)),
+                }
+            }
         }
     }
 }
@@ -179,9 +176,7 @@ impl<'r> FromRequest<'r> for WriteAccess {
             AuthMode::DoubleApiKey { write, .. } => {
                 match_api_key(request, write, Self { github: None })
             }
-            AuthMode::GithubOAuth(client_id) => {
-                verify_github_token(request, client_id, Self { github: None }).await
-            }
+            AuthMode::GithubOAuth => verify_github_token(request).await,
         }
     }
 }
