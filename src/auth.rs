@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
-use toml_edit::{value, Document};
+use toml_edit::{table, value, Document, Item};
 
 const DEFAULT_AUTH_TOML: &str = r#"
 # This is where Wally stores details for authenticating with registries.
@@ -39,15 +39,17 @@ impl AuthStore {
         let contents = Self::contents(&path)?;
 
         let mut auth: Document = contents.parse().unwrap();
-        let key = format!("\"{}\"", key); // toml_edit won't automatically put our key in quotes
 
-        if let Some(tokens) = auth["tokens"].as_table_mut() {
-            // We need to remove the key before writing, toml_edit will write duplicate keys
-            tokens.remove(&key);
+        if !auth.as_table_mut().contains_table("tokens") {
+            auth["tokens"] = table();
+        }
 
-            if let Some(token) = token {
-                auth["tokens"][key] = value(token);
-            }
+        let tokens = auth.as_table_mut().entry("tokens");
+
+        if let Some(token) = token {
+            tokens[key] = value(token);
+        } else {
+            tokens[key] = Item::None;
         }
 
         fs_err::create_dir_all(path.parent().unwrap())?;
