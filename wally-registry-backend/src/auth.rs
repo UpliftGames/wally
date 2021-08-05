@@ -144,7 +144,7 @@ impl WriteAccess {
 
                 match is_owner {
                     true => Ok(()),
-                    false if github_info.login() == scope => {
+                    false if github_info.login().to_lowercase() == scope => {
                         index
                             .add_scope_owner(scope, github_info.id())
                             .context(format!("Could not add owner to scope {}", scope))?;
