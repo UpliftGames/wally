@@ -18,7 +18,7 @@ use crate::package_name::PackageName;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PackageIndexConfig {
     pub api: Url,
-    pub oauth_id: Option<String>,
+    pub github_oauth_id: Option<String>,
 }
 
 pub struct PackageIndex {
@@ -101,42 +101,6 @@ impl PackageIndex {
         let config_path = self.path.join("config.json");
         let contents = fs_err::read_to_string(config_path)?;
         Ok(serde_json::from_str(&contents)?)
-    }
-
-    /// Add an owner to a scope's owner file
-    /// Similar to publish this first applies the change to our local copy
-    /// and then attempts to push it to the remote index
-    pub fn add_scope_owner(&self, scope: &str, owner_id: &u64) -> anyhow::Result<()> {
-        let repo = self.repository.lock().unwrap();
-        let mut path = self.path.clone();
-        path.push(scope);
-        path.push("owners.json");
-
-        // This package might not exist yet, so create its containing directory.
-        create_dir_all(path.parent().unwrap())?;
-
-        {
-            let mut owners = self.get_scope_owners(&scope)?;
-            owners.push(*owner_id);
-
-            let mut file = OpenOptions::new().write(true).create(true).open(&path)?;
-            let entry = serde_json::to_string(&owners)?;
-            file.write_all(entry.as_bytes())?;
-        }
-
-        let message = format!("Add owner for {}/*", scope);
-
-        // libgit2 only accepts a relative path
-        let relative_path = path.strip_prefix(&self.path).with_context(|| {
-            format!(
-                "Path {} was not relative to package path {}",
-                path.display(),
-                self.path.display()
-            )
-        })?;
-        git_util::commit_and_push(&repo, self.access_token.clone(), &message, relative_path)?;
-
-        Ok(())
     }
 
     /// Publish a package to the local copy of the index and attempt to push it
@@ -237,6 +201,48 @@ impl PackageIndex {
                     .with_context(|| format!("failed to read owner file for scope {}", scope)),
             },
         }
+    }
+
+    /// Check if a user id is present in the owners.json file for a scope
+    pub fn is_scope_owner(&self, scope: &str, user_id: &u64) -> anyhow::Result<bool> {
+        let owners = self.get_scope_owners(scope)?;
+        Ok(owners.iter().any(|owner| owner == user_id))
+    }
+
+    /// Add an owner to a scope's owner file
+    /// Similar to publish, this first applies the change to our local copy
+    /// and then attempts to push it to the remote index
+    pub fn add_scope_owner(&self, scope: &str, owner_id: &u64) -> anyhow::Result<()> {
+        let repo = self.repository.lock().unwrap();
+        let mut path = self.path.clone();
+        path.push(scope);
+        path.push("owners.json");
+
+        // This package might not exist yet, so create its containing directory.
+        create_dir_all(path.parent().unwrap())?;
+
+        {
+            let mut owners = self.get_scope_owners(&scope)?;
+            owners.push(*owner_id);
+
+            let mut file = OpenOptions::new().write(true).create(true).open(&path)?;
+            let entry = serde_json::to_string(&owners)?;
+            file.write_all(entry.as_bytes())?;
+        }
+
+        let message = format!("Add owner for {}/*", scope);
+
+        // libgit2 only accepts a relative path
+        let relative_path = path.strip_prefix(&self.path).with_context(|| {
+            format!(
+                "Path {} was not relative to package path {}",
+                path.display(),
+                self.path.display()
+            )
+        })?;
+        git_util::commit_and_push(&repo, self.access_token.clone(), &message, relative_path)?;
+
+        Ok(())
     }
 
     fn package_path(&self, name: &PackageName) -> PathBuf {

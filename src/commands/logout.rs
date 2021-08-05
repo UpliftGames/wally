@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+
 use structopt::StructOpt;
 
 use crate::{auth::AuthStore, manifest::Manifest, package_index::PackageIndex};

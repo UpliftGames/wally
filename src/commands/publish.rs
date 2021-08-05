@@ -39,6 +39,7 @@ impl PublishSubcommand {
         let client = reqwest::blocking::Client::new();
         let response = client
             .post(api.join("/v1/publish")?)
+            .header("accept", "application/json")
             .bearer_auth(auth)
             .body(contents.data().to_owned())
             .send()?;

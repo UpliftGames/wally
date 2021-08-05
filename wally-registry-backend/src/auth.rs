@@ -3,6 +3,7 @@ use std::fmt;
 use anyhow::{format_err, Context};
 use constant_time_eq::constant_time_eq;
 use libwally::{package_id::PackageId, package_index::PackageIndex};
+use reqwest::Client;
 use rocket::{
     http::Status,
     request::{FromRequest, Outcome},
@@ -74,28 +75,34 @@ async fn verify_github_token(request: &Request<'_>) -> Outcome<WriteAccess, anyh
         }
     };
 
-    let client = reqwest::Client::new();
+    let client = Client::new();
     let response = client
         .get("https://api.github.com/user")
         .header("accept", "application/json")
         .header("user-agent", "wally")
         .bearer_auth(token)
         .send()
-        .await
-        .unwrap()
-        .json::<GithubInfo>()
         .await;
 
-    match response {
-        Err(_) => Outcome::Failure((Status::Unauthorized, format_err!("Github auth failed"))),
-        Ok(github_info) => Outcome::Success(WriteAccess {
-            github: Some(github_info),
-        }),
+    let github_info = match response {
+        Err(err) => {
+            return Outcome::Failure((Status::InternalServerError, format_err!(err)));
+        }
+        Ok(response) => response.json::<GithubInfo>().await,
+    };
+
+    match github_info {
+        Err(err) => Outcome::Failure((
+            Status::Unauthorized,
+            format_err!("Github auth failed: {}", err),
+        )),
+        Ok(github_info) => Outcome::Success(WriteAccess::Github(github_info)),
     }
 }
 
-pub struct ReadAccess {
-    _dummy: i32,
+pub enum ReadAccess {
+    Global,
+    ApiKey,
 }
 
 #[rocket::async_trait]
@@ -109,51 +116,41 @@ impl<'r> FromRequest<'r> for ReadAccess {
             .expect("AuthMode was not configured");
 
         match &config.auth {
-            AuthMode::Unauthenticated => Outcome::Success(Self { _dummy: 0 }),
-            AuthMode::GithubOAuth => Outcome::Success(Self { _dummy: 0 }),
-            AuthMode::ApiKey(key) => match_api_key(request, key, Self { _dummy: 0 }),
+            AuthMode::Unauthenticated => Outcome::Success(ReadAccess::Global),
+            AuthMode::GithubOAuth => Outcome::Success(ReadAccess::Global),
+            AuthMode::ApiKey(key) => match_api_key(request, key, ReadAccess::ApiKey),
             AuthMode::DoubleApiKey { read, .. } => match read {
-                None => Outcome::Success(Self { _dummy: 0 }),
-                Some(key) => match_api_key(request, key, Self { _dummy: 0 }),
+                None => Outcome::Success(ReadAccess::Global),
+                Some(key) => match_api_key(request, key, ReadAccess::ApiKey),
             },
         }
     }
 }
 
-pub struct WriteAccess {
-    github: Option<GithubInfo>,
+pub enum WriteAccess {
+    ApiKey,
+    Github(GithubInfo),
 }
 
 impl WriteAccess {
-    pub fn github(&self) -> &Option<GithubInfo> {
-        &self.github
-    }
-
     pub fn can_write_package(
         &self,
         package_id: &PackageId,
         index: &PackageIndex,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<bool> {
         let scope = package_id.name().scope();
-        let package_owners = index.get_scope_owners(&scope)?;
 
-        match self.github() {
-            None => Ok(()), // We authenticated using an api key
-            Some(github_info) => {
-                let is_owner = package_owners.iter().any(|owner| owner == github_info.id());
-
-                match is_owner {
-                    true => Ok(()),
-                    false if github_info.login().to_lowercase() == scope => {
-                        index
-                            .add_scope_owner(scope, github_info.id())
-                            .context(format!("Could not add owner to scope {}", scope))?;
-                        Ok(())
-                    }
-                    false => Err(format_err!("you do not own the scope {}", scope)),
+        let has_permission = match self {
+            WriteAccess::ApiKey => true,
+            WriteAccess::Github(github_info) => {
+                match index.is_scope_owner(scope, github_info.id())? {
+                    true => true,
+                    false => github_info.login().to_lowercase() == scope,
                 }
             }
-        }
+        };
+
+        Ok(has_permission)
     }
 }
 
@@ -172,9 +169,9 @@ impl<'r> FromRequest<'r> for WriteAccess {
                 Status::Unauthorized,
                 format_err!("Invalid API key for write access"),
             )),
-            AuthMode::ApiKey(key) => match_api_key(request, key, Self { github: None }),
+            AuthMode::ApiKey(key) => match_api_key(request, key, WriteAccess::ApiKey),
             AuthMode::DoubleApiKey { write, .. } => {
-                match_api_key(request, write, Self { github: None })
+                match_api_key(request, write, WriteAccess::ApiKey)
             }
             AuthMode::GithubOAuth => verify_github_token(request).await,
         }

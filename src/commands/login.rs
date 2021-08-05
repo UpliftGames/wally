@@ -1,8 +1,12 @@
+use std::path::PathBuf;
+use std::thread::sleep;
+use std::time::Duration;
+
 use anyhow::format_err;
 use opener;
+use reqwest::blocking::Client;
+use reqwest::Url;
 use serde::Deserialize;
-use std::path::PathBuf;
-use std::{thread, time};
 use structopt::StructOpt;
 
 use crate::{auth::AuthStore, manifest::Manifest, package_index::PackageIndex};
@@ -40,17 +44,16 @@ enum AuthResponse {
 
 fn wait_for_github_auth(
     device_code_response: DeviceCodeResponse,
-    oauth_id: &str,
+    github_oauth_id: &str,
 ) -> anyhow::Result<DeviceCodeAuth> {
-    let client = reqwest::blocking::Client::new();
+    sleep(Duration::from_secs(device_code_response.interval));
 
-    thread::sleep(time::Duration::from_secs(device_code_response.interval));
-
+    let client = Client::new();
     let response = client
         .post("https://github.com/login/oauth/access_token")
         .header("accept", "application/json")
         .json(&serde_json::json!({
-            "client_id": oauth_id,
+            "client_id": github_oauth_id,
             "device_code": device_code_response.device_code,
             "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
         }))
@@ -60,7 +63,7 @@ fn wait_for_github_auth(
     match response {
         AuthResponse::Ok(auth) => Ok(auth),
         AuthResponse::Err { error } => match error.as_ref() {
-            "authorization_pending" => wait_for_github_auth(device_code_response, oauth_id),
+            "authorization_pending" => wait_for_github_auth(device_code_response, github_oauth_id),
             _ => Err(format_err!("Oauth request error: {}", error)),
         },
     }
@@ -74,13 +77,13 @@ fn prompt_api_key(api: url::Url) -> anyhow::Result<()> {
     AuthStore::set_token(api.as_str(), Some(&token))
 }
 
-fn prompt_github_auth(api: url::Url, oauth_id: &str) -> anyhow::Result<()> {
-    let client = reqwest::blocking::Client::new();
+fn prompt_github_auth(api: url::Url, github_oauth_id: &str) -> anyhow::Result<()> {
+    let client = Client::new();
     let device_code_response = client
         .post("https://github.com/login/device/code")
         .header("accept", "application/json")
         .json(&serde_json::json!({
-            "client_id": oauth_id,
+            "client_id": github_oauth_id,
             "scope": "read:user",
         }))
         .send()?
@@ -94,28 +97,23 @@ fn prompt_github_auth(api: url::Url, oauth_id: &str) -> anyhow::Result<()> {
     opener::open(&device_code_response.verification_uri).ok();
 
     println!("Awaiting authorization...");
+    let auth = wait_for_github_auth(device_code_response, github_oauth_id)?;
 
-    match wait_for_github_auth(device_code_response, oauth_id) {
-        Ok(auth) => {
-            println!("Authorization successful!");
-            AuthStore::set_token(api.as_str(), Some(&auth.access_token))?;
-            Ok(())
-        }
-        Err(error) => Err(error),
-    }
+    println!("Authorization successful!");
+    AuthStore::set_token(api.as_str(), Some(&auth.access_token))
 }
 
 impl LoginSubcommand {
     pub fn run(self) -> anyhow::Result<()> {
         let manifest = Manifest::load(&self.project_path)?;
-        let registry = url::Url::parse(&manifest.package.registry)?;
+        let registry = Url::parse(&manifest.package.registry)?;
         let package_index = PackageIndex::new(&registry, None)?;
         let api = package_index.config()?.api;
-        let oauth_id = package_index.config()?.oauth_id;
+        let github_oauth_id = package_index.config()?.github_oauth_id;
 
-        match oauth_id {
+        match github_oauth_id {
             None => prompt_api_key(api),
-            Some(oauth_id) => prompt_github_auth(api, &oauth_id),
+            Some(github_oauth_id) => prompt_github_auth(api, &github_oauth_id),
         }
     }
 }
