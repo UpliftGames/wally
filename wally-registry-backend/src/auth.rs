@@ -1,6 +1,6 @@
 use std::fmt;
 
-use anyhow::{format_err, Context};
+use anyhow::format_err;
 use constant_time_eq::constant_time_eq;
 use libwally::{package_id::PackageId, package_index::PackageIndex};
 use reqwest::Client;
@@ -101,7 +101,7 @@ async fn verify_github_token(request: &Request<'_>) -> Outcome<WriteAccess, anyh
 }
 
 pub enum ReadAccess {
-    Global,
+    Public,
     ApiKey,
 }
 
@@ -116,11 +116,11 @@ impl<'r> FromRequest<'r> for ReadAccess {
             .expect("AuthMode was not configured");
 
         match &config.auth {
-            AuthMode::Unauthenticated => Outcome::Success(ReadAccess::Global),
-            AuthMode::GithubOAuth => Outcome::Success(ReadAccess::Global),
+            AuthMode::Unauthenticated => Outcome::Success(ReadAccess::Public),
+            AuthMode::GithubOAuth => Outcome::Success(ReadAccess::Public),
             AuthMode::ApiKey(key) => match_api_key(request, key, ReadAccess::ApiKey),
             AuthMode::DoubleApiKey { read, .. } => match read {
-                None => Outcome::Success(ReadAccess::Global),
+                None => Outcome::Success(ReadAccess::Public),
                 Some(key) => match_api_key(request, key, ReadAccess::ApiKey),
             },
         }
