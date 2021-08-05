@@ -10,7 +10,7 @@ ServerPackages:
       minimal:
         init.lua: "return \"hey\""
     biff_one-dependency@0.1.0:
-      Minimal.lua: "return require(script.Parent.Parent._Index[\"biff_minimal@0.1.0\"][\"minimal\"])\n"
+      Minimal.lua: "return require(script.Parent.Parent[\"biff_minimal@0.1.0\"][\"minimal\"])\n"
       one-dependency:
         init.lua: "return \"hey\""
 default.project.json: "{\n\t\"name\": \"transitive-dependency\",\n\t\"tree\": {\n\t\t\"$path\": \"src\"\n\t}\n}"
