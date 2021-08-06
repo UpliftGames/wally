@@ -31,16 +31,8 @@ impl PackageName {
         let scope = scope.into();
         let name = name.into();
 
-        ensure!(
-            is_ident_valid(&scope),
-            "package scope '{}' is not valid",
-            scope
-        );
-        ensure!(
-            is_ident_valid(&name),
-            "package name '{}' is not valid",
-            name
-        );
+        validate_scope(&scope)?;
+        validate_name(&name)?;
 
         Ok(PackageName { scope, name })
     }
@@ -54,14 +46,32 @@ impl PackageName {
     }
 }
 
-fn is_ident_valid(ident: &str) -> bool {
-    let only_valid_chars = ident
+fn validate_scope(scope: &str) -> anyhow::Result<()> {
+    let only_valid_chars = scope
         .chars()
         .all(|char| char.is_ascii_lowercase() || char.is_ascii_digit() || char == '-');
 
-    let valid_length = ident.len() > 0;
+    ensure!(
+        only_valid_chars,
+        format!("package scope {} in invalid (scopes can only contain lowercase characters, digits and '-')", scope)
+    );
+    ensure!(scope.len() > 0, "package scopes cannot be empty");
 
-    only_valid_chars && valid_length
+    Ok(())
+}
+
+fn validate_name(name: &str) -> anyhow::Result<()> {
+    let only_valid_chars = name
+        .chars()
+        .all(|char| char.is_ascii_lowercase() || char.is_ascii_digit() || char == '-');
+
+    ensure!(
+        only_valid_chars,
+        format!("package name {} in invalid (names can only contain lowercase characters, digits and '-')", name)
+    );
+    ensure!(name.len() > 0, "package names cannot be empty");
+
+    Ok(())
 }
 
 impl fmt::Display for PackageName {
