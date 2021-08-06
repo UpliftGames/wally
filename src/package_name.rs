@@ -53,7 +53,8 @@ fn validate_scope(scope: &str) -> anyhow::Result<()> {
 
     ensure!(
         only_valid_chars,
-        format!("package scope {} in invalid (scopes can only contain lowercase characters, digits and '-')", scope)
+        "package scope {} in invalid (scopes can only contain lowercase characters, digits and '-')",
+        scope
     );
     ensure!(scope.len() > 0, "package scopes cannot be empty");
 
@@ -67,7 +68,8 @@ fn validate_name(name: &str) -> anyhow::Result<()> {
 
     ensure!(
         only_valid_chars,
-        format!("package name {} in invalid (names can only contain lowercase characters, digits and '-')", name)
+        "package name {} in invalid (names can only contain lowercase characters, digits and '-')",
+        name
     );
     ensure!(name.len() > 0, "package names cannot be empty");
 
