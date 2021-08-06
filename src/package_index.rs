@@ -111,7 +111,6 @@ impl PackageIndex {
     /// implementation of the registry server itself.
     pub fn publish(&self, manifest: &Manifest) -> anyhow::Result<()> {
         let repo = self.repository.lock().unwrap();
-
         let package_path = self.package_path(&manifest.package.name);
 
         // This package might not exist yet, so create its containing directory.
@@ -130,17 +129,14 @@ impl PackageIndex {
             file.write_all(entry.as_bytes())?;
         }
 
-        let message = format!("Publish {}", manifest.package_id());
+        git_util::commit_and_push(
+            &repo,
+            self.access_token.clone(),
+            &format!("Publish {}", manifest.package_id()),
+            &self.path,
+            &package_path,
+        )?;
 
-        // libgit2 only accepts a relative path
-        let relative_path = package_path.strip_prefix(&self.path).with_context(|| {
-            format!(
-                "Path {} was not relative to package path {}",
-                package_path.display(),
-                self.path.display()
-            )
-        })?;
-        git_util::commit_and_push(&repo, self.access_token.clone(), &message, relative_path)?;
         // Blow away the cache for this package, since we've now modified the
         // underlying file.
         let mut package_cache = self.package_cache.lock().unwrap();
@@ -215,32 +211,27 @@ impl PackageIndex {
     pub fn add_scope_owner(&self, scope: &str, owner_id: &u64) -> anyhow::Result<()> {
         let repo = self.repository.lock().unwrap();
         let mut path = self.path.clone();
+
+        // This scope might not exist yet
         path.push(scope);
+        create_dir_all(&path)?;
         path.push("owners.json");
 
-        // This package might not exist yet, so create its containing directory.
-        create_dir_all(path.parent().unwrap())?;
-
         {
-            let mut owners = self.get_scope_owners(&scope)?;
-            owners.push(*owner_id);
-
             let mut file = OpenOptions::new().write(true).create(true).open(&path)?;
-            let entry = serde_json::to_string(&owners)?;
-            file.write_all(entry.as_bytes())?;
+            let mut owners = self.get_scope_owners(&scope)?;
+
+            owners.push(*owner_id);
+            file.write_all(serde_json::to_string(&owners)?.as_bytes())?;
         }
 
-        let message = format!("Add owner for {}/*", scope);
-
-        // libgit2 only accepts a relative path
-        let relative_path = path.strip_prefix(&self.path).with_context(|| {
-            format!(
-                "Path {} was not relative to package path {}",
-                path.display(),
-                self.path.display()
-            )
-        })?;
-        git_util::commit_and_push(&repo, self.access_token.clone(), &message, relative_path)?;
+        git_util::commit_and_push(
+            &repo,
+            self.access_token.clone(),
+            &format!("Add owner for {}/*", scope),
+            &self.path,
+            &path,
+        )?;
 
         Ok(())
     }
