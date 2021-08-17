@@ -12,6 +12,9 @@ use toml_edit::{table, value, Document, Item};
 const DEFAULT_AUTH_TOML: &str = r#"
 # This is where Wally stores details for authenticating with registries.
 # It can be updated using `wally login` and `wally logout`.
+
+[tokens]
+
 "#;
 
 #[derive(Serialize, Deserialize)]
