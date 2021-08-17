@@ -218,8 +218,8 @@ impl PackageIndex {
         path.push("owners.json");
 
         {
-            let mut file = OpenOptions::new().write(true).create(true).open(&path)?;
             let mut owners = self.get_scope_owners(&scope)?;
+            let mut file = OpenOptions::new().write(true).create(true).open(&path)?;
 
             owners.push(*owner_id);
             file.write_all(serde_json::to_string(&owners)?.as_bytes())?;
