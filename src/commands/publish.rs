@@ -23,8 +23,8 @@ impl PublishSubcommand {
         let registry = url::Url::parse(&manifest.package.registry)?;
         let auth_store = AuthStore::load()?;
         let package_index = match global.use_temp_index {
-            true => PackageIndex::new(&registry, None)?,
-            false => PackageIndex::new_temp(&registry, None)?,
+            true => PackageIndex::new_temp(&registry, None)?,
+            false => PackageIndex::new(&registry, None)?,
         };
         let api = package_index.config()?.api;
         let contents = PackageContents::pack_from_path(&self.project_path)?;

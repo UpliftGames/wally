@@ -18,14 +18,11 @@ fn check_prompts_auth() {
         }),
     };
 
-    let error = args
-        .run()
-        .expect_err("Expected publish to return an error")
-        .to_string();
+    let error = args.run().expect_err("Expected publish to return an error");
 
     assert!(
-        error.contains("wally login"),
-        "Expected error message prompting user to login. Instead we got: {}",
+        error.to_string().contains("wally login"),
+        "Expected error message prompting user to login. Instead we got: {:#}",
         error
     )
 }
@@ -46,14 +43,11 @@ fn check_mismatched_names() {
         }),
     };
 
-    let error = args
-        .run()
-        .expect_err("Expected publish to return an error")
-        .to_string();
+    let error = args.run().expect_err("Expected publish to return an error");
 
     assert!(
-        error.contains("mismatched"),
-        "Expected error message explaining mismatched package name. Instead we got: {}",
+        error.to_string().contains("mismatched"),
+        "Expected error message explaining mismatched package name. Instead we got: {:#}",
         error
     )
 }
