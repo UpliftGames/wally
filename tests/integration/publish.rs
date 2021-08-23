@@ -9,7 +9,10 @@ fn check_prompts_auth() {
     let test_projects = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/test-projects",));
 
     let args = Args {
-        global: GlobalOptions::default(),
+        global: GlobalOptions {
+            use_temp_index: true,
+            ..Default::default()
+        },
         subcommand: Subcommand::Publish(PublishSubcommand {
             project_path: test_projects.join("minimal"),
         }),
