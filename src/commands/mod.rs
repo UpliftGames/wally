@@ -33,7 +33,7 @@ pub struct Args {
 impl Args {
     pub fn run(self) -> anyhow::Result<()> {
         match self.subcommand {
-            Subcommand::Publish(subcommand) => subcommand.run(),
+            Subcommand::Publish(subcommand) => subcommand.run(self.global),
             Subcommand::Init(subcommand) => subcommand.run(),
             Subcommand::Login(subcommand) => subcommand.run(),
             Subcommand::Logout(subcommand) => subcommand.run(),
@@ -56,6 +56,10 @@ pub struct GlobalOptions {
     /// Overrides the registry with a local registry. Usable only by tests.
     #[structopt(skip)]
     pub test_registry: Option<PathBuf>,
+
+    /// Allows tests to specify if the package index should be temporary (to prevent multiple use conflicts). Usable only by tests.
+    #[structopt(skip)]
+    pub use_temp_index: bool,
 }
 
 impl Default for GlobalOptions {
@@ -63,6 +67,7 @@ impl Default for GlobalOptions {
         Self {
             verbosity: 0,
             test_registry: None,
+            use_temp_index: false,
         }
     }
 }

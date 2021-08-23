@@ -1,5 +1,5 @@
 [package]
-name = "biff/minimal"
+name = "biff/mismatched-name"
 version = "0.1.0"
 license = "MIT"
 realm = "server"
