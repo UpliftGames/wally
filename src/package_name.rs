@@ -57,6 +57,10 @@ fn validate_scope(scope: &str) -> anyhow::Result<()> {
         scope
     );
     ensure!(scope.len() > 0, "package scopes cannot be empty");
+    ensure!(
+        scope.len() <= 64,
+        "package scopes cannot exceed 64 characters in length"
+    );
 
     Ok(())
 }
@@ -72,6 +76,10 @@ fn validate_name(name: &str) -> anyhow::Result<()> {
         name
     );
     ensure!(name.len() > 0, "package names cannot be empty");
+    ensure!(
+        name.len() <= 64,
+        "package names cannot exceed 64 characters in length"
+    );
 
     Ok(())
 }
