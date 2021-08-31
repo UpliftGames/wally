@@ -17,6 +17,7 @@ pub struct Registry {
     index_url: Url,
     auth_token: OnceCell<Option<Arc<str>>>,
     index: OnceCell<PackageIndex>,
+    client: Client,
 }
 
 impl Registry {
@@ -29,6 +30,7 @@ impl Registry {
             index_url,
             auth_token: OnceCell::new(),
             index: OnceCell::new(),
+            client: Client::new(),
         })
     }
 
@@ -84,9 +86,7 @@ impl PackageSource for Registry {
 
         let url = self.api_url()?.join(&path)?;
 
-        let client = Client::new();
-
-        let mut request = client.get(url);
+        let mut request = self.client.get(url);
 
         if let Some(token) = self.auth_token()? {
             request = request.header(AUTHORIZATION, format!("Bearer {}", token));
