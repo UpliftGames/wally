@@ -58,7 +58,7 @@ impl PackageContents {
                         .expect("Couldn't parse name in default.project.json");
 
                     if project_name != package_name {
-                        println!(
+                        log::info!(
                             "The project and package names are mismatched. The project name in \
                             `default.project.json` has been renamed to '{}' in the uploaded package \
                             to match the name provided by `wally.toml`",
