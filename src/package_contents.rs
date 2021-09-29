@@ -3,8 +3,11 @@ use std::path::Path;
 
 use anyhow::format_err;
 use fs_err::File;
+use serde_json::json;
 use walkdir::WalkDir;
 use zip::{write::FileOptions, ZipArchive, ZipWriter};
+
+use crate::manifest::Manifest;
 
 static EXCLUDED_PATHS: &[&str] = &[".git", "wally.lock"];
 
@@ -17,6 +20,9 @@ pub struct PackageContents {
 
 impl PackageContents {
     pub fn pack_from_path(input: &Path) -> anyhow::Result<Self> {
+        let manifest = Manifest::load(input)?;
+        let package_name = manifest.package.name.name();
+
         let mut data = Vec::new();
         let mut archive = ZipWriter::new(Cursor::new(&mut data));
 
@@ -41,8 +47,32 @@ impl PackageContents {
                 archive.add_directory(archive_name, FileOptions::default())?;
             } else {
                 archive.start_file(archive_name, FileOptions::default())?;
-                let mut file = BufReader::new(File::open(path)?);
-                io::copy(&mut file, &mut archive)?;
+
+                if path.ends_with("default.project.json") {
+                    let project_file = File::open(path)?;
+                    let mut project_json: serde_json::Value =
+                        serde_json::from_reader(project_file)?;
+                    let project_name = project_json
+                        .get("name")
+                        .and_then(|name| name.as_str())
+                        .expect("Couldn't parse name in default.project.json");
+
+                    if project_name != package_name {
+                        log::info!(
+                            "The project and package names are mismatched. The project name in \
+                            `default.project.json` has been renamed to '{}' in the uploaded package \
+                            to match the name provided by `wally.toml`",
+                            package_name
+                        );
+
+                        *project_json.get_mut("name").unwrap() = json!(package_name);
+                    }
+
+                    serde_json::to_writer_pretty(&mut archive, &project_json)?;
+                } else {
+                    let mut file = BufReader::new(File::open(path)?);
+                    io::copy(&mut file, &mut archive)?;
+                }
             }
         }
 

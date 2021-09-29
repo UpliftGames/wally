@@ -3,7 +3,7 @@ name = "biff/one-dependency"
 version = "0.1.0"
 license = "MIT"
 realm = "server"
-registry = "https://github.com/dreamcraft-studio/wally-test-index"
+registry = "https://github.com/UpliftGames/wally-test-index"
 
 [server-dependencies]
 Minimal = "biff/minimal@0.1.0"

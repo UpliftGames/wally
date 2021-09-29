@@ -5,7 +5,7 @@ use structopt::StructOpt;
 
 use crate::{
     auth::AuthStore, manifest::Manifest, package_contents::PackageContents,
-    package_index::PackageIndex,
+    package_index::PackageIndex, GlobalOptions,
 };
 
 /// Publish this project to a registry.
@@ -17,11 +17,14 @@ pub struct PublishSubcommand {
 }
 
 impl PublishSubcommand {
-    pub fn run(self) -> anyhow::Result<()> {
+    pub fn run(self, global: GlobalOptions) -> anyhow::Result<()> {
         let manifest = Manifest::load(&self.project_path)?;
         let registry = url::Url::parse(&manifest.package.registry)?;
         let auth_store = AuthStore::load()?;
-        let package_index = PackageIndex::new(&registry, None)?;
+        let package_index = match global.use_temp_index {
+            true => PackageIndex::new_temp(&registry, None)?,
+            false => PackageIndex::new(&registry, None)?,
+        };
         let api = package_index.config()?.api;
         let contents = PackageContents::pack_from_path(&self.project_path)?;
 

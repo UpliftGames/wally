@@ -1,9 +1,6 @@
 [package]
-name = "biff/transitive-dependency"
+name = "biff/mismatched-name"
 version = "0.1.0"
 license = "MIT"
 realm = "server"
 registry = "https://github.com/UpliftGames/wally-test-index"
-
-[server-dependencies]
-OneDependency = "biff/one-dependency@0.1.0"
