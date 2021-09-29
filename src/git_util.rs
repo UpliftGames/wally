@@ -92,13 +92,23 @@ pub fn commit_and_push(
     repository: &Repository,
     access_token: Option<String>,
     message: &str,
+    index_path: &Path,
     modified_file: &Path,
 ) -> anyhow::Result<()> {
     let git_config = git2::Config::open_default()?;
 
+    // libgit2 only accepts a relative path
+    let relative_path = modified_file.strip_prefix(&index_path).with_context(|| {
+        format!(
+            "Path {} was not relative to package path {}",
+            modified_file.display(),
+            index_path.display()
+        )
+    })?;
+
     // git add $file
     let mut index = repository.index()?;
-    index.add_path(modified_file)?;
+    index.add_path(relative_path)?;
     index.write()?;
     let tree_id = index.write_tree()?;
     let tree = repository.find_tree(tree_id)?;

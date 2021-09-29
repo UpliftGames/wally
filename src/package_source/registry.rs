@@ -38,8 +38,11 @@ impl Registry {
         self.auth_token
             .get_or_try_init(|| {
                 let store = AuthStore::load()?;
-                let token = store.token.map(Arc::from);
-                Ok(token)
+                let token = store.tokens.get(self.api_url()?.as_str());
+                match token {
+                    Some(token) => Ok(Some(Arc::from(token.as_str()))),
+                    None => Ok(None),
+                }
             })
             .map(|token| token.clone())
     }

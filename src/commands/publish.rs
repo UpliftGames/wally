@@ -26,8 +26,9 @@ impl PublishSubcommand {
         let contents = PackageContents::pack_from_path(&self.project_path)?;
 
         let auth = auth_store
-            .token
-            .with_context(|| "Auth token is required to publish, use `wally login`")?;
+            .tokens
+            .get(api.as_str())
+            .with_context(|| "Authentication is required to publish, use `wally login`")?;
 
         println!(
             "Publishing {} to {}",
@@ -38,6 +39,7 @@ impl PublishSubcommand {
         let client = reqwest::blocking::Client::new();
         let response = client
             .post(api.join("/v1/publish")?)
+            .header("accept", "application/json")
             .bearer_auth(auth)
             .body(contents.data().to_owned())
             .send()?;

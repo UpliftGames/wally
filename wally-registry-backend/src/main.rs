@@ -75,7 +75,7 @@ async fn package_contents(
 async fn publish(
     storage: State<'_, Box<dyn StorageBackend>>,
     index: State<'_, PackageIndex>,
-    _write: WriteAccess,
+    authorization: WriteAccess,
     data: Data,
 ) -> Result<Json<serde_json::Value>, Error> {
     let contents = data
@@ -96,6 +96,26 @@ async fn publish(
     index.update()?;
 
     let manifest = get_manifest(&mut archive).status(Status::BadRequest)?;
+    let package_id = manifest.package_id();
+
+    if !authorization.can_write_package(&package_id, &index)? {
+        return Err(format_err!(
+            "you do not have permission to write in scope {}",
+            package_id.name().scope()
+        )
+        .status(Status::Unauthorized));
+    }
+
+    // If a user can write but isn't in the scope owner file then we should add them!
+    if let WriteAccess::Github(github_info) = authorization {
+        let user_id = github_info.id();
+        let scope = package_id.name().scope();
+
+        if !index.is_scope_owner(&scope, &user_id)? {
+            index.add_scope_owner(&scope, &user_id)?;
+        }
+    }
+
     let package_metadata = index.get_package_metadata(manifest.package_id().name());
 
     if let Ok(metadata) = package_metadata {

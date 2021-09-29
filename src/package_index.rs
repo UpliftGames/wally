@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::io::{BufReader, Write};
+use std::io::{BufReader, ErrorKind, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -18,6 +18,7 @@ use crate::package_name::PackageName;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PackageIndexConfig {
     pub api: Url,
+    pub github_oauth_id: Option<String>,
 }
 
 pub struct PackageIndex {
@@ -110,7 +111,6 @@ impl PackageIndex {
     /// implementation of the registry server itself.
     pub fn publish(&self, manifest: &Manifest) -> anyhow::Result<()> {
         let repo = self.repository.lock().unwrap();
-
         let package_path = self.package_path(&manifest.package.name);
 
         // This package might not exist yet, so create its containing directory.
@@ -129,17 +129,14 @@ impl PackageIndex {
             file.write_all(entry.as_bytes())?;
         }
 
-        let message = format!("Publish {}", manifest.package_id());
+        git_util::commit_and_push(
+            &repo,
+            self.access_token.clone(),
+            &format!("Publish {}", manifest.package_id()),
+            &self.path,
+            &package_path,
+        )?;
 
-        // libgit2 only accepts a relative path
-        let relative_path = package_path.strip_prefix(&self.path).with_context(|| {
-            format!(
-                "Path {} was not relative to package path {}",
-                package_path.display(),
-                self.path.display()
-            )
-        })?;
-        git_util::commit_and_push(&repo, self.access_token.clone(), &message, relative_path)?;
         // Blow away the cache for this package, since we've now modified the
         // underlying file.
         let mut package_cache = self.package_cache.lock().unwrap();
@@ -182,6 +179,61 @@ impl PackageIndex {
 
             Ok(metadata)
         }
+    }
+
+    /// Read the list of owners for a scope from the index
+    pub fn get_scope_owners(&self, scope: &str) -> anyhow::Result<Vec<u64>> {
+        let mut path = self.path.clone();
+        path.push(scope);
+        path.push("owners.json");
+
+        match File::open(path) {
+            Ok(file) => serde_json::from_reader(file)
+                .with_context(|| format!("could not parse owner file for scope {}", scope)),
+
+            Err(error) => match error.kind() {
+                ErrorKind::NotFound => Ok(Vec::new()),
+                _ => Err(error)
+                    .with_context(|| format!("failed to read owner file for scope {}", scope)),
+            },
+        }
+    }
+
+    /// Check if a user id is present in the owners.json file for a scope
+    pub fn is_scope_owner(&self, scope: &str, user_id: &u64) -> anyhow::Result<bool> {
+        let owners = self.get_scope_owners(scope)?;
+        Ok(owners.iter().any(|owner| owner == user_id))
+    }
+
+    /// Add an owner to a scope's owner file
+    /// Similar to publish, this first applies the change to our local copy
+    /// and then attempts to push it to the remote index
+    pub fn add_scope_owner(&self, scope: &str, owner_id: &u64) -> anyhow::Result<()> {
+        let repo = self.repository.lock().unwrap();
+        let mut path = self.path.clone();
+
+        // This scope might not exist yet
+        path.push(scope);
+        create_dir_all(&path)?;
+        path.push("owners.json");
+
+        {
+            let mut owners = self.get_scope_owners(&scope)?;
+            let mut file = OpenOptions::new().write(true).create(true).open(&path)?;
+
+            owners.push(*owner_id);
+            file.write_all(serde_json::to_string(&owners)?.as_bytes())?;
+        }
+
+        git_util::commit_and_push(
+            &repo,
+            self.access_token.clone(),
+            &format!("Add owner for {}/*", scope),
+            &self.path,
+            &path,
+        )?;
+
+        Ok(())
     }
 
     fn package_path(&self, name: &PackageName) -> PathBuf {

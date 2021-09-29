@@ -20,6 +20,7 @@ figment = "0.10.3"
 fs-err = "2.5.0"
 futures = "0.3.13"
 git2 = "0.13.17"
+reqwest = { version = "0.11.0", features = ["blocking", "json"] }
 rocket = { git = "https://github.com/SergioBenitez/Rocket", rev = "2893ce754d6535e0a752586e60d7e292343016c0" }
 rocket_contrib = { git = "https://github.com/SergioBenitez/Rocket", rev = "2893ce754d6535e0a752586e60d7e292343016c0" }
 semver = "0.11.0"
