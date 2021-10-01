@@ -30,3 +30,11 @@ body {
 :global #app > * {
   width: 100%;
 }
+
+u {
+  text-decoration: underline;
+}
+
+picture {
+  line-height: 0;
+}
