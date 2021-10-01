@@ -1,8 +1,22 @@
-# npm packages
-/node_modules
-
-# Build output
+# Output directories
+/dev
+/dist
 /build
 
-# Parcel cache
+# Stuff used by the generator tool
 /.cache
+
+# npm modules
+/node_modules
+
+# fantasticon generated files
+/static/fonts/icons.css
+/static/fonts/icons.woff2
+# /src/types/icons.d.ts
+/src/overlay.png
+
+# firebase
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebase

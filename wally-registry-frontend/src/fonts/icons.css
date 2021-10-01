@@ -1,0 +1,46 @@
+@font-face {
+    font-family: "icons";
+    src: url("./icons.woff2?2b268f78d87ad31e174b75117ac2e6f2") format("woff2");
+}
+
+i[class^="icon-"]:before, i[class*=" icon-"]:before {
+    font-family: icons !important;
+    font-style: normal;
+    font-weight: normal !important;
+    font-variant: normal;
+    text-transform: none;
+    line-height: 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-chevron:before {
+    content: "\f101";
+}
+.icon-discord:before {
+    content: "\f102";
+}
+.icon-github:before {
+    content: "\f103";
+}
+.icon-glyph:before {
+    content: "\f104";
+}
+.icon-hamburger:before {
+    content: "\f105";
+}
+.icon-instagram:before {
+    content: "\f106";
+}
+.icon-linkedin:before {
+    content: "\f107";
+}
+.icon-search:before {
+    content: "\f108";
+}
+.icon-twitter:before {
+    content: "\f109";
+}
+.icon-youtube:before {
+    content: "\f10a";
+}
