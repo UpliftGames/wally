@@ -1,6 +1,6 @@
 import fastify from "fastify"
 import fastifyStatic from "fastify-static"
-import { readFileSync } from "fs"
+import { createReadStream, readFileSync } from "fs"
 import path from "path"
 import React from "react"
 import ReactDOMServer from "react-dom/server"
@@ -46,6 +46,20 @@ const app = fastify({ logger: true })
 app.register(fastifyStatic, {
   root: staticFolder,
   prefix: "/static",
+})
+
+app.get("/favicon.ico", async (request, reply) => {
+  const stream = createReadStream(path.join(staticFolder, "favicon.ico"))
+
+  reply.type("image/x-icon")
+  reply.send(stream)
+})
+
+app.get("/robots.txt", async (request, reply) => {
+  const stream = createReadStream(path.join(staticFolder, "robots.txt"))
+
+  reply.type("text/plain")
+  reply.send(stream)
 })
 
 app.get("/*", async (request, reply) => {
