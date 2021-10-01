@@ -4,7 +4,9 @@
 
 ## 0.2.1 (2021-10-01)
 * First iteration of wally frontend. ([#32][#32])
+
 [#32]: https://github.com/UpliftGames/wally/pull/32
+
 ## 0.2.0 (2021-09-29)
 * Fixed package links between sibling packages. ([#17][#17])
 * Fixed invalid package names being generated from `wally init`. ([#19][#19])
