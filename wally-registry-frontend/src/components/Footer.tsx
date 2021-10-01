@@ -21,7 +21,7 @@ const StyledSocialLinks = styled(SocialLinks)`
 
 const CopyrightLine = styled.p`
   font-size: 0.8rem;
-  margin-top: 1rem;
+  margin-top: 0.5rem;
   text-align: center;
 
   small {
@@ -46,7 +46,7 @@ const FooterLinks = styled.div`
     position: relative;
     padding: 0 0.65rem;
     letter-spacing: 0.3px;
-    font-size: 1.6rem;
+    font-size: 1.3rem;
     font-weight: 900;
 
     &:not(:last-child)::after {
@@ -82,6 +82,18 @@ export default function Footer() {
           </Link>
         ))}
       </FooterLinks>
+
+      <CopyrightLine>
+        Made with <span aria-label="love">💖</span> &amp;{" "}
+        <span aria-label="crab">🦀</span> by{" "}
+        <a
+          href="https://uplift.games/"
+          target="_blank"
+          rel="noreferrer noopener"
+        >
+          Uplift Games
+        </a>
+      </CopyrightLine>
     </StyledFooter>
   )
 }
