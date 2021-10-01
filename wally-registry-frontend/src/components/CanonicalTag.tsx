@@ -7,7 +7,7 @@ function CanonicalTag({ history }: { history: any }) {
     <Helmet>
       <link
         rel="canonical"
-        href={`https://wally.run/${history.location.pathname}`}
+        href={`https://wally.run${history.location.pathname}`}
       />
     </Helmet>
   )
