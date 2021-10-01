@@ -1,6 +1,6 @@
 [package]
 name = "wally-registry-backend"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Lucien Greathouse <lucien@playadopt.me>"]
 edition = "2018"
 publish = false
