@@ -1,0 +1,27 @@
+# Installation
+
+## From GitHub
+
+Pre-built binaries are available for Windows, macOS, and Linux from the [GitHub Releases Page for Wally][releases].
+
+[releases]: https://github.com/UpliftGames/wally/releases
+
+## With Foreman
+
+[Foreman][foreman] is a toolchain manager developed for the Roblox community. You can use it to install Wally:
+
+```toml
+wally = { source = "UpliftGames/wally", version = "0.2.1" }
+```
+
+[foreman]: https://github.com/Roblox/foreman
+
+## From Source
+
+It's straightforward to compile Wally from source. Wally requires Rust 1.51.0 or newer.
+
+Clone the repository and use:
+
+```bash
+cargo install --locked --path .
+```

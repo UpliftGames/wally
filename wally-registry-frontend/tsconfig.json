@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "module": "commonjs",
+    "noImplicitReturns": true,
+    "sourceMap": true,
+    "strict": true,
+    "allowJs": true,
+    "jsx": "react",
+    "target": "es2017",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "lib": ["es2015", "es2017", "es2018", "esnext", "DOM"]
+  },
+  "include": ["src"]
+}
