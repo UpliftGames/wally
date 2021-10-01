@@ -5,10 +5,6 @@ import { IconsId } from "../types/icons"
 import Icon from "./Icon"
 
 const socialLinks: [IconsId, string, React.CSSProperties][] = [
-  // ["twitter", socialConfig.twitter, {}],
-  // ["instagram", socialConfig.instagram, {}],
-  // ["youtube", socialConfig.youTube, {}],
-  // ["linkedin", socialConfig.linkedIn, {}],
   ["github", socialConfig.gitHub, {}],
   [
     "discord",
