@@ -6,8 +6,11 @@ use fs_err::File;
 
 use crate::manifest::Manifest;
 use crate::package_id::PackageId;
+use crate::package_index::PackageIndexConfig;
 use crate::package_req::PackageReq;
 use crate::package_source::{PackageContents, PackageSource};
+
+use super::PackageSourceId;
 
 pub struct TestRegistry {
     path: PathBuf,
@@ -75,5 +78,23 @@ impl PackageSource for TestRegistry {
 
         let data = fs_err::read(&package_path)?;
         Ok(PackageContents::from_buffer(data))
+    }
+
+    fn fallback_sources(&self) -> anyhow::Result<Vec<PackageSourceId>> {
+        let config_path = self.path.join("index/config.json");
+        let contents = fs_err::read_to_string(config_path)?;
+        let config: PackageIndexConfig = serde_json::from_str(&contents)?;
+
+        let mut sources = Vec::new();
+
+        if let Some(fallbacks) = config.fallback_registries {
+            for fallback in fallbacks {
+                sources.push(PackageSourceId::Path(
+                    self.path.join(fallback).canonicalize()?,
+                ));
+            }
+        }
+
+        Ok(sources)
     }
 }

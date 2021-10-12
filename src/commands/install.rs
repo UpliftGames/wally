@@ -7,7 +7,9 @@ use crate::installation::InstallationContext;
 use crate::lockfile::{LockPackage, Lockfile};
 use crate::manifest::Manifest;
 use crate::package_id::PackageId;
-use crate::package_source::{PackageSource, PackageSourceMap, Registry, TestRegistry};
+use crate::package_source::{
+    PackageSource, PackageSourceId, PackageSourceMap, Registry, TestRegistry,
+};
 use crate::resolution::resolve;
 
 use super::GlobalOptions;
@@ -32,7 +34,8 @@ impl InstallSubcommand {
             None => Box::new(Registry::from_registry_spec(&manifest.package.registry)?),
         };
 
-        let package_sources = PackageSourceMap::new(default_registry);
+        let mut package_sources = PackageSourceMap::new(default_registry);
+        package_sources.add_fallbacks()?;
 
         let mut try_to_use = BTreeSet::new();
         for package in lockfile.packages {
@@ -47,7 +50,12 @@ impl InstallSubcommand {
             }
         }
 
-        let resolved = resolve(&manifest, &try_to_use, &package_sources)?;
+        let resolved = resolve(
+            &manifest,
+            &try_to_use,
+            &package_sources,
+            &PackageSourceId::DefaultRegistry,
+        )?;
 
         let lockfile = Lockfile::from_resolve(&resolved);
         lockfile.save(&self.project_path)?;

@@ -20,6 +20,11 @@ fn transitive_dependency() {
     run_test("transitive-dependency", "primary-registry");
 }
 
+#[test]
+fn private_with_public_dependency() {
+    run_test("private-with-public-dependency", "tertiary-registry");
+}
+
 fn run_test(name: &str, registry: &str) -> TempProject {
     let source_project =
         Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/test-projects",)).join(name);

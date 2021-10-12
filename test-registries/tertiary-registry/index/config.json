@@ -1,0 +1,4 @@
+{
+  "api": "http://localhost",
+  "fallback_registries": ["../primary-registry"]
+}

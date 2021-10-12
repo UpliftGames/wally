@@ -12,15 +12,19 @@ metadata:
   biff/a@1.0.0:
     realm: shared
     server_only: false
+    source_registry: DefaultRegistry
   biff/b@1.0.0:
     realm: shared
     server_only: false
+    source_registry: DefaultRegistry
   biff/c@1.0.0:
     realm: shared
     server_only: false
+    source_registry: DefaultRegistry
   biff/d@1.0.0:
     realm: shared
     server_only: false
+    source_registry: DefaultRegistry
 shared_dependencies:
   biff/a@1.0.0:
     B: biff/b@1.0.0

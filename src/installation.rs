@@ -9,11 +9,8 @@ use fs_err as fs;
 use indoc::formatdoc;
 
 use crate::{
-    manifest::Realm,
-    package_contents::PackageContents,
-    package_id::PackageId,
-    package_source::{PackageSourceId, PackageSourceMap},
-    resolution::Resolve,
+    manifest::Realm, package_contents::PackageContents, package_id::PackageId,
+    package_source::PackageSourceMap, resolution::Resolve,
 };
 
 pub struct InstallationContext {
@@ -69,8 +66,6 @@ impl InstallationContext {
         root_package_id: PackageId,
         resolved: &Resolve,
     ) -> anyhow::Result<()> {
-        let default_registry = sources.get(&PackageSourceId::DefaultRegistry).unwrap();
-
         for package_id in &resolved.activated {
             log::debug!("Installing {}...", package_id);
 
@@ -104,7 +99,10 @@ impl InstallationContext {
                     self.write_package_links(package_id, package_realm, deps, Realm::Server)?;
                 }
 
-                let contents = default_registry.download_package(package_id)?;
+                let source_registry = &resolved.metadata[package_id].source_registry;
+                let package_source = sources.get(&source_registry).unwrap();
+
+                let contents = package_source.download_package(package_id)?;
                 self.write_contents(package_id, &contents, package_realm)?;
             }
         }

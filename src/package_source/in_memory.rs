@@ -13,7 +13,7 @@ use crate::{
     package_source::PackageSource, test_package::PackageBuilder,
 };
 
-use super::PackageContents;
+use super::{PackageContents, PackageSourceId};
 
 /// An in-memory registry that can have packages published to it.
 ///
@@ -107,6 +107,10 @@ impl PackageSource for InMemoryRegistrySource {
             .ok_or_else(|| format_err!("Package {} does not exist", package_id))?;
 
         Ok(entry.contents.clone())
+    }
+
+    fn fallback_sources(&self) -> anyhow::Result<Vec<PackageSourceId>> {
+        Ok(Vec::new())
     }
 }
 
