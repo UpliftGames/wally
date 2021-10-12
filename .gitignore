@@ -3,3 +3,5 @@
 
 # Insta uncommitted snapshots
 *.snap.new
+
+*.DS_Store

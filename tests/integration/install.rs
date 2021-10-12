@@ -7,24 +7,24 @@ use walkdir::WalkDir;
 
 #[test]
 fn minimal() {
-    run_test("minimal");
+    run_test("minimal", "primary-registry");
 }
 
 #[test]
 fn one_dependency() {
-    run_test("one-dependency");
+    run_test("one-dependency", "primary-registry");
 }
 
 #[test]
 fn transitive_dependency() {
-    run_test("transitive-dependency");
+    run_test("transitive-dependency", "primary-registry");
 }
 
-fn run_test(name: &str) -> TempProject {
+fn run_test(name: &str, registry: &str) -> TempProject {
     let source_project =
         Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/test-projects",)).join(name);
-
-    let test_registry = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/test-registry"));
+    let test_registry =
+        Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/test-registries")).join(registry);
 
     let project = TempProject::new(&source_project).unwrap();
 
