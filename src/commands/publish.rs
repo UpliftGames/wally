@@ -2,9 +2,10 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use structopt::StructOpt;
+use url::Url;
 
 use crate::{
-    auth::AuthStore, manifest::Manifest, package_contents::PackageContents,
+    auth::AuthStore, git_util, manifest::Manifest, package_contents::PackageContents,
     package_index::PackageIndex, GlobalOptions,
 };
 
@@ -19,12 +20,18 @@ pub struct PublishSubcommand {
 impl PublishSubcommand {
     pub fn run(self, global: GlobalOptions) -> anyhow::Result<()> {
         let manifest = Manifest::load(&self.project_path)?;
-        let registry = url::Url::parse(&manifest.package.registry)?;
         let auth_store = AuthStore::load()?;
+
         let package_index = match global.use_temp_index {
-            true => PackageIndex::new_temp(&registry, None)?,
-            false => PackageIndex::new(&registry, None)?,
+            true => {
+                let index_path = global.test_registry.unwrap().join("index");
+                let index_url = Url::from_directory_path(&index_path).unwrap();
+                git_util::init_test_repo(&index_path)?;
+                PackageIndex::new_temp(&index_url, None)?
+            }
+            false => PackageIndex::new(&Url::parse(&manifest.package.registry)?, None)?,
         };
+
         let api = package_index.config()?.api;
         let contents = PackageContents::pack_from_path(&self.project_path)?;
 

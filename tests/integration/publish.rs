@@ -11,9 +11,11 @@ use tempfile::tempdir;
 #[test]
 fn check_prompts_auth() {
     let test_projects = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/test-projects",));
+    let test_registry = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/test-registry"));
 
     let args = Args {
         global: GlobalOptions {
+            test_registry: Some(test_registry.to_owned()),
             use_temp_index: true,
             ..Default::default()
         },
