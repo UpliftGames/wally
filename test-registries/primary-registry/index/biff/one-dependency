@@ -1,0 +1,1 @@
+{"package":{"name":"biff/one-dependency","version":"0.1.0","registry":"https://github.com/UpliftGames/wally-test-index","realm":"server","description":null,"license":"MIT","authors":[]},"dependencies":{},"server-dependencies":{"Minimal":"biff/minimal@>=0.1.0, <0.2.0"},"dev-dependencies":{}}
