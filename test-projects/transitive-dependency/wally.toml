@@ -3,7 +3,7 @@ name = "biff/transitive-dependency"
 version = "0.1.0"
 license = "MIT"
 realm = "server"
-registry = "test-index"
+registry = "test-registries/primary-registry"
 
 [server-dependencies]
 OneDependency = "biff/one-dependency@0.1.0"

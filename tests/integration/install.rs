@@ -7,35 +7,33 @@ use walkdir::WalkDir;
 
 #[test]
 fn minimal() {
-    run_test("minimal", "primary-registry");
+    run_test("minimal");
 }
 
 #[test]
 fn one_dependency() {
-    run_test("one-dependency", "primary-registry");
+    run_test("one-dependency");
 }
 
 #[test]
 fn transitive_dependency() {
-    run_test("transitive-dependency", "primary-registry");
+    run_test("transitive-dependency");
 }
 
 #[test]
 fn private_with_public_dependency() {
-    run_test("private-with-public-dependency", "tertiary-registry");
+    run_test("private-with-public-dependency");
 }
 
-fn run_test(name: &str, registry: &str) -> TempProject {
+fn run_test(name: &str) -> TempProject {
     let source_project =
         Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/test-projects",)).join(name);
-    let test_registry =
-        Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/test-registries")).join(registry);
 
     let project = TempProject::new(&source_project).unwrap();
 
     let args = Args {
         global: GlobalOptions {
-            test_registry: Some(test_registry.to_owned()),
+            test_registry: true,
             ..Default::default()
         },
         subcommand: Subcommand::Install(InstallSubcommand {

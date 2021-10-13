@@ -55,9 +55,9 @@ pub struct GlobalOptions {
 
     /// Overrides the registry with a local registry. Usable only by tests.
     #[structopt(skip)]
-    pub test_registry: Option<PathBuf>,
+    pub test_registry: bool,
 
-    /// Allows tests to specify if the package index should be temporary (to prevent multiple use conflicts). Usable only by tests.
+    /// Specify if the package index should be temporary (to prevent multiple use conflicts). Usable only by tests.
     #[structopt(skip)]
     pub use_temp_index: bool,
 }
@@ -66,7 +66,7 @@ impl Default for GlobalOptions {
     fn default() -> Self {
         Self {
             verbosity: 0,
-            test_registry: None,
+            test_registry: false,
             use_temp_index: false,
         }
     }
