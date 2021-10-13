@@ -5,7 +5,7 @@ use structopt::StructOpt;
 use url::Url;
 
 use crate::{
-    auth::AuthStore, git_util, manifest::Manifest, package_contents::PackageContents,
+    auth::AuthStore, manifest::Manifest, package_contents::PackageContents,
     package_index::PackageIndex, GlobalOptions,
 };
 

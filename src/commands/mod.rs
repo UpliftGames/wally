@@ -16,8 +16,6 @@ pub use package::PackageSubcommand;
 pub use publish::PublishSubcommand;
 pub use update::UpdateSubcommand;
 
-use std::path::PathBuf;
-
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -53,7 +51,7 @@ pub struct GlobalOptions {
     #[structopt(global = true, parse(from_occurrences), long = "verbose", short)]
     pub verbosity: u8,
 
-    /// Overrides the registry with a local registry. Usable only by tests.
+    /// Flag to indidate if we will be using a test registry. Usable only by tests.
     #[structopt(skip)]
     pub test_registry: bool,
 

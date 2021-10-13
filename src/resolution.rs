@@ -156,9 +156,8 @@ pub fn resolve(
         let mut candidates = match candidates {
             Some(candidates) => candidates,
             None => bail!(
-                "Failed to find a source for {} in the registry chain {:?}",
-                dependency_request.package_req,
-                package_sources.source_order
+                "Failed to find a source for {}",
+                dependency_request.package_req
             ),
         };
 

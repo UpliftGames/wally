@@ -51,8 +51,9 @@ fn make_credentials_callback(
 
 /// We want to use a mock repo in tests but we don't want have to manually initialise it
 /// or manage commiting new files. This method will ensure the test repo is a valid git repo
-/// will all the files commited to the main branch.
+/// with all files commited to the main branch. Typically test-registries/primary-registry/index.
 pub fn init_test_repo(path: &Path) -> anyhow::Result<()> {
+    // If tests previous ran then this may already be a repo however we want to start fresh
     if path.join(".git").exists() {
         fs_err::remove_dir_all(path.join(".git"))?;
     }
@@ -62,9 +63,8 @@ pub fn init_test_repo(path: &Path) -> anyhow::Result<()> {
         RepositoryInitOptions::new().initial_head("refs/heads/main"),
     )?;
     let mut git_index = repository.index()?;
-    let source = WalkDir::new(path).min_depth(1).follow_links(true);
 
-    for entry in source {
+    for entry in WalkDir::new(path).min_depth(1) {
         let entry = entry?;
         let relative_path = entry.path().strip_prefix(path)?;
 

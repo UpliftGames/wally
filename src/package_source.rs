@@ -43,6 +43,9 @@ impl PackageSourceMap {
         self.sources.get(id).map(|source| source.as_ref())
     }
 
+    /// Searches the current list of sources for fallbacks and adds any not yet in the list, producing
+    /// a complete tree of reachable sources for packages.
+    /// Sources are searched breadth-first to ensure correct fallback priority.
     pub fn add_fallbacks(&mut self) -> anyhow::Result<()> {
         let mut source_index = 0;
 
@@ -84,6 +87,6 @@ pub trait PackageSource {
     /// `PackageId`.
     fn download_package(&self, package_id: &PackageId) -> anyhow::Result<PackageContents>;
 
-    /// Provide a list of fallback sources to search if this source can't provide our package
+    /// Provide a list of fallback sources to search if this source can't provide a package
     fn fallback_sources(&self) -> anyhow::Result<Vec<PackageSourceId>>;
 }
