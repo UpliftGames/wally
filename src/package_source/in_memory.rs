@@ -110,7 +110,7 @@ impl PackageSource for InMemoryRegistrySource {
     }
 
     fn fallback_sources(&self) -> anyhow::Result<Vec<PackageSourceId>> {
-        Ok(Vec::new())
+        todo!("Implement in-memory fallback sources");
     }
 }
 

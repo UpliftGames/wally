@@ -152,11 +152,15 @@ pub fn resolve(
             };
         }
 
-        // Check if any of the sources provided some candidates, if not we can't proceed
-        let mut candidates = candidates.expect(&format!(
-            "Couldn't find a source for {}",
-            dependency_request.package_req
-        ));
+        // Check if any of the sources provided candidates, if they didn't we can't proceed
+        let mut candidates = match candidates {
+            Some(candidates) => candidates,
+            None => bail!(
+                "Failed to find a source for {} in the registry chain {:?}",
+                dependency_request.package_req,
+                package_sources.source_order
+            ),
+        };
 
         // Sort our candidate packages by descending version, so that we try the
         // highest versions first.

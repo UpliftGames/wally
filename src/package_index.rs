@@ -91,7 +91,10 @@ impl PackageIndex {
     pub fn update(&self) -> anyhow::Result<()> {
         let repository = self.repository.lock().unwrap();
 
-        log::info!("Updating package index...");
+        log::info!(
+            "Updating package index {}...",
+            repository.find_remote("origin")?.url().unwrap()
+        );
         git_util::update_index(self.access_token.clone(), &repository)
             .with_context(|| format!("could not update package index"))?;
 

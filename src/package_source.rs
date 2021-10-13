@@ -10,7 +10,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use serde::Serialize;
-use url::Url;
 
 use crate::manifest::Manifest;
 use crate::package_contents::PackageContents;
@@ -20,7 +19,7 @@ use crate::package_req::PackageReq;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub enum PackageSourceId {
     DefaultRegistry,
-    Git(Url),
+    Git(String),
     Path(PathBuf),
 }
 
@@ -54,9 +53,11 @@ impl PackageSourceMap {
                 // Prevent circular references by only adding new sources
                 if !self.source_order.contains(&fallback) {
                     let source: Box<dyn PackageSource> = match &fallback {
-                        PackageSourceId::DefaultRegistry => todo!(),
-                        PackageSourceId::Git(_) => todo!(),
+                        PackageSourceId::Git(url) => Box::new(Registry::from_registry_spec(url)?),
                         PackageSourceId::Path(path) => Box::new(TestRegistry::new(path.clone())),
+                        PackageSourceId::DefaultRegistry => {
+                            panic!("Default registry should never be added as a fallback source!")
+                        }
                     };
 
                     self.sources.insert(fallback.clone(), source);
