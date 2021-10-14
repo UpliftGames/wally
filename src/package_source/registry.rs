@@ -100,8 +100,9 @@ impl PackageSource for Registry {
 
         if !response.status().is_success() {
             bail!(
-                "Failed to download package {} from registry: {}",
+                "Failed to download package {} from registry: {} \nResponse: {}",
                 package_id,
+                self.api_url()?,
                 response.status()
             );
         }

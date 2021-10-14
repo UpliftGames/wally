@@ -37,6 +37,7 @@ impl PackageBuilder {
                 license: None,
                 authors: Vec::new(),
             },
+            place: Default::default(),
             dependencies: Default::default(),
             server_dependencies: Default::default(),
             dev_dependencies: Default::default(),
