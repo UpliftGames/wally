@@ -64,7 +64,6 @@ impl InstallationContext {
         &self,
         sources: &PackageSourceMap,
         root_package_id: PackageId,
-        root_package_realm: Realm,
         resolved: &Resolve,
     ) -> anyhow::Result<()> {
         for package_id in &resolved.activated {
@@ -77,11 +76,12 @@ impl InstallationContext {
             // package links for its dependencies.
             if package_id == &root_package_id {
                 if let Some(deps) = shared_deps {
-                    self.write_root_package_links(root_package_realm, deps, Realm::Shared)?;
+                    self.write_root_package_links(Realm::Shared, deps, Realm::Shared)?;
+                    self.write_root_package_links(Realm::Server, deps, Realm::Shared)?;
                 }
 
                 if let Some(deps) = server_deps {
-                    self.write_root_package_links(root_package_realm, deps, Realm::Server)?;
+                    self.write_root_package_links(Realm::Server, deps, Realm::Server)?;
                 }
             } else {
                 let metadata = resolved.metadata.get(package_id).unwrap();
@@ -181,13 +181,13 @@ impl InstallationContext {
 
     fn write_root_package_links<'a, K: Display>(
         &self,
-        package_realm: Realm,
+        root_realm: Realm,
         dependencies: impl IntoIterator<Item = (K, &'a PackageId)>,
         dependencies_realm: Realm,
     ) -> anyhow::Result<()> {
         log::debug!("Writing root package links");
 
-        let base_path = match package_realm {
+        let base_path = match root_realm {
             Realm::Shared => &self.shared_dir,
             Realm::Server => &self.server_dir,
         };
@@ -198,7 +198,7 @@ impl InstallationContext {
         for (dep_name, dep_package_id) in dependencies {
             let path = base_path.join(format!("{}.lua", dep_name));
 
-            let contents = match (package_realm, dependencies_realm) {
+            let contents = match (root_realm, dependencies_realm) {
                 (source, dest) if source == dest => self.link_root_same_index(dep_package_id),
                 (_, Realm::Server) => self.link_server_index(dep_package_id)?,
                 (_, Realm::Shared) => self.link_shared_index(dep_package_id)?,

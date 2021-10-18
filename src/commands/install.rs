@@ -61,12 +61,7 @@ impl InstallSubcommand {
             InstallationContext::new(&self.project_path, manifest.place.shared_packages);
 
         installation.clean()?;
-        installation.install(
-            &package_sources,
-            root_package_id,
-            manifest.package.realm,
-            &resolved,
-        )?;
+        installation.install(&package_sources, root_package_id, &resolved)?;
 
         Ok(())
     }
