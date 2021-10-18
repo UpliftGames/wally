@@ -1,15 +1,17 @@
-use std::io::{self, BufReader, Cursor};
-use std::path::Path;
+use std::io::{self, BufRead, BufReader, Cursor};
+use std::path::{Path, PathBuf};
 
 use anyhow::format_err;
 use fs_err::File;
+use globset::{Glob, GlobSetBuilder};
 use serde_json::json;
-use walkdir::WalkDir;
+use walkdir::{DirEntry, WalkDir};
 use zip::{write::FileOptions, ZipArchive, ZipWriter};
 
 use crate::manifest::Manifest;
 
 static EXCLUDED_PATHS: &[&str] = &[".git", "wally.lock"];
+static EXCLUDED_GLOBS: &[&str] = &[".*", "wally.lock", "Packages", "ServerPackages"];
 
 /// Container for the contents of a package that have been downloaded.
 #[derive(Clone)]
@@ -26,15 +28,7 @@ impl PackageContents {
         let mut data = Vec::new();
         let mut archive = ZipWriter::new(Cursor::new(&mut data));
 
-        let file_iterator = WalkDir::new(input)
-            .min_depth(1)
-            .into_iter()
-            .filter_entry(|entry| dir_entry_filter(entry.path().strip_prefix(input).unwrap()));
-
-        for entry in file_iterator {
-            let entry = entry?;
-
-            let path = entry.path();
+        for path in Self::filtered_contents(input)? {
             let relative_path = path.strip_prefix(input).unwrap();
             let archive_name = relative_path.to_str().ok_or_else(|| {
                 format_err!(
@@ -43,7 +37,7 @@ impl PackageContents {
                 )
             })?;
 
-            if entry.file_type().is_dir() {
+            if path.is_dir() {
                 archive.add_directory(archive_name, FileOptions::default())?;
             } else {
                 archive.start_file(archive_name, FileOptions::default())?;
@@ -87,6 +81,58 @@ impl PackageContents {
         let mut archive = ZipArchive::new(Cursor::new(self.data.as_slice()))?;
         archive.extract(output)?;
         Ok(())
+    }
+
+    pub fn filtered_contents(input: &Path) -> anyhow::Result<Vec<PathBuf>> {
+        let manifest = Manifest::load(input)?;
+        let mut glob_builder = GlobSetBuilder::new();
+
+        let mut includes = manifest.package.include;
+        let mut excludes = manifest.package.exclude;
+
+        if includes.is_empty() && Path::new(".gitignore").exists() {
+            let gitignore = File::open(Path::new(".gitignore"))?;
+
+            BufReader::new(gitignore)
+                .lines()
+                .flatten()
+                .for_each(|pattern| {
+                    excludes.push(pattern);
+                });
+        }
+
+        EXCLUDED_GLOBS
+            .iter()
+            .map(|pattern| pattern.to_string())
+            .for_each(|pattern| excludes.push(pattern));
+
+        let mut include = GlobSetBuilder::new();
+
+        for pattern in includes {
+            include.add(Glob::new(&pattern)?);
+        }
+
+        let include = include.build()?;
+
+        let mut exclude = GlobSetBuilder::new();
+
+        for pattern in excludes {
+            exclude.add(Glob::new(&pattern)?);
+        }
+
+        let exclude = exclude.build()?;
+
+        Ok(WalkDir::new(input)
+            .min_depth(1)
+            .into_iter()
+            .filter_entry(|entry| {
+                let relative = entry.path().strip_prefix(input).unwrap();
+
+                exclude.matches(relative).is_empty()
+            })
+            .flatten()
+            .map(|entry| entry.path().to_path_buf())
+            .collect())
     }
 
     pub fn data(&self) -> &[u8] {
