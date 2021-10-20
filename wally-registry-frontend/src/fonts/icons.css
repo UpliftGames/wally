@@ -1,6 +1,6 @@
 @font-face {
     font-family: "icons";
-    src: url("./icons.woff2?2b268f78d87ad31e174b75117ac2e6f2") format("woff2");
+    src: url("./icons.woff2?cd937035980b6f643c4042acf6c9e9a6") format("woff2");
 }
 
 i[class^="icon-"]:before, i[class*=" icon-"]:before {
@@ -17,13 +17,13 @@ i[class^="icon-"]:before, i[class*=" icon-"]:before {
 .icon-chevron:before {
     content: "\f101";
 }
-.icon-discord:before {
+.icon-copy:before {
     content: "\f102";
 }
-.icon-github:before {
+.icon-discord:before {
     content: "\f103";
 }
-.icon-glyph:before {
+.icon-github:before {
     content: "\f104";
 }
 .icon-hamburger:before {
