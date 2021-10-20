@@ -1,10 +1,12 @@
-import React from "react"
+import React, { useState } from "react"
+import { useHistory } from "react-router"
 import { Link, NavLink } from "react-router-dom"
 import styled from "styled-components"
 import logo from "../assets/wally-logo.svg"
 import { isCondensed, isMobile, notMobile } from "../breakpoints"
 import Icon from "./Icon"
 import Img from "./Img"
+import { TextInput } from "./Inputs"
 import SocialLinks from "./SocialLinks"
 
 const StyledHeader = styled.header`
@@ -254,8 +256,8 @@ const links = [
 ] as const
 
 export default function Header() {
-  // const history = useHistory()
-  // const [searchValue, setSearchValue] = useState("")
+  const history = useHistory()
+  const [searchValue, setSearchValue] = useState("")
 
   return (
     <>
@@ -283,7 +285,7 @@ export default function Header() {
             <LogoImage src={logo} alt="Wally" />
           </LogoImageLink>
 
-          {/* <SearchBarWrapper
+          <SearchBarWrapper
             onSubmit={(e) => {
               e.preventDefault()
               history.push(`/search?q=${searchValue}`)
@@ -298,7 +300,7 @@ export default function Header() {
                 setSearchValue(e)
               }}
             />
-          </SearchBarWrapper> */}
+          </SearchBarWrapper>
 
           <Curtain
             onClick={() =>

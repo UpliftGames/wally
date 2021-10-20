@@ -3,9 +3,9 @@ import styled from "styled-components"
 import { ButtonLink } from "../../components/Button"
 import CallToActionContainer from "../../components/CallToActionContainer"
 import ContentSection from "../../components/ContentSection"
-// import PackageBlip from "../../components/PackageBlip"
+import PackageTag from "../../components/PackageTag"
 import { Code, Heading, Paragraph } from "../../components/Typography"
-// import mockPackages from "../../mocks/packages.mock"
+import mockPackages from "../../mocks/packages.mock"
 
 const Flex = styled.div`
   display: flex;
@@ -15,25 +15,25 @@ const Flex = styled.div`
   margin: 1.5rem 0;
 `
 
-// const PopularPackages = () => (
-//   <>
-//     {[...mockPackages].map((popPackage, index) => (
-//       <PackageBlip
-//         key={index}
-//         uniqueId={popPackage.package.name
-//           .substr(0, 15)
-//           .toLowerCase()
-//           .replace(/[^a-z]/gi, "")}
-//         title={popPackage.package.name.split("/")[1]}
-//         author={popPackage.package.authors.join(" ")}
-//         version={popPackage.package.version}
-//         linkTo={popPackage.package.name.split("/")[1]}
-//       >
-//         <p>{popPackage.package.description}</p>
-//       </PackageBlip>
-//     ))}
-//   </>
-// )
+const PopularPackages = () => (
+  <>
+    {[...mockPackages].map((popPackage, index) => (
+      <PackageTag
+        key={index}
+        uniqueId={popPackage.package.name
+          .substr(0, 15)
+          .toLowerCase()
+          .replace(/[^a-z]/gi, "")}
+        title={popPackage.package.name.split("/")[1]}
+        author={popPackage.package.authors.join(" ")}
+        version={popPackage.package.version}
+        linkTo={popPackage.package.name.split("/")[1]}
+      >
+        <p>{popPackage.package.description}</p>
+      </PackageTag>
+    ))}
+  </>
+)
 
 export default function Home() {
   return (
@@ -58,10 +58,10 @@ export default function Home() {
       </ContentSection>
 
       <ContentSection variation="light">
-        {/* <Heading>Popular Packages</Heading>
+        <Heading>Popular Packages</Heading>
         <Flex>
           <PopularPackages />
-        </Flex> */}
+        </Flex>
       </ContentSection>
     </>
   )
