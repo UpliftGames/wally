@@ -1,7 +1,7 @@
 const mockPackages = [
   {
     package: {
-      name: "nobledraconian/cmdr",
+      name: "evaera/cmdr",
       version: "1.8.5",
       registry: "https://github.com/upliftgames/wally-test-index",
       realm: "shared",
@@ -15,7 +15,7 @@ const mockPackages = [
   },
   {
     package: {
-      name: "nobledraconian/cmdr2-the-clone-mdrs",
+      name: "evaera/cmdr2-the-clone-mdrs",
       version: "1.8.5",
       registry: "https://github.com/upliftgames/wally-test-index",
       realm: "shared",
@@ -29,8 +29,7 @@ const mockPackages = [
   },
   {
     package: {
-      name:
-        "nobledraconian/long-name-package-oh-so-very-long-how-long-can-it-get",
+      name: "evaera/long-name-package-oh-so-very-long-how-long-can-it-get",
       version: "9.9.9",
       registry: "https://github.com/upliftgames/wally-test-index",
       realm: "shared",
@@ -51,7 +50,7 @@ const mockPackages = [
       realm: "shared",
       description: "👋",
       license: "MIT",
-      authors: ["w <email@domain.com>"],
+      authors: ["smol <email@domain.com>"],
     },
     dependencies: {},
     "server-dependencies": {},
