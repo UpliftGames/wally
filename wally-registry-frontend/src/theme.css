@@ -16,6 +16,7 @@
   --wally-pink: #a76868;
   --wally-gold: #f2c57e;
   --wally-brown: #bd704b;
+  --wally-grey-transparent: rgba(82, 87, 95, 0.9);
 }
 
 @media (max-width: 1020px) {
