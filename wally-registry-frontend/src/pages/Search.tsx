@@ -29,7 +29,7 @@ const SearchPackages = () => (
           .substr(0, 15)
           .toLowerCase()
           .replace(/[^a-z]/gi, "")}
-        title={popPackage.package.name.split("/")[1]}
+        title={popPackage.package.name}
         author={popPackage.package.authors.join(" ")}
         version={popPackage.package.version}
         linkTo={popPackage.package.name.split("/")[1]}

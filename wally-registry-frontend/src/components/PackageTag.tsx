@@ -1,6 +1,7 @@
 import React from "react"
 import { Link } from "react-router-dom"
 import styled, { keyframes } from "styled-components"
+import { isMobile } from "../breakpoints"
 
 type SizeVariation = "small" | "large"
 type WidthVariation = "narrow" | "wide"
@@ -65,18 +66,37 @@ const LinkBlip = StyledBlip.withComponent(Link)
 
 const TopRow = styled.div`
   display: flex;
-  justify-content: space-between;
   margin: 0.2rem 0.5rem 0.3rem 0.5rem;
+`
+
+const TitleRoot = styled.span`
+  color: var(--wally-grey);
+  font-size: 1.1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  @media screen and (${isMobile}) {
+    display: none;
+  }
 `
 
 const Title = styled.span`
   color: var(--wally-white);
   font-size: 1.1rem;
   white-space: nowrap;
-  flex-basis: 200%;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+`
+
+const TitleVersion = styled.span`
+  color: var(--wally-grey);
+  font-size: 1.1rem;
+  margin-left: 0.75rem;
+
+  @media screen and (${isMobile}) {
+    margin-left: 5px;
+  }
 `
 
 const RowWrapper = styled.div<{ $inset: boolean }>`
@@ -157,14 +177,14 @@ export default function PackageBlip({
     >
       <RowWrapper $inset={inset ?? false}>
         <TopRow>
-          <Title>{title}</Title>
+          <TitleRoot>{title?.split("/")[0]}/</TitleRoot>
+          <Title>{title?.split("/")[1]}</Title>
+          <TitleVersion>{version}</TitleVersion>
         </TopRow>
 
-        {size === "large" ? <>{children}</> : <></>}
+        {children}
 
-        <BottomRow>
-          <Author>{version}</Author>
-        </BottomRow>
+        {size === "large" ? <BottomRow>&nbsp;</BottomRow> : <></>}
       </RowWrapper>
     </Component>
   )
