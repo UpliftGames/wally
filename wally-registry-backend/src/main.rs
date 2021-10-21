@@ -71,6 +71,22 @@ async fn package_contents(
     }
 }
 
+#[get("/v1/package-metadata/<scope>/<name>")]
+async fn package_info(
+    index: State<'_, PackageIndex>,
+    _read: ReadAccess,
+    scope: String,
+    name: String,
+) -> Result<Json<serde_json::Value>, Error> {
+    let package_name = PackageName::new(scope, name)
+        .context("error parsing package name")
+        .status(Status::BadRequest)?;
+
+    let metadata = &*index.get_package_metadata(&package_name)?;
+
+    Ok(Json(serde_json::to_value(metadata)?))
+}
+
 #[post("/v1/publish", data = "<data>")]
 async fn publish(
     storage: State<'_, Box<dyn StorageBackend>>,

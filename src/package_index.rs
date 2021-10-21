@@ -246,7 +246,7 @@ impl PackageIndex {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Serialize)]
 pub struct PackageMetadata {
     pub versions: Vec<Manifest>,
 }
