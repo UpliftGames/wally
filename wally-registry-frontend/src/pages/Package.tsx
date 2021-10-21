@@ -58,6 +58,7 @@ const MetaHeader = styled.h2`
 const MetaSubheader = styled.b`
   font-weight: bold;
   display: block;
+  font-size: 1.1rem;
 `
 
 const MetaItem = ({
@@ -73,6 +74,9 @@ const MetaItem = ({
     width: ${(props) => (props.width === "full" ? "100%" : "50%")};
     display: inline-block;
     margin: 0.5rem 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   `
 
   return (
@@ -122,6 +126,12 @@ export default function Package() {
             {packageData?.package.license && (
               <MetaItem title="License" width="half">
                 {packageData?.package.license}
+              </MetaItem>
+            )}
+
+            {packageData?.package.realm && (
+              <MetaItem title="Realm" width="half">
+                {packageData?.package.realm}
               </MetaItem>
             )}
 
