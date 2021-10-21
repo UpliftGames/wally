@@ -22,6 +22,8 @@ const SearchPackages = () => (
   <>
     {[...mockPackages].map((popPackage, index) => (
       <PackageTag
+        size="large"
+        width="wide"
         key={index}
         uniqueId={popPackage.package?.name
           .substr(0, 15)

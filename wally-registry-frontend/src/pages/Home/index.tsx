@@ -19,6 +19,7 @@ const PopularPackages = () => (
   <>
     {[...mockPackages].map((popPackage, index) => (
       <PackageTag
+        size="small"
         key={index}
         uniqueId={popPackage.package.name
           .substr(0, 15)
