@@ -77,6 +77,12 @@ const MetaItem = ({
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+
+    a:hover,
+    a:focus {
+      text-decoration: underline;
+      color: var(--wally-red);
+    }
   `
 
   return (
@@ -125,7 +131,11 @@ export default function Package() {
 
             {packageData?.package.license && (
               <MetaItem title="License" width="half">
-                {packageData?.package.license}
+                <a
+                  href={`https://choosealicense.com/licenses/${packageData?.package.license.toLocaleLowerCase()}`}
+                >
+                  {packageData?.package.license}
+                </a>
               </MetaItem>
             )}
 
