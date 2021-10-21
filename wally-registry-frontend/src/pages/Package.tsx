@@ -41,7 +41,7 @@ const NarrowColumn = styled.aside`
   width: 30%;
 
   @media screen and (${notMobile}) {
-    padding-left: 2rem;
+    padding-left: 1rem;
   }
 
   @media screen and (${isMobile}) {
@@ -100,20 +100,20 @@ export default function Package() {
         <FlexColumns>
           <WideColumn>
             <Heading>{packageSlug}</Heading>
-            <Paragraph>
-              <i>{packageData?.package.authors}</i>
-            </Paragraph>
 
             <Paragraph>{packageData?.package.description}</Paragraph>
           </WideColumn>
           <NarrowColumn>
             <MetaHeader>Metadata</MetaHeader>
 
-            <MetaItem title="Install" width="full">
-              <CopyCode
-                code={`${packageData?.package.name}@${packageData?.package.version}`}
-              />
-            </MetaItem>
+            {packageData?.package && (
+              <MetaItem title="Install" width="full">
+                <CopyCode
+                  packageName={packageData?.package.name}
+                  version={packageData?.package.version}
+                />
+              </MetaItem>
+            )}
 
             <MetaItem title="Version" width="half">
               {packageData?.package.version || "?.?.?"}

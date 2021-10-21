@@ -5,7 +5,7 @@ const mockPackages = [
       version: "1.8.5",
       registry: "https://github.com/upliftgames/wally-test-index",
       realm: "shared",
-      description: "Cmdr package for testing purposes",
+      description: "Extensible command console for Roblox developers",
       license: "MIT",
       authors: ["evaera <email@domain.com>"],
     },

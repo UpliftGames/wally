@@ -47,12 +47,15 @@ const CopyIcon = styled.div`
 const CopyCodeButton = styled.button<{ recentlyCopied: boolean }>`
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  text-align: left;
   width: 100%;
   padding: 3px 3px 3px 5px;
   font-size: 0.9rem;
   color: white;
   background-color: var(--wally-grey-transparent);
   border-radius: var(--radius-small);
+  cursor: pointer;
 
   ${(props) => props.recentlyCopied && jumpAnimation}
 
@@ -62,8 +65,16 @@ const CopyCodeButton = styled.button<{ recentlyCopied: boolean }>`
   }
 `
 
-export default function CopyCody({ code }: { code: string }) {
+export default function CopyCody({
+  packageName,
+  version,
+}: {
+  packageName: string
+  version: string
+}) {
   const [recentlyCopied, setRecentlyCopied] = useState(false)
+
+  const copyContent = `${packageName.split("/")[1]} = ${packageName}@${version}`
 
   const copyToClipBoard = (text: string) => {
     navigator.clipboard.writeText(text)
@@ -78,18 +89,18 @@ export default function CopyCody({ code }: { code: string }) {
   return (
     <CopyCodeButton
       recentlyCopied={recentlyCopied}
-      onClick={() => copyToClipBoard(code)}
+      onClick={() => copyToClipBoard(copyContent)}
     >
-      {recentlyCopied ? (
-        <CopiedMessage>Copied! 👍</CopiedMessage>
-      ) : (
-        <>
-          <code>{code}</code>
-          <CopyIcon>
-            <Icon icon="copy" />
-          </CopyIcon>
-        </>
-      )}
+      <>
+        {recentlyCopied ? (
+          <CopiedMessage>Copied! 👍</CopiedMessage>
+        ) : (
+          <code>{copyContent}</code>
+        )}
+        <CopyIcon>
+          <Icon icon="copy" />
+        </CopyIcon>
+      </>
     </CopyCodeButton>
   )
 }
