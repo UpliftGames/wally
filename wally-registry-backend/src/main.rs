@@ -24,6 +24,8 @@ use libwally::{
     package_index::PackageIndex,
     package_name::PackageName,
 };
+use rocket::fairing::{Fairing, Info, Kind};
+use rocket::http::Header;
 use rocket::{
     data::{Data, ToByteUnit},
     fairing::AdHoc,
@@ -31,6 +33,7 @@ use rocket::{
     response::{Content, Stream},
     State,
 };
+use rocket::{Request, Response};
 use rocket_contrib::json::Json;
 use semver::Version;
 use serde_json::json;
@@ -220,6 +223,7 @@ pub fn server(figment: Figment) -> rocket::Rocket {
         .manage(package_index)
         .manage(search_backend)
         .attach(AdHoc::config::<Config>())
+        .attach(Cors)
 }
 
 fn configure_gcs(bucket: String) -> anyhow::Result<GcsStorage> {
@@ -238,6 +242,25 @@ fn configure_gcs(bucket: String) -> anyhow::Result<GcsStorage> {
     let client = Client::new(token_provider).into_bucket_client(bucket);
 
     Ok(GcsStorage::new(client))
+}
+
+struct Cors;
+
+#[rocket::async_trait]
+impl Fairing for Cors {
+    fn info(&self) -> Info {
+        Info {
+            name: "Add CORS headers to responses",
+            kind: Kind::Response,
+        }
+    }
+
+    async fn on_response<'r>(&self, _request: &'r Request<'_>, response: &mut Response<'r>) {
+        response.set_header(Header::new("Access-Control-Allow-Origin", "*"));
+        response.set_header(Header::new("Access-Control-Allow-Methods", "GET"));
+        response.set_header(Header::new("Access-Control-Allow-Headers", "*"));
+        response.set_header(Header::new("Access-Control-Allow-Credentials", "true"));
+    }
 }
 
 #[launch]
