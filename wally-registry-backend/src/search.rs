@@ -57,7 +57,10 @@ impl SearchBackend {
         let name = schema.get_field("name").unwrap();
         let description = schema.get_field("description").unwrap();
 
-        let query_parser = QueryParser::for_index(&index, vec![scope, name, description]);
+        let mut query_parser = QueryParser::for_index(&index, vec![scope, name, description]);
+        query_parser.set_conjunction_by_default();
+        query_parser.set_field_boost(scope, 3.0);
+        query_parser.set_field_boost(name, 5.0);
 
         let mut backend = Self {
             schema,
@@ -66,7 +69,7 @@ impl SearchBackend {
             query_parser,
         };
 
-        backend.crawl_packages(&package_index)?;
+        backend.crawl_packages(package_index)?;
         Ok(backend)
     }
 
@@ -129,7 +132,9 @@ impl SearchBackend {
 
     pub fn search(&self, query_input: &str) -> tantivy::Result<Vec<DocResult>> {
         let searcher = self.reader.searcher();
-        let query = self.query_parser.parse_query(query_input)?;
+        let query = self
+            .query_parser
+            .parse_query(&query_input.replace("/", " "))?;
         let top_docs = searcher.search(&query, &TopDocs::with_limit(DOC_LIMIT))?;
 
         let mut docs = Vec::with_capacity(DOC_LIMIT);

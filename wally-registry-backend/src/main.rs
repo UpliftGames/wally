@@ -92,12 +92,13 @@ async fn package_info(
     Ok(Json(serde_json::to_value(metadata)?))
 }
 
-#[get("/v1/package-search/<query>")]
+#[get("/v1/package-search?<query>")]
 async fn package_search(
     search_backend: State<'_, SearchBackend>,
     _read: ReadAccess,
     query: String,
 ) -> Result<Json<serde_json::Value>, Error> {
+    println!("Received query: {}", query);
     let result = search_backend.search(&query)?;
     Ok(Json(serde_json::to_value(result)?))
 }
