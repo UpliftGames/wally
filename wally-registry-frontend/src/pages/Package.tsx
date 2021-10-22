@@ -1,11 +1,12 @@
-import React from "react"
+import React, { useEffect, useState } from "react"
 import { useParams } from "react-router"
 import styled from "styled-components"
 import { isMobile, notMobile } from "../breakpoints"
 import ContentSection from "../components/ContentSection"
 import CopyCode from "../components/CopyCode"
 import { Heading, Paragraph } from "../components/Typography"
-import mockPackages from "../mocks/packages.mock.js"
+import { getWallyPackageMetadata } from "../services/wally.api"
+import capitalize from "../utils/capitalize"
 
 type WidthVariation = "full" | "half"
 
@@ -94,72 +95,110 @@ const MetaItem = ({
 }
 
 type PackageParams = {
-  packageSlug: string
+  packageScope: string
+  packageName: string
+}
+
+export type PackageMetadata = {
+  dependencies: {}
+  "dev-dependencies": {}
+  package: {
+    authors: string[]
+    description: string
+    license: string
+    name: string
+    realm: string
+    registry: string
+    version: string
+  }
+  "server-dependences": {}
 }
 
 export default function Package() {
-  const { packageSlug } = useParams<PackageParams>()
+  const { packageScope, packageName } = useParams<PackageParams>()
+  const [packageMetadata, setPackageMetadata] = useState<PackageMetadata>()
+  const [isLoaded, setIsLoaded] = useState(false)
 
-  const packageData = mockPackages.find(
-    (item) => item.package.name.split("/")[1] === packageSlug
-  )
+  const loadPackageData = async (packageScope: string, packageName: string) => {
+    const packageData = await getWallyPackageMetadata(packageScope, packageName)
+    setPackageMetadata(packageData)
+  }
+
+  useEffect(() => {
+    if (!isLoaded) {
+      loadPackageData(packageScope, packageName)
+      setIsLoaded(true)
+    }
+  }, [])
 
   return (
     <>
       <ContentSection>
-        <FlexColumns>
-          <WideColumn>
-            <Heading>{packageSlug}</Heading>
+        {isLoaded ? (
+          <FlexColumns>
+            <WideColumn>
+              <Heading>{packageName}</Heading>
 
-            <Paragraph>{packageData?.package.description}</Paragraph>
-          </WideColumn>
-          <NarrowColumn>
-            <MetaHeader>Metadata</MetaHeader>
+              <Paragraph>
+                {packageMetadata?.package.description
+                  ? packageMetadata?.package.description
+                  : `${capitalize(
+                      packageMetadata?.package.name
+                    )} has no provided description.`}
+              </Paragraph>
+            </WideColumn>
+            <NarrowColumn>
+              <MetaHeader>Metadata</MetaHeader>
 
-            {packageData?.package && (
-              <MetaItem title="Install" width="full">
-                <CopyCode
-                  packageName={packageData?.package.name}
-                  version={packageData?.package.version}
-                />
+              {packageMetadata?.package && (
+                <MetaItem title="Install" width="full">
+                  <CopyCode
+                    packageName={packageMetadata?.package.name}
+                    version={packageMetadata?.package.version}
+                  />
+                </MetaItem>
+              )}
+
+              <MetaItem title="Version" width="half">
+                {packageMetadata?.package.version || "?.?.?"}
               </MetaItem>
-            )}
 
-            <MetaItem title="Version" width="half">
-              {packageData?.package.version || "?.?.?"}
-            </MetaItem>
+              {packageMetadata?.package.license && (
+                <MetaItem title="License" width="half">
+                  <a
+                    href={`https://choosealicense.com/licenses/${packageMetadata?.package.license.toLocaleLowerCase()}`}
+                  >
+                    {packageMetadata?.package.license}
+                  </a>
+                </MetaItem>
+              )}
 
-            {packageData?.package.license && (
-              <MetaItem title="License" width="half">
-                <a
-                  href={`https://choosealicense.com/licenses/${packageData?.package.license.toLocaleLowerCase()}`}
-                >
-                  {packageData?.package.license}
-                </a>
-              </MetaItem>
-            )}
+              {packageMetadata?.package.realm && (
+                <MetaItem title="Realm" width="half">
+                  {capitalize(packageMetadata?.package.realm)}
+                </MetaItem>
+              )}
 
-            {packageData?.package.realm && (
-              <MetaItem title="Realm" width="half">
-                {packageData?.package.realm}
-              </MetaItem>
-            )}
+              {packageMetadata?.package.registry && (
+                <MetaItem title="Repository" width="full">
+                  <a href={packageMetadata?.package.registry}>
+                    {packageMetadata?.package.registry.replace("https://", "")}
+                  </a>
+                </MetaItem>
+              )}
 
-            {packageData?.package.registry && (
-              <MetaItem title="Repository" width="full">
-                <a href={packageData?.package.registry}>
-                  {packageData?.package.registry.replace("https://", "")}
-                </a>
-              </MetaItem>
-            )}
-
-            <MetaItem title="Authors" width="full">
-              {packageData?.package.authors.map((author) => (
-                <p key={author}>{author}</p>
-              ))}
-            </MetaItem>
-          </NarrowColumn>
-        </FlexColumns>
+              {packageMetadata?.package.authors && (
+                <MetaItem title="Authors" width="full">
+                  {packageMetadata?.package.authors.map((author) => (
+                    <p key={author}>{author}</p>
+                  ))}
+                </MetaItem>
+              )}
+            </NarrowColumn>
+          </FlexColumns>
+        ) : (
+          <div>Loading...</div>
+        )}
       </ContentSection>
     </>
   )

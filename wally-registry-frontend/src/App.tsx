@@ -48,7 +48,7 @@ export default function App() {
               <Search />
             </Route>
 
-            <Route path="/package/:packageSlug">
+            <Route path="/package/:packageScope/:packageName">
               <Package />
             </Route>
 

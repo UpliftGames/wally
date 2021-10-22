@@ -296,7 +296,6 @@ export default function Header() {
               placeholder="Search..."
               value={searchValue}
               onChange={(e) => {
-                console.log(e)
                 setSearchValue(e)
               }}
             />
