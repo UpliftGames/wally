@@ -206,7 +206,7 @@ pub fn server(figment: Figment) -> rocket::Rocket {
     let package_index = PackageIndex::new_temp(&config.index_url, config.github_token).unwrap();
 
     println!("Initializing search backend...");
-    let search_backend = SearchBackend::new(package_index.path().clone()).unwrap();
+    let search_backend = SearchBackend::new(&package_index).unwrap();
 
     rocket::custom(figment)
         .mount(

@@ -46,24 +46,36 @@ impl SearchSubcommand {
             );
         }
 
-        let results: Vec<SearchResult> = response.json()?;
+        let mut results: Vec<SearchResult> = response.json()?;
+        println!();
 
-        for result in &results {
+        for result in &mut results {
             print!("{}{}/", color::Fg(color::LightBlack), result.scope);
             print!("{}{}", color::Fg(color::Reset), result.name);
-            println!(
+            print!(
                 "{}@{}{}",
                 color::Fg(color::LightBlack),
                 color::Fg(color::Green),
-                result.version
+                result.versions.pop().unwrap(),
             );
-            print!("{}", color::Fg(color::Reset));
+
+            if !result.versions.is_empty() {
+                print!(
+                    "{} ({})",
+                    color::Fg(color::LightBlack),
+                    result.versions.join(", ")
+                );
+            }
+
+            println!("{}", color::Fg(color::Reset));
 
             if let Some(description) = &result.description {
                 println!("    {}", description);
                 println!();
             }
         }
+
+        println!();
 
         Ok(())
     }
@@ -73,6 +85,6 @@ impl SearchSubcommand {
 struct SearchResult {
     pub scope: String,
     pub name: String,
-    pub version: String,
+    pub versions: Vec<String>,
     pub description: Option<String>,
 }

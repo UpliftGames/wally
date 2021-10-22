@@ -175,8 +175,10 @@ impl PackageIndex {
                     .into_iter::<Manifest>()
                     .collect();
 
-            let versions = manifest_stream
+            let mut versions = manifest_stream
                 .with_context(|| format!("could not parse package index entry for {}", name))?;
+
+            versions.sort_by(|a, b| b.package.version.cmp(&a.package.version));
 
             let metadata = Arc::new(PackageMetadata { versions });
             package_cache.insert(name.clone(), Arc::clone(&metadata));
