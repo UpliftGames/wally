@@ -3,6 +3,8 @@ use std::path::PathBuf;
 
 use fs_err::File;
 use libwally::manifest::Manifest;
+use libwally::package_index::PackageIndex;
+use libwally::package_name::PackageName;
 use tantivy::collector::TopDocs;
 use tantivy::query::QueryParser;
 
@@ -16,14 +18,13 @@ static DOC_LIMIT: usize = 100;
 
 pub struct SearchBackend {
     schema: Schema,
-    package_index: PathBuf,
     writer: IndexWriter,
     reader: IndexReader,
     query_parser: QueryParser,
 }
 
 impl SearchBackend {
-    pub fn new(package_index: PathBuf) -> anyhow::Result<Self> {
+    pub fn new(package_index: &PackageIndex) -> anyhow::Result<Self> {
         let mut schema_builder = Schema::builder();
 
         let text_options = TextOptions::default()
@@ -36,7 +37,7 @@ impl SearchBackend {
 
         schema_builder.add_text_field("scope", text_options.clone());
         schema_builder.add_text_field("name", text_options.clone());
-        schema_builder.add_text_field("version", TEXT | STORED);
+        schema_builder.add_text_field("versions", TEXT | STORED);
         schema_builder.add_text_field("description", text_options);
 
         let schema = schema_builder.build();
@@ -60,25 +61,24 @@ impl SearchBackend {
 
         let mut backend = Self {
             schema,
-            package_index,
             writer,
             reader,
             query_parser,
         };
 
-        backend.crawl_packages()?;
+        backend.crawl_packages(&package_index)?;
         Ok(backend)
     }
 
-    fn crawl_packages(&mut self) -> anyhow::Result<()> {
+    fn crawl_packages(&mut self, package_index: &PackageIndex) -> anyhow::Result<()> {
         let scope = self.schema.get_field("scope").unwrap();
         let name = self.schema.get_field("name").unwrap();
-        let version = self.schema.get_field("version").unwrap();
+        let versions = self.schema.get_field("versions").unwrap();
         let description = self.schema.get_field("description").unwrap();
 
         println!("Crawling index...");
 
-        for entry in WalkDir::new(&self.package_index)
+        for entry in WalkDir::new(package_index.path())
             .min_depth(1)
             .into_iter()
             .filter_entry(|e| !is_config(e))
@@ -90,23 +90,33 @@ impl SearchBackend {
                 continue;
             }
 
-            let file = File::open(path)?;
-            let reader = BufReader::new(file);
-            // TODO: last line only isn't good enough as it may be a pre-release etc
-            let last_line = reader
-                .lines()
-                .last()
-                .unwrap_or_else(|| panic!("Package file {} exists with no data!", path.display()));
+            let package_scope = path
+                .parent()
+                .unwrap()
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap();
+            let package_name = path.file_name().unwrap().to_str().unwrap();
 
-            let manifest: Manifest = serde_json::from_str(&last_line?)?;
+            let metadata = package_index
+                .get_package_metadata(&PackageName::new(package_scope, package_name)?)?;
+
             let mut doc = Document::default();
 
-            doc.add_text(scope, manifest.package.name.scope());
-            doc.add_text(name, manifest.package.name.name());
-            doc.add_text(version, manifest.package.version.to_string());
+            for manifest in &(*metadata).versions {
+                doc.add_text(versions, manifest.package.version.to_string());
 
-            if let Some(description_text) = manifest.package.description {
-                doc.add_text(description, description_text);
+                if !manifest.package.version.is_prerelease() {
+                    doc.add_text(scope, manifest.package.name.scope());
+                    doc.add_text(name, manifest.package.name.name());
+
+                    if let Some(description_text) = &manifest.package.description {
+                        doc.add_text(description, description_text);
+                    }
+
+                    break;
+                }
             }
 
             self.writer.add_document(doc);
@@ -132,7 +142,7 @@ impl SearchBackend {
             docs.push(DocResult {
                 scope: retrieved_doc.scope[0].clone(),
                 name: retrieved_doc.name[0].clone(),
-                version: retrieved_doc.version[0].clone(),
+                versions: retrieved_doc.versions,
                 description: retrieved_doc.description.map(|d| d[0].clone()),
             });
         }
@@ -153,7 +163,7 @@ fn is_config(entry: &DirEntry) -> bool {
 struct NativeDocResult {
     scope: Vec<String>,
     name: Vec<String>,
-    version: Vec<String>,
+    versions: Vec<String>,
     description: Option<Vec<String>>,
 }
 
@@ -161,6 +171,6 @@ struct NativeDocResult {
 pub struct DocResult {
     scope: String,
     name: String,
-    version: String,
+    versions: Vec<String>,
     description: Option<String>,
 }
