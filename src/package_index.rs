@@ -69,6 +69,10 @@ impl PackageIndex {
         &self.url
     }
 
+    pub fn path(&self) -> &PathBuf {
+        &self.path
+    }
+
     pub fn new_temp(index_url: &Url, access_token: Option<String>) -> anyhow::Result<Self> {
         let temp_dir = tempfile::tempdir()?;
         let path = temp_dir.path().to_owned();
@@ -246,7 +250,7 @@ impl PackageIndex {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Serialize)]
 pub struct PackageMetadata {
     pub versions: Vec<Manifest>,
 }

@@ -4,6 +4,7 @@ extern crate rocket;
 mod auth;
 mod config;
 mod error;
+mod search;
 mod storage;
 
 #[cfg(test)]
@@ -39,6 +40,7 @@ use zip::ZipArchive;
 use crate::auth::{ReadAccess, WriteAccess};
 use crate::config::Config;
 use crate::error::{ApiErrorContext, ApiErrorStatus, Error};
+use crate::search::SearchBackend;
 use crate::storage::{GcsStorage, LocalStorage, StorageBackend, StorageOutput};
 
 #[get("/")]
@@ -69,6 +71,32 @@ async fn package_contents(
         Ok(stream) => Ok(Content(ContentType::GZIP, stream)),
         Err(e) => Err(e).status(Status::NotFound),
     }
+}
+
+#[get("/v1/package-metadata/<scope>/<name>")]
+async fn package_info(
+    index: State<'_, PackageIndex>,
+    _read: ReadAccess,
+    scope: String,
+    name: String,
+) -> Result<Json<serde_json::Value>, Error> {
+    let package_name = PackageName::new(scope, name)
+        .context("error parsing package name")
+        .status(Status::BadRequest)?;
+
+    let metadata = &*index.get_package_metadata(&package_name)?;
+
+    Ok(Json(serde_json::to_value(metadata)?))
+}
+
+#[get("/v1/package-search/<query>")]
+async fn package_search(
+    search_backend: State<'_, SearchBackend>,
+    _read: ReadAccess,
+    query: String,
+) -> Result<Json<serde_json::Value>, Error> {
+    let result = search_backend.search(&query)?;
+    Ok(Json(serde_json::to_value(result)?))
 }
 
 #[post("/v1/publish", data = "<data>")]
@@ -174,10 +202,23 @@ pub fn server(figment: Figment) -> rocket::Rocket {
     println!("Cloning package index repository...");
     let package_index = PackageIndex::new_temp(&config.index_url, config.github_token).unwrap();
 
+    println!("Initializing search backend...");
+    let search_backend = SearchBackend::new(package_index.path().clone()).unwrap();
+
     rocket::custom(figment)
-        .mount("/", routes![root, package_contents, publish])
+        .mount(
+            "/",
+            routes![
+                root,
+                package_contents,
+                publish,
+                package_info,
+                package_search
+            ],
+        )
         .manage(storage_backend)
         .manage(package_index)
+        .manage(search_backend)
         .attach(AdHoc::config::<Config>())
 }
 
