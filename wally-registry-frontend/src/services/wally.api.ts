@@ -6,8 +6,7 @@ const wallyApiMetadataUrl = `${wallyApiBaseUrl}/package-metadata`
 
 export async function getWallyPackages(searchQuery: string | null) {
   if (searchQuery && searchQuery.length > 1) {
-    // return fetch(`${wallyApiSearchUrl}/${searchQuery}`)
-    return fetch("https://api.test.wally.run/v1/package-search/ro")
+    return fetch(`${wallyApiSearchUrl}/${searchQuery}`)
       .then((response) => response.json())
       .then((data) => data)
   } else {
