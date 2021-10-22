@@ -12,7 +12,13 @@ const ArrowHoverKeyfames = keyframes`
   100% { right: 17px; }
 `
 
-const StyledBlip = styled.div<{ size: SizeVariation; width: WidthVariation }>`
+const StyledBlip = styled.div<{
+  size: SizeVariation
+  width: WidthVariation
+  hidden: boolean
+}>`
+  visibility: ${(props) => (props.hidden ? "hidden" : "visible")};
+  max-width: 90vw;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -147,6 +153,7 @@ const Author = styled.span`
 export default function PackageBlip({
   size = "large",
   width = "narrow",
+  hidden = false,
   children,
   title,
   version,
@@ -157,6 +164,7 @@ export default function PackageBlip({
 }: {
   size?: SizeVariation
   width?: WidthVariation
+  hidden?: boolean
   children?: React.ReactNode
   title?: string
   author?: string
@@ -174,6 +182,7 @@ export default function PackageBlip({
       to={`package/${linkTo}`}
       size={size}
       width={width}
+      hidden={hidden}
     >
       <RowWrapper $inset={inset ?? false}>
         <TopRow>
