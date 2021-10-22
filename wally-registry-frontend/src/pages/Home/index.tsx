@@ -5,7 +5,7 @@ import CallToActionContainer from "../../components/CallToActionContainer"
 import ContentSection from "../../components/ContentSection"
 import PackageTag from "../../components/PackageTag"
 import { Code, Heading, Paragraph } from "../../components/Typography"
-import mockPackages from "../../mocks/packages.mock"
+import mockPopularPackages from "../../mocks/popularPackages.mock"
 
 const Flex = styled.div`
   display: flex;
@@ -15,9 +15,9 @@ const Flex = styled.div`
   margin: 1.5rem 0;
 `
 
-const PopularPackages = () => (
-  <>
-    {[...mockPackages].map((popPackage, index) => (
+const PopularPackages = () => {
+  const popularPackagesList = [...mockPopularPackages].map(
+    (popPackage, index) => (
       <PackageTag
         size="small"
         key={index}
@@ -28,13 +28,20 @@ const PopularPackages = () => (
         title={popPackage.package.name}
         author={popPackage.package.authors.join(" ")}
         version={popPackage.package.version}
-        linkTo={popPackage.package.name.split("/")[1]}
+        // linkTo={popPackage.package.name.split("/")[1]}
+        linkTo={popPackage.package.name}
       >
         <p>{popPackage.package.description}</p>
       </PackageTag>
-    ))}
-  </>
-)
+    )
+  )
+
+  if (popularPackagesList.length % 2 !== 0) {
+    popularPackagesList.push(<PackageTag size="small" hidden={true} />)
+  }
+
+  return <>{popularPackagesList}</>
+}
 
 export default function Home() {
   return (
