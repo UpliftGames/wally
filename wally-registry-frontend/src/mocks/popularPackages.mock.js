@@ -10,8 +10,36 @@ const mockPopularPackages = [
       authors: ["evaera <email@domain.com>"],
     },
     dependencies: {},
-    "server-dependencies": {},
     "dev-dependencies": {},
+    "server-dependencies": {},
+  },
+  {
+    package: {
+      authors: [],
+      description: null,
+      license: "Apache-2.0",
+      name: "roblox/roact",
+      realm: "shared",
+      registry: "https://github.com/UpliftGames/wally-index",
+      version: "1.4.2",
+    },
+    dependencies: {},
+    "dev-dependencies": {},
+    "server-dependencies": {},
+  },
+  {
+    package: {
+      name: "evaera/promise",
+      version: "3.1.0",
+      registry: "https://github.com/UpliftGames/wally-index",
+      realm: "shared",
+      description: "Promise implementation for Roblox",
+      license: "MIT",
+      authors: [],
+    },
+    dependencies: {},
+    "dev-dependencies": {},
+    "server-dependencies": {},
   },
 ]
 
