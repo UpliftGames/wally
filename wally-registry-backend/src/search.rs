@@ -6,6 +6,7 @@ use libwally::manifest::Manifest;
 use tantivy::collector::TopDocs;
 use tantivy::query::QueryParser;
 
+use serde::{Deserialize, Serialize};
 use tantivy::tokenizer::{LowerCaser, NgramTokenizer, TextAnalyzer};
 use tantivy::{schema::*, IndexReader, ReloadPolicy};
 use tantivy::{Index, IndexWriter};
@@ -116,7 +117,7 @@ impl SearchBackend {
         Ok(())
     }
 
-    pub fn search(&self, query_input: &str) -> tantivy::Result<Vec<String>> {
+    pub fn search(&self, query_input: &str) -> tantivy::Result<Vec<DocResult>> {
         let searcher = self.reader.searcher();
         let query = self.query_parser.parse_query(query_input)?;
         let top_docs = searcher.search(&query, &TopDocs::with_limit(DOC_LIMIT))?;
@@ -125,7 +126,15 @@ impl SearchBackend {
 
         for (_score, doc_address) in top_docs {
             let retrieved_doc = searcher.doc(doc_address)?;
-            docs.push(self.schema.to_json(&retrieved_doc));
+            let retrieved_doc = self.schema.to_json(&retrieved_doc);
+            let retrieved_doc: NativeDocResult = serde_json::from_str(&retrieved_doc)?;
+
+            docs.push(DocResult {
+                scope: retrieved_doc.scope[0].clone(),
+                name: retrieved_doc.name[0].clone(),
+                version: retrieved_doc.version[0].clone(),
+                description: retrieved_doc.description.map(|d| d[0].clone()),
+            });
         }
 
         Ok(docs)
@@ -138,4 +147,20 @@ fn is_config(entry: &DirEntry) -> bool {
         .to_str()
         .map(|s| s.ends_with(".json") || s.ends_with(".toml") || s.starts_with('.'))
         .unwrap_or(false)
+}
+
+#[derive(Serialize, Deserialize)]
+struct NativeDocResult {
+    scope: Vec<String>,
+    name: Vec<String>,
+    version: Vec<String>,
+    description: Option<Vec<String>>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct DocResult {
+    scope: String,
+    name: String,
+    version: String,
+    description: Option<String>,
 }

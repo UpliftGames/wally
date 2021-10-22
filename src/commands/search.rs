@@ -1,10 +1,10 @@
-use std::{fmt, path::PathBuf};
+use std::path::PathBuf;
 
-use anyhow::{bail, Context};
+use anyhow::bail;
 use reqwest::{blocking::Client, header::AUTHORIZATION};
 use serde::Deserialize;
 use structopt::StructOpt;
-use termion::color::{self, Color};
+use termion::color::{self};
 
 use crate::{auth::AuthStore, manifest::Manifest, package_index::PackageIndex};
 
@@ -46,25 +46,21 @@ impl SearchSubcommand {
             );
         }
 
-        let results: Vec<String> = response.json()?;
-        let results: Vec<SearchResult> = results
-            .iter()
-            .map(|s| serde_json::from_str(s).unwrap())
-            .collect();
+        let results: Vec<SearchResult> = response.json()?;
 
         for result in &results {
-            print!("{}{}/", color::Fg(color::LightBlack), result.scope[0]);
-            print!("{}{}", color::Fg(color::Reset), result.name[0]);
+            print!("{}{}/", color::Fg(color::LightBlack), result.scope);
+            print!("{}{}", color::Fg(color::Reset), result.name);
             println!(
                 "{}@{}{}",
                 color::Fg(color::LightBlack),
                 color::Fg(color::Green),
-                result.version[0]
+                result.version
             );
             print!("{}", color::Fg(color::Reset));
 
             if let Some(description) = &result.description {
-                println!("    {}", description[0]);
+                println!("    {}", description);
                 println!();
             }
         }
@@ -75,17 +71,8 @@ impl SearchSubcommand {
 
 #[derive(Deserialize)]
 struct SearchResult {
-    pub scope: Vec<String>,
-    pub name: Vec<String>,
-    pub version: Vec<String>,
-    pub description: Option<Vec<String>>,
-}
-impl fmt::Debug for SearchResult {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}/{} {} {:?}",
-            self.scope[0], self.name[0], self.version[0], self.description
-        )
-    }
+    pub scope: String,
+    pub name: String,
+    pub version: String,
+    pub description: Option<String>,
 }
