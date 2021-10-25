@@ -31,7 +31,6 @@ const StyledBlip = styled.div<{
     props.size === "large" ? "var(--radius-circle) 50%" : "35px 50%"};
   background: var(--wally-mauve);
   color: white;
-  font-size: 0.9rem;
   font-weight: 300;
   letter-spacing: -0.4px;
   position: relative;
@@ -98,7 +97,7 @@ const Title = styled.span`
 const TitleVersion = styled.span`
   color: var(--wally-grey);
   font-size: 1.1rem;
-  margin-left: 0.75rem;
+  margin-left: 0.8rem;
 
   @media screen and (${isMobile}) {
     margin-left: 5px;
@@ -114,7 +113,7 @@ const RowWrapper = styled.div<{ $inset: boolean }>`
 
   & > p {
     margin: 0.5rem;
-    font-size: 0.9rem;
+    font-size: 0.75rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

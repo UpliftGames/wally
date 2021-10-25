@@ -30,7 +30,7 @@ const PopularPackages = () => {
         version={popPackage.package.version}
         linkTo={popPackage.package.name}
       >
-        <p>{popPackage.package.description}</p>
+        <p>{popPackage.package.description}&nbsp;</p>
       </PackageTag>
     )
   )
