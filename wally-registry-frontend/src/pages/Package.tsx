@@ -165,21 +165,23 @@ export default function Package() {
                 </MetaItem>
               )}
 
-              {packageMetadata?.package.registry && (
+              {/* TODO: Re-implement when Wally API supports custom source repos */}
+              {/* {packageMetadata?.package.registry && (
                 <MetaItem title="Repository" width="full">
                   <a href={packageMetadata?.package.registry}>
                     {packageMetadata?.package.registry.replace("https://", "")}
                   </a>
                 </MetaItem>
-              )}
+              )} */}
 
-              {packageMetadata?.package.authors && (
-                <MetaItem title="Authors" width="full">
-                  {packageMetadata?.package.authors.map((author) => (
-                    <p key={author}>{author}</p>
-                  ))}
-                </MetaItem>
-              )}
+              {packageMetadata?.package.authors &&
+                packageMetadata?.package.authors.length > 0 && (
+                  <MetaItem title="Authors" width="full">
+                    {packageMetadata?.package.authors.map((author) => (
+                      <p key={author}>{author}</p>
+                    ))}
+                  </MetaItem>
+                )}
             </NarrowColumn>
           </FlexColumns>
         ) : (
