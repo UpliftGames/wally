@@ -28,7 +28,6 @@ const PopularPackages = () => {
         title={popPackage.package.name}
         author={popPackage.package.authors.join(" ")}
         version={popPackage.package.version}
-        // linkTo={popPackage.package.name.split("/")[1]}
         linkTo={popPackage.package.name}
       >
         <p>{popPackage.package.description}</p>

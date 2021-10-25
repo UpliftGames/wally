@@ -12,7 +12,6 @@ import SocialLinks from "./SocialLinks"
 const StyledHeader = styled.header`
   background-color: var(--wally-white);
   margin: 0 auto;
-  /* max-width: 1600px; */
   transition: background-color 150ms ease;
   z-index: 2;
 
@@ -21,7 +20,6 @@ const StyledHeader = styled.header`
   }
 
   @media screen and (${isMobile}) {
-    /* background-color: var(--wally-pink); */
     width: 100%;
     height: 4rem;
     position: fixed;
@@ -35,11 +33,9 @@ const InnerHeader = styled.div`
 
   display: flex;
   flex-wrap: nowrap;
-  /* align-items: baseline; */
   justify-content: space-between;
 
   @media screen and (${isMobile}) {
-    /* display: block; */
     text-align: center;
     padding: 0;
   }
@@ -47,11 +43,9 @@ const InnerHeader = styled.div`
 
 const LogoImageLink = styled(Link)`
   @media screen and (${notMobile}) {
-    /* flex-grow: 1; */
     text-align: left;
     position: relative;
     max-width: 500px;
-    /* min-width: 16.5rem; */
   }
 `
 
@@ -309,21 +303,9 @@ export default function Header() {
             }
           />
           <StyledNav>
-            {/* {links.map(([text, url, style]) => (
-                            <StyledNavLink
-                                activeClassName={activeClassName}
-                                exact={url === "/"}
-                                to={url}
-                                key={url}
-                                $styles={style}
-                            >
-                                {text}
-                            </StyledNavLink>
-                        ))} */}
             {links.map(([text, url]) => (
               <StyledNavLink
                 activeClassName={activeClassName}
-                // exact={url === "/"}
                 to={url}
                 key={url}
               >

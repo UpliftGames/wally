@@ -56,6 +56,8 @@ const CopyCodeButton = styled.button<{ recentlyCopied: boolean }>`
   background-color: var(--wally-grey-transparent);
   border-radius: var(--radius-small);
   cursor: pointer;
+  word-break: break-word;
+  white-space: pre-line;
 
   ${(props) => props.recentlyCopied && jumpAnimation}
 
