@@ -16,7 +16,7 @@ const mockPopularPackages = [
   {
     package: {
       authors: [],
-      description: null,
+      description: "A view management library for Roblox Lua similar to React",
       license: "Apache-2.0",
       name: "roblox/roact",
       realm: "shared",
@@ -39,6 +39,54 @@ const mockPopularPackages = [
     },
     dependencies: {},
     "dev-dependencies": {},
+    "server-dependencies": {},
+  },
+  {
+    dependencies: {},
+    "dev-dependencies": {},
+    package: {
+      authors: [],
+      description: "BDD-style test and assertion library for Roblox Lua",
+      license: "Apache2",
+      name: "roblox/testez",
+      realm: "shared",
+      registry: "https://github.com/UpliftGames/wally-index",
+      version: "0.4.1",
+    },
+    "server-dependencies": {},
+  },
+  {
+    dependencies: {
+      Comm: "sleitnick/comm@>=0.1.0, <0.2.0",
+      Loader: "sleitnick/loader@>=1.0.0, <2.0.0",
+      Promise: "evaera/promise@>=3.1.0, <4.0.0",
+      Signal: "sleitnick/signal@>=1.0.0, <2.0.0",
+      TableUtil: "sleitnick/table-util@>=1.0.0, <2.0.0",
+    },
+    "dev-dependencies": {},
+    package: {
+      authors: [],
+      description: "Knit is a lightweight game framework",
+      license: "MIT",
+      name: "sleitnick/knit",
+      realm: "shared",
+      registry: "https://github.com/UpliftGames/wally-index",
+      version: "1.0.9",
+    },
+    "server-dependencies": {},
+  },
+  {
+    dependencies: {},
+    "dev-dependencies": {},
+    package: {
+      authors: [],
+      description: "Garbage collector object implementation for Roblox",
+      license: null,
+      name: "howmanysmall/janitor",
+      realm: "shared",
+      registry: "https://github.com/UpliftGames/wally-index",
+      version: "1.13.13",
+    },
     "server-dependencies": {},
   },
 ]
