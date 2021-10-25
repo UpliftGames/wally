@@ -99,7 +99,6 @@ export default function ContentSection({
       variation={variation ?? "light"}
       placement={placement ?? "inline"}
     >
-      {/* {variation === "fade" && <BgImg src={albumImage} />} */}
       <ContentWrapper>
         <InnerContent narrow={narrow ?? false}>{children}</InnerContent>
       </ContentWrapper>
