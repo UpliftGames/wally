@@ -5,13 +5,7 @@ import ContentSection from "../components/ContentSection"
 import PackageTag from "../components/PackageTag"
 import { Code, Heading } from "../components/Typography"
 import { getWallyPackages } from "../services/wally.api"
-
-type PackageBrief = {
-  description: string
-  name: string
-  scope: string
-  version: string
-}
+import { WallyPackageBrief } from "../types/wally"
 
 function useQuery() {
   return new URLSearchParams(useLocation().search)
@@ -25,9 +19,9 @@ const Flex = styled.div`
   margin: 1.5rem 0;
 `
 
-const SearchPackages = ({ packages }: { packages: PackageBrief[] }) => (
+const SearchPackages = ({ packages }: { packages: WallyPackageBrief[] }) => (
   <>
-    {[...packages].map((pack: PackageBrief, index) => (
+    {[...packages].map((pack: WallyPackageBrief, index) => (
       <PackageTag
         size="large"
         width="wide"
@@ -37,10 +31,10 @@ const SearchPackages = ({ packages }: { packages: PackageBrief[] }) => (
           .toLowerCase()
           .replace(/[^a-z]/gi, "")}
         title={`${pack.scope}/${pack.name}`}
-        version={pack.version}
+        version={pack.versions.at(-1)}
         linkTo={`${pack.scope}/${pack.name}`}
       >
-        <p>{pack.description} &nbsp;</p>
+        <p>{pack.description}&nbsp;</p>
       </PackageTag>
     ))}
   </>
@@ -49,8 +43,7 @@ const SearchPackages = ({ packages }: { packages: PackageBrief[] }) => (
 export default function Search() {
   const queryParams = useQuery()
   const searchQuery = queryParams.get("q")
-  const [packages, setPackages] = useState<PackageBrief[]>()
-  const [isLoaded, setIsLoaded] = useState(false)
+  const [packages, setPackages] = useState<WallyPackageBrief[]>()
 
   const loadPackagesListData = async (searchQuery: string) => {
     const packagesListData = await getWallyPackages(searchQuery)
@@ -58,11 +51,10 @@ export default function Search() {
   }
 
   useEffect(() => {
-    if (!isLoaded && searchQuery) {
+    if (searchQuery) {
       loadPackagesListData(searchQuery)
-      setIsLoaded(true)
     }
-  }, [])
+  }, [searchQuery])
 
   return (
     <>
@@ -75,9 +67,6 @@ export default function Search() {
       </ContentSection>
 
       <ContentSection variation="light">
-        {/* <pre style={{ wordBreak: "break-all", whiteSpace: "pre-line" }}>
-          <code>{packages}</code>
-        </pre> */}
         <Flex>
           {packages ? (
             <SearchPackages packages={packages} />

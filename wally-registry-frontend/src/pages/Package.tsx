@@ -6,6 +6,7 @@ import ContentSection from "../components/ContentSection"
 import CopyCode from "../components/CopyCode"
 import { Heading, Paragraph } from "../components/Typography"
 import { getWallyPackageMetadata } from "../services/wally.api"
+import { WallyPackageMetadata } from "../types/wally"
 import capitalize from "../utils/capitalize"
 
 type WidthVariation = "full" | "half"
@@ -99,24 +100,9 @@ type PackageParams = {
   packageName: string
 }
 
-export type PackageMetadata = {
-  dependencies: {}
-  "dev-dependencies": {}
-  package: {
-    authors: string[]
-    description: string
-    license: string
-    name: string
-    realm: string
-    registry: string
-    version: string
-  }
-  "server-dependences": {}
-}
-
 export default function Package() {
   const { packageScope, packageName } = useParams<PackageParams>()
-  const [packageMetadata, setPackageMetadata] = useState<PackageMetadata>()
+  const [packageMetadata, setPackageMetadata] = useState<WallyPackageMetadata>()
   const [isLoaded, setIsLoaded] = useState(false)
 
   const loadPackageData = async (packageScope: string, packageName: string) => {
