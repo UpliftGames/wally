@@ -12,9 +12,8 @@ import MDXComponents from "./MDXComponents"
 import Home from "./pages/Home"
 import Install from "./pages/Install.mdx"
 import NotFound from "./pages/NotFound"
-import Package from "./pages/Package"
+// import Package from "./pages/Package"
 import Policies from "./pages/Policies.mdx"
-import Search from "./pages/Search"
 
 export default function App() {
   return (
@@ -44,13 +43,13 @@ export default function App() {
               <Home />
             </Route>
 
-            <Route path="/search">
+            {/* <Route path="/search">
               <Search />
             </Route>
 
-            <Route path="/package/:packageScope/:packageName">
+            <Route path="/package/:packageSlug">
               <Package />
-            </Route>
+            </Route> */}
 
             <Route path="/install">
               <Helmet>
