@@ -4,6 +4,7 @@ import styled from "styled-components"
 import { isMobile, notMobile } from "../breakpoints"
 import ContentSection from "../components/ContentSection"
 import CopyCode from "../components/CopyCode"
+import NotFoundMessage from "../components/NotFoundMessage"
 import { Heading, Paragraph } from "../components/Typography"
 import { getWallyPackageMetadata } from "../services/wally.api"
 import { WallyPackageMetadata } from "../types/wally"
@@ -63,6 +64,21 @@ const MetaSubheader = styled.b`
   font-size: 1.1rem;
 `
 
+const MetaItemWrapper = styled.div<StyledMetaItemProps>`
+  width: ${(props) => (props.width === "full" ? "100%" : "50%")};
+  display: inline-block;
+  margin: 0.5rem 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  a:hover,
+  a:focus {
+    text-decoration: underline;
+    color: var(--wally-red);
+  }
+`
+
 const MetaItem = ({
   title,
   width,
@@ -72,21 +88,6 @@ const MetaItem = ({
   width?: WidthVariation
   children: React.ReactNode
 }) => {
-  const MetaItemWrapper = styled.div<StyledMetaItemProps>`
-    width: ${(props) => (props.width === "full" ? "100%" : "50%")};
-    display: inline-block;
-    margin: 0.5rem 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-
-    a:hover,
-    a:focus {
-      text-decoration: underline;
-      color: var(--wally-red);
-    }
-  `
-
   return (
     <MetaItemWrapper width={width || "full"}>
       <MetaSubheader>{title}</MetaSubheader>
@@ -104,16 +105,22 @@ export default function Package() {
   const { packageScope, packageName } = useParams<PackageParams>()
   const [packageMetadata, setPackageMetadata] = useState<WallyPackageMetadata>()
   const [isLoaded, setIsLoaded] = useState(false)
+  const [isError, setIsError] = useState(false)
 
   const loadPackageData = async (packageScope: string, packageName: string) => {
     const packageData = await getWallyPackageMetadata(packageScope, packageName)
-    setPackageMetadata(packageData)
+    if (packageData !== undefined) {
+      setPackageMetadata(packageData.versions[0])
+      setIsLoaded(true)
+    } else {
+      setIsError(true)
+      setIsLoaded(true)
+    }
   }
 
   useEffect(() => {
-    if (!isLoaded) {
+    if (!isLoaded && !isError) {
       loadPackageData(packageScope, packageName)
-      setIsLoaded(true)
     }
   }, [])
 
@@ -121,52 +128,55 @@ export default function Package() {
     <>
       <ContentSection>
         {isLoaded ? (
-          <FlexColumns>
-            <WideColumn>
-              <Heading>{packageName}</Heading>
+          isError ? (
+            <NotFoundMessage errorMessage="HTTP 404: Resource Not Found" />
+          ) : (
+            <FlexColumns>
+              <WideColumn>
+                <Heading>{packageName}</Heading>
 
-              <Paragraph>
-                {packageMetadata?.package.description
-                  ? packageMetadata?.package.description
-                  : `${capitalize(
-                      packageMetadata?.package.name
-                    )} has no provided description.`}
-              </Paragraph>
-            </WideColumn>
-            <NarrowColumn>
-              <MetaHeader>Metadata</MetaHeader>
+                <Paragraph>
+                  {packageMetadata?.package.description
+                    ? packageMetadata?.package.description
+                    : `${capitalize(
+                        packageMetadata?.package.name
+                      )} has no provided description.`}
+                </Paragraph>
+              </WideColumn>
+              <NarrowColumn>
+                <MetaHeader>Metadata</MetaHeader>
 
-              {packageMetadata?.package && (
-                <MetaItem title="Install" width="full">
-                  <CopyCode
-                    packageName={packageMetadata?.package.name}
-                    version={packageMetadata?.package.version}
-                  />
+                {packageMetadata?.package && (
+                  <MetaItem title="Install" width="full">
+                    <CopyCode
+                      packageName={packageMetadata?.package.name}
+                      version={packageMetadata?.package.version}
+                    />
+                  </MetaItem>
+                )}
+
+                <MetaItem title="Version" width="half">
+                  {packageMetadata?.package.version || "?.?.?"}
                 </MetaItem>
-              )}
 
-              <MetaItem title="Version" width="half">
-                {packageMetadata?.package.version || "?.?.?"}
-              </MetaItem>
+                {packageMetadata?.package.license && (
+                  <MetaItem title="License" width="half">
+                    <a
+                      href={`https://choosealicense.com/licenses/${packageMetadata?.package.license.toLocaleLowerCase()}`}
+                    >
+                      {packageMetadata?.package.license}
+                    </a>
+                  </MetaItem>
+                )}
 
-              {packageMetadata?.package.license && (
-                <MetaItem title="License" width="half">
-                  <a
-                    href={`https://choosealicense.com/licenses/${packageMetadata?.package.license.toLocaleLowerCase()}`}
-                  >
-                    {packageMetadata?.package.license}
-                  </a>
-                </MetaItem>
-              )}
+                {packageMetadata?.package.realm && (
+                  <MetaItem title="Realm" width="half">
+                    {capitalize(packageMetadata?.package.realm)}
+                  </MetaItem>
+                )}
 
-              {packageMetadata?.package.realm && (
-                <MetaItem title="Realm" width="half">
-                  {capitalize(packageMetadata?.package.realm)}
-                </MetaItem>
-              )}
-
-              {/* TODO: Re-implement when Wally API supports custom source repos */}
-              {/* {packageMetadata?.package.registry && (
+                {/* TODO: Re-implement when Wally API supports custom source repos */}
+                {/* {packageMetadata?.package.registry && (
                 <MetaItem title="Repository" width="full">
                   <a href={packageMetadata?.package.registry}>
                     {packageMetadata?.package.registry.replace("https://", "")}
@@ -174,16 +184,17 @@ export default function Package() {
                 </MetaItem>
               )} */}
 
-              {packageMetadata?.package.authors &&
-                packageMetadata?.package.authors.length > 0 && (
-                  <MetaItem title="Authors" width="full">
-                    {packageMetadata?.package.authors.map((author) => (
-                      <p key={author}>{author}</p>
-                    ))}
-                  </MetaItem>
-                )}
-            </NarrowColumn>
-          </FlexColumns>
+                {packageMetadata?.package.authors &&
+                  packageMetadata?.package.authors.length > 0 && (
+                    <MetaItem title="Authors" width="full">
+                      {packageMetadata?.package.authors.map((author) => (
+                        <p key={author}>{author}</p>
+                      ))}
+                    </MetaItem>
+                  )}
+              </NarrowColumn>
+            </FlexColumns>
+          )
         ) : (
           <div>Loading...</div>
         )}
