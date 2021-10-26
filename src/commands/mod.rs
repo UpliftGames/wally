@@ -5,6 +5,7 @@ mod logout;
 mod manifest_to_json;
 mod package;
 mod publish;
+mod search;
 mod update;
 
 pub use init::InitSubcommand;
@@ -14,6 +15,7 @@ pub use logout::LogoutSubcommand;
 pub use manifest_to_json::ManifestToJsonSubcommand;
 pub use package::PackageSubcommand;
 pub use publish::PublishSubcommand;
+pub use search::SearchSubcommand;
 pub use update::UpdateSubcommand;
 
 use std::path::PathBuf;
@@ -38,6 +40,7 @@ impl Args {
             Subcommand::Login(subcommand) => subcommand.run(),
             Subcommand::Logout(subcommand) => subcommand.run(),
             Subcommand::Update(subcommand) => subcommand.run(),
+            Subcommand::Search(subcommand) => subcommand.run(),
             Subcommand::Package(subcommand) => subcommand.run(),
             Subcommand::Install(subcommand) => subcommand.run(self.global),
             Subcommand::ManifestToJson(subcommand) => subcommand.run(),
@@ -80,6 +83,7 @@ pub enum Subcommand {
     Publish(PublishSubcommand),
     Login(LoginSubcommand),
     Logout(LogoutSubcommand),
+    Search(SearchSubcommand),
     Package(PackageSubcommand),
     ManifestToJson(ManifestToJsonSubcommand),
 }
