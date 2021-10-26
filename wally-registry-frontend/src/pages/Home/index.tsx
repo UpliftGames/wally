@@ -4,7 +4,7 @@ import { ButtonLink } from "../../components/Button"
 import CallToActionContainer from "../../components/CallToActionContainer"
 import ContentSection from "../../components/ContentSection"
 import PackageTag from "../../components/PackageTag"
-import { Code, Heading, Paragraph } from "../../components/Typography"
+import { Code, Heading, ResponsiveParagraph } from "../../components/Typography"
 import mockPopularPackages from "../../mocks/popularPackages.mock"
 
 const Flex = styled.div`
@@ -47,17 +47,17 @@ export default function Home() {
     <>
       <ContentSection variation="red" placement="floating">
         <Heading>Wally, a package manager for Roblox</Heading>
-        <Paragraph>
+        <ResponsiveParagraph>
           Wally is a package manager for Roblox inspired by Cargo (Rust) and npm
           (JavaScript). It brings the familiar, community-oriented world of
           sharing code from other communities into the Roblox ecosystem.
-        </Paragraph>
-        <Paragraph>
+        </ResponsiveParagraph>
+        <ResponsiveParagraph>
           Wally has two pieces that work together: a command line tool named{" "}
           <Code>wally</Code> and a registry server that hosts packages. Most
           users will only interact with the command line tool, but both are
           available in this repository.
-        </Paragraph>
+        </ResponsiveParagraph>
 
         <CallToActionContainer>
           <ButtonLink to="install">Install Wally</ButtonLink>
