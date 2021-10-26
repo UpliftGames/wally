@@ -15,8 +15,14 @@ const wallyApiMetadataUrl = `${wallyApiBaseUrl}/package-metadata`
 export async function getWallyPackages(searchQuery: string | null) {
   if (searchQuery && searchQuery.length > 1) {
     return fetch(`${wallyApiSearchUrl}/${searchQuery}`)
-      .then((response) => response.json())
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("HTTP status " + response.status)
+        }
+        return response.json()
+      })
       .then((data) => data)
+      .catch((error) => {})
   } else {
     return []
   }
@@ -33,6 +39,12 @@ export async function getWallyPackageMetadata(
   packageName: string
 ) {
   return fetch(`${wallyApiMetadataUrl}/${packageScope}/${packageName}`)
-    .then((response) => response.json())
-    .then((data) => data.versions[0])
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("HTTP status " + response.status)
+      }
+      return response.json()
+    })
+    .then((data) => data)
+    .catch((error) => {})
 }
