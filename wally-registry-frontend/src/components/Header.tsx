@@ -3,11 +3,14 @@ import { useHistory } from "react-router"
 import { Link, NavLink } from "react-router-dom"
 import styled from "styled-components"
 import logo from "../assets/wally-logo.svg"
-import { isCondensed, isMobile, notMobile } from "../breakpoints"
+import { isCondensed, isMobile, isMobileSmall, notMobile } from "../breakpoints"
 import Icon from "./Icon"
 import Img from "./Img"
 import { TextInput } from "./Inputs"
 import SocialLinks from "./SocialLinks"
+
+const mobileHeaderHeight = "4rem"
+const mobileSmallHeaderHeight = "7rem"
 
 const StyledHeader = styled.header`
   background-color: var(--wally-white);
@@ -21,8 +24,11 @@ const StyledHeader = styled.header`
 
   @media screen and (${isMobile}) {
     width: 100%;
-    height: 4rem;
     position: fixed;
+  }
+
+  @media screen and (${isMobileSmall}) {
+    height: ${mobileSmallHeaderHeight};
   }
 `
 
@@ -32,8 +38,9 @@ const InnerHeader = styled.div`
   margin: 0 auto;
 
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   justify-content: space-between;
+  align-items: center;
 
   @media screen and (${isMobile}) {
     text-align: center;
@@ -46,6 +53,11 @@ const LogoImageLink = styled(Link)`
     text-align: left;
     position: relative;
     max-width: 500px;
+  }
+
+  @media screen and (${isMobile}) {
+    height: 4rem;
+    margin: 0 auto;
   }
 `
 
@@ -63,8 +75,11 @@ const LogoImage = styled(Img)`
 
   @media screen and (${isMobile}) {
     height: 100%;
+    padding: 0.75rem 0 0.75rem 4rem;
+  }
+
+  @media screen and (${isMobileSmall}) {
     padding: 0.75rem 0;
-    padding-left: 4rem;
   }
 `
 
@@ -231,16 +246,24 @@ const Curtain = styled.div`
 
 const MobilePushDown = styled.div`
   @media screen and (${isMobile}) {
-    height: 4rem;
+    height: ${mobileHeaderHeight};
+  }
+
+  @media screen and (${isMobileSmall}) {
+    height: ${mobileSmallHeaderHeight};
   }
 `
 
 const SearchBarWrapper = styled.form`
   flex-grow: 2;
-  padding: 1.9rem 0.65rem 1.55rem;
+  padding: 0 0.65rem;
 
   @media screen and (${isMobile}) {
-    padding: 0.9rem 1.65rem 0.55rem;
+    padding: 0 1.65rem;
+  }
+
+  @media screen and (${isMobileSmall}) {
+    padding: 0 0.65rem 0.55rem;
   }
 `
 
