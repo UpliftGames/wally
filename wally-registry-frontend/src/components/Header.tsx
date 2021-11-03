@@ -75,11 +75,11 @@ const LogoImage = styled(Img)`
 
   @media screen and (${isMobile}) {
     height: 100%;
-    padding: 0.75rem 0 0.75rem 4rem;
+    padding: 0.75rem 0 0.75rem 3rem;
   }
 
   @media screen and (${isMobileSmall}) {
-    padding: 0.75rem 0;
+    padding: 0.75rem 2rem;
   }
 `
 
@@ -256,10 +256,10 @@ const MobilePushDown = styled.div`
 
 const SearchBarWrapper = styled.form`
   flex-grow: 2;
-  padding: 0 0.65rem;
+  padding: 0 2rem;
 
   @media screen and (${isMobile}) {
-    padding: 0 1.65rem;
+    padding: 0 0.5rem;
   }
 
   @media screen and (${isMobileSmall}) {
