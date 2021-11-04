@@ -85,15 +85,12 @@ impl PackageSource for TestRegistry {
         let contents = fs_err::read_to_string(config_path)?;
         let config: PackageIndexConfig = serde_json::from_str(&contents)?;
 
-        let mut sources = Vec::new();
-
-        if let Some(fallbacks) = config.fallback_registries {
-            for fallback in fallbacks {
-                sources.push(PackageSourceId::Path(
-                    self.path.join(fallback).canonicalize()?,
-                ));
-            }
-        }
+        let sources = config
+            .fallback_registries
+            .iter()
+            .map(|source| self.path.join(source).canonicalize().unwrap())
+            .map(PackageSourceId::Path)
+            .collect();
 
         Ok(sources)
     }

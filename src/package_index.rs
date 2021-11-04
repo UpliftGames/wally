@@ -19,7 +19,9 @@ use crate::package_name::PackageName;
 pub struct PackageIndexConfig {
     pub api: Url,
     pub github_oauth_id: Option<String>,
-    pub fallback_registries: Option<Vec<String>>,
+
+    #[serde(default)]
+    pub fallback_registries: Vec<String>,
 }
 
 pub struct PackageIndex {

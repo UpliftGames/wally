@@ -114,13 +114,11 @@ impl PackageSource for Registry {
 
     fn fallback_sources(&self) -> anyhow::Result<Vec<PackageSourceId>> {
         let fallback_registries = self.index()?.config()?.fallback_registries;
-        let mut sources = Vec::new();
 
-        if let Some(fallbacks) = fallback_registries {
-            for fallback in fallbacks {
-                sources.push(PackageSourceId::Git(fallback));
-            }
-        }
+        let sources = fallback_registries
+            .into_iter()
+            .map(PackageSourceId::Git)
+            .collect();
 
         Ok(sources)
     }

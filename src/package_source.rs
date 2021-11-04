@@ -25,7 +25,7 @@ pub enum PackageSourceId {
 
 pub struct PackageSourceMap {
     sources: HashMap<PackageSourceId, Box<dyn PackageSource>>,
-    pub source_order: Vec<PackageSourceId>,
+    source_order: Vec<PackageSourceId>,
 }
 
 impl PackageSourceMap {
@@ -41,6 +41,10 @@ impl PackageSourceMap {
 
     pub fn get(&self, id: &PackageSourceId) -> Option<&dyn PackageSource> {
         self.sources.get(id).map(|source| source.as_ref())
+    }
+
+    pub fn source_order(&self) -> &Vec<PackageSourceId> {
+        &self.source_order
     }
 
     /// Searches the current list of sources for fallbacks and adds any not yet in the list, producing

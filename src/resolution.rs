@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use anyhow::bail;
+use anyhow::format_err;
 use semver::Version;
 use serde::Serialize;
 
@@ -55,7 +56,6 @@ pub fn resolve(
     root_manifest: &Manifest,
     try_to_use: &BTreeSet<PackageId>,
     package_sources: &PackageSourceMap,
-    source_registry: &PackageSourceId,
 ) -> anyhow::Result<Resolve> {
     let mut resolve = Resolve::default();
 
@@ -67,7 +67,7 @@ pub fn resolve(
         ResolvePackageMetadata {
             realm: root_manifest.package.realm,
             server_only: root_manifest.package.realm == Realm::Server,
-            source_registry: source_registry.clone(),
+            source_registry: PackageSourceId::DefaultRegistry,
         },
     );
 
@@ -133,33 +133,26 @@ pub fn resolve(
             }
         }
 
-        let mut candidates = None;
-        let mut source_registry = &PackageSourceId::DefaultRegistry;
-
         // Look through all our packages sources in order of priority
-        for package_source in &package_sources.source_order {
-            source_registry = package_source;
-            let registry = package_sources.get(&package_source).unwrap();
+        let (source_registry, mut candidates) = package_sources
+            .source_order()
+            .iter()
+            .find_map(|source| {
+                let registry = package_sources.get(source).unwrap();
 
-            // Pull all of the possible candidate versions of the package we're
-            // looking for from this source.
-            match registry.query(&dependency_request.package_req) {
-                Ok(manifests) => {
-                    candidates = Some(manifests);
-                    break;
+                // Pull all of the possible candidate versions of the package we're
+                // looking for from the highest priority source which has them.
+                match registry.query(&dependency_request.package_req) {
+                    Ok(manifests) => Some((source, manifests)),
+                    Err(_) => None,
                 }
-                Err(_) => {}
-            };
-        }
-
-        // Check if any of the sources provided candidates, if they didn't we can't proceed
-        let mut candidates = match candidates {
-            Some(candidates) => candidates,
-            None => bail!(
-                "Failed to find a source for {}",
-                dependency_request.package_req
-            ),
-        };
+            })
+            .ok_or_else(|| {
+                format_err!(
+                    "Failed to find a source for {}",
+                    dependency_request.package_req
+                )
+            })?;
 
         // Sort our candidate packages by descending version, so that we try the
         // highest versions first.
@@ -310,12 +303,7 @@ mod tests {
     fn test_project(registry: InMemoryRegistry, package: PackageBuilder) -> anyhow::Result<()> {
         let package_sources = PackageSourceMap::new(Box::new(registry.source()));
         let manifest = package.into_manifest();
-        let resolve = resolve(
-            &manifest,
-            &Default::default(),
-            &package_sources,
-            &PackageSourceId::DefaultRegistry,
-        )?;
+        let resolve = resolve(&manifest, &Default::default(), &package_sources)?;
         insta::assert_yaml_snapshot!(resolve);
         Ok(())
     }
@@ -404,13 +392,7 @@ mod tests {
         let root = PackageBuilder::new("biff/root@1.0.0").with_dep("Server", "biff/server@1.0.0");
 
         let package_sources = PackageSourceMap::new(Box::new(registry.source()));
-        let err = resolve(
-            root.manifest(),
-            &Default::default(),
-            &package_sources,
-            &PackageSourceId::DefaultRegistry,
-        )
-        .unwrap_err();
+        let err = resolve(root.manifest(), &Default::default(), &package_sources).unwrap_err();
         insta::assert_display_snapshot!(err);
     }
 
@@ -428,21 +410,11 @@ mod tests {
 
         let package_sources = PackageSourceMap::new(Box::new(registry.source()));
 
-        let resolved = resolve(
-            &root.manifest(),
-            &Default::default(),
-            &package_sources,
-            &PackageSourceId::DefaultRegistry,
-        )?;
+        let resolved = resolve(&root.manifest(), &Default::default(), &package_sources)?;
         insta::assert_yaml_snapshot!("one_dependency_no_upgrade", resolved);
 
         registry.publish(PackageBuilder::new("biff/minimal@1.1.0"));
-        let new_resolved = resolve(
-            &root.manifest(),
-            &resolved.activated,
-            &package_sources,
-            &PackageSourceId::DefaultRegistry,
-        )?;
+        let new_resolved = resolve(&root.manifest(), &resolved.activated, &package_sources)?;
         insta::assert_yaml_snapshot!("one_dependency_no_upgrade", new_resolved);
 
         Ok(())
@@ -458,12 +430,7 @@ mod tests {
 
         let package_sources = PackageSourceMap::new(Box::new(registry.source()));
 
-        let resolved = resolve(
-            &root.manifest(),
-            &Default::default(),
-            &package_sources,
-            &PackageSourceId::DefaultRegistry,
-        )?;
+        let resolved = resolve(&root.manifest(), &Default::default(), &package_sources)?;
         insta::assert_yaml_snapshot!(resolved);
 
         // We can indicate that we'd like to upgrade a package by just removing
@@ -476,12 +443,7 @@ mod tests {
             .collect();
 
         registry.publish(PackageBuilder::new("biff/minimal@1.1.0"));
-        let new_resolved = resolve(
-            &root.manifest(),
-            &try_to_use,
-            &package_sources,
-            &PackageSourceId::DefaultRegistry,
-        )?;
+        let new_resolved = resolve(&root.manifest(), &try_to_use, &package_sources)?;
         insta::assert_yaml_snapshot!(new_resolved);
 
         Ok(())

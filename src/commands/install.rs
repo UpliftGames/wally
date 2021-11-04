@@ -50,12 +50,7 @@ impl InstallSubcommand {
             }
         }
 
-        let resolved = resolve(
-            &manifest,
-            &try_to_use,
-            &package_sources,
-            &PackageSourceId::DefaultRegistry,
-        )?;
+        let resolved = resolve(&manifest, &try_to_use, &package_sources)?;
 
         let lockfile = Lockfile::from_resolve(&resolved);
         lockfile.save(&self.project_path)?;
