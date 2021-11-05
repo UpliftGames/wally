@@ -76,7 +76,9 @@ export default function CopyCody({
 }) {
   const [recentlyCopied, setRecentlyCopied] = useState(false)
 
-  const copyContent = `${packageName.split("/")[1]} = ${packageName}@${version}`
+  const copyContent = `${
+    packageName.split("/")[1]
+  } = "${packageName}@${version}"`
 
   const copyToClipBoard = (text: string) => {
     navigator.clipboard.writeText(text)
