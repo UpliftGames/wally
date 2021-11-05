@@ -66,6 +66,10 @@ const LogoImageLink = styled(Link)`
     height: 4rem;
     margin: 0 auto;
   }
+
+  @media screen and (${isMobileSmall}) {
+    width: 100%;
+  }
 `
 
 const LogoImage = styled(Img)`
@@ -86,7 +90,7 @@ const LogoImage = styled(Img)`
   }
 
   @media screen and (${isMobileSmall}) {
-    padding: 0.75rem 2rem;
+    padding: 0.75rem;
   }
 `
 
@@ -279,6 +283,9 @@ const reactSelectSearchStyles = {
     ...provided,
     flexGrow: 2,
     margin: "0 2rem",
+    [`@media only screen and (${isMobileSmall})`]: {
+      margin: "0 0.5rem 0.5rem",
+    },
   }),
 }
 
