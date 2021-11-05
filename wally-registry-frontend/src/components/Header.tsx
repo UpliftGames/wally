@@ -303,9 +303,7 @@ export default function Header() {
 
   const loadOptions = async (inputValue: string) =>
     new Promise<WallyOption[]>((resolve) => {
-      setTimeout(() => {
-        resolve(filterWallyPackages(inputValue))
-      }, 1000)
+      resolve(filterWallyPackages(inputValue))
     })
 
   const onChange = (option: WallyOption | null) => {
