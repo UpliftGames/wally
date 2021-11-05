@@ -265,18 +265,14 @@ const MobilePushDown = styled.div`
   }
 `
 
-const SearchBarWrapper = styled.form`
-  flex-grow: 2;
-  padding: 0 2rem;
-
-  @media screen and (${isMobile}) {
-    padding: 0 0.5rem;
-  }
-
-  @media screen and (${isMobileSmall}) {
-    padding: 0 0.65rem 0.55rem;
-  }
-`
+const reactSelectSearchTheme = (theme: any) => ({
+  ...theme,
+  colors: {
+    ...theme.colors,
+    primary25: "var(--wally-red-light)",
+    primary: "var(--wally-mauve)",
+  },
+})
 
 const reactSelectSearchStyles = {
   container: (provided: any) => ({
@@ -285,6 +281,14 @@ const reactSelectSearchStyles = {
     margin: "0 2rem",
     [`@media only screen and (${isMobileSmall})`]: {
       margin: "0 0.5rem 0.5rem",
+    },
+  }),
+  control: (provided: any) => ({
+    ...provided,
+    borderRadius: "var(--radius-small)",
+    ":focus-within": {
+      borderColor: "var(--wally-red)",
+      boxShadow: "0 0 0 1px var(--wally-red)",
     },
   }),
 }
@@ -346,16 +350,17 @@ export default function Header() {
           </LogoImageLink>
 
           <AsyncSelect
+            theme={reactSelectSearchTheme}
             styles={reactSelectSearchStyles}
             components={{
               DropdownIndicator: () => null,
               IndicatorSeparator: () => null,
             }}
             isSearchable={true}
-            isClearable={true}
             loadOptions={loadOptions}
             onChange={onChange}
             controlShouldRenderValue={false}
+            placeholder="Search packages..."
           />
 
           <Curtain
