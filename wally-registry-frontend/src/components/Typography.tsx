@@ -1,5 +1,5 @@
 import styled, { css } from "styled-components"
-import { isMobile } from "../breakpoints"
+import { isMobile, isMobileSmall } from "../breakpoints"
 
 type ColorVariation = "red"
 
@@ -58,11 +58,24 @@ export const Paragraph = styled.p`
   ${ParagraphStyle}
 `
 
+export const ResponsiveParagraph = styled.p`
+  ${ParagraphStyle}
+
+  @media screen and (${isMobile}) {
+    font-size: 1rem;
+  }
+
+  @media screen and (${isMobileSmall}) {
+    font-size: 0.9rem;
+  }
+`
+
 export const Code = styled.code`
   padding: 0.2em 0.4em;
   margin: 0;
   font-size: 85%;
-  background-color: rgba(82, 87, 95, 0.9);
+  color: white;
+  background-color: var(--wally-grey-transparent);
   border-radius: 6px;
   font-family: monospace;
 `
