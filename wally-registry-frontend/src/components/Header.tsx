@@ -353,23 +353,6 @@ export default function Header() {
             controlShouldRenderValue={false}
           />
 
-          {/* Old Search Bar */}
-          {/* <SearchBarWrapper
-            onSubmit={(e) => {
-              e.preventDefault()
-              history.push(`/search?q=${searchValue}`)
-            }}
-          >
-            <TextInput
-              icon="search"
-              placeholder="Search..."
-              value={searchValue}
-              onChange={(e) => {
-                setSearchValue(e)
-              }}
-            />
-          </SearchBarWrapper> */}
-
           <Curtain
             onClick={() =>
               ((document.getElementById(
