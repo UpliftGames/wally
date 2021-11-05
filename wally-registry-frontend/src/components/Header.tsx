@@ -1,13 +1,23 @@
-import React, { useState } from "react"
+import React from "react"
 import { useHistory } from "react-router"
 import { Link, NavLink } from "react-router-dom"
+import AsyncSelect from "react-select/async"
 import styled from "styled-components"
 import logo from "../assets/wally-logo.svg"
-import { isCondensed, isMobile, notMobile } from "../breakpoints"
+import { isCondensed, isMobile, isMobileSmall, notMobile } from "../breakpoints"
+import { getWallyPackages } from "../services/wally.api"
+import { WallyPackageBrief } from "../types/wally"
 import Icon from "./Icon"
 import Img from "./Img"
-import { TextInput } from "./Inputs"
 import SocialLinks from "./SocialLinks"
+
+type WallyOption = {
+  label: string
+  value: string
+}
+
+const mobileHeaderHeight = "4rem"
+const mobileSmallHeaderHeight = "7rem"
 
 const StyledHeader = styled.header`
   background-color: var(--wally-white);
@@ -21,8 +31,11 @@ const StyledHeader = styled.header`
 
   @media screen and (${isMobile}) {
     width: 100%;
-    height: 4rem;
     position: fixed;
+  }
+
+  @media screen and (${isMobileSmall}) {
+    height: ${mobileSmallHeaderHeight};
   }
 `
 
@@ -32,8 +45,9 @@ const InnerHeader = styled.div`
   margin: 0 auto;
 
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   justify-content: space-between;
+  align-items: center;
 
   @media screen and (${isMobile}) {
     text-align: center;
@@ -46,6 +60,15 @@ const LogoImageLink = styled(Link)`
     text-align: left;
     position: relative;
     max-width: 500px;
+  }
+
+  @media screen and (${isMobile}) {
+    height: 4rem;
+    margin: 0 auto;
+  }
+
+  @media screen and (${isMobileSmall}) {
+    width: 100%;
   }
 `
 
@@ -63,8 +86,11 @@ const LogoImage = styled(Img)`
 
   @media screen and (${isMobile}) {
     height: 100%;
-    padding: 0.75rem 0;
-    padding-left: 4rem;
+    padding: 0.75rem 0 0.75rem 3rem;
+  }
+
+  @media screen and (${isMobileSmall}) {
+    padding: 0.75rem;
   }
 `
 
@@ -231,27 +257,71 @@ const Curtain = styled.div`
 
 const MobilePushDown = styled.div`
   @media screen and (${isMobile}) {
-    height: 4rem;
+    height: ${mobileHeaderHeight};
+  }
+
+  @media screen and (${isMobileSmall}) {
+    height: ${mobileSmallHeaderHeight};
   }
 `
 
-const SearchBarWrapper = styled.form`
-  flex-grow: 2;
-  padding: 1.9rem 0.65rem 1.55rem;
+const reactSelectSearchTheme = (theme: any) => ({
+  ...theme,
+  colors: {
+    ...theme.colors,
+    primary25: "var(--wally-red-light)",
+    primary: "var(--wally-mauve)",
+  },
+})
 
-  @media screen and (${isMobile}) {
-    padding: 0.9rem 1.65rem 0.55rem;
-  }
-`
+const reactSelectSearchStyles = {
+  container: (provided: any) => ({
+    ...provided,
+    flexGrow: 2,
+    margin: "0 2rem",
+    [`@media only screen and (${isMobileSmall})`]: {
+      margin: "0 0.5rem 0.5rem",
+    },
+  }),
+  control: (provided: any) => ({
+    ...provided,
+    borderRadius: "var(--radius-small)",
+    ":focus-within": {
+      borderColor: "var(--wally-red)",
+      boxShadow: "0 0 0 1px var(--wally-red)",
+    },
+  }),
+}
 
 const links = [
   ["Install", "/install"],
   ["Policies", "/policies"],
 ] as const
 
+const filterWallyPackages = async (inputValue: string) => {
+  const packagesListData = await getWallyPackages(inputValue)
+  const searchOptions = packagesListData.map(
+    (packageBrief: WallyPackageBrief) => ({
+      label: `${packageBrief.scope}/${packageBrief.name}`,
+      value: `${packageBrief.scope}/${packageBrief.name}`,
+    })
+  )
+  return searchOptions
+}
+
 export default function Header() {
   const history = useHistory()
-  const [searchValue, setSearchValue] = useState("")
+
+  const loadOptions = async (inputValue: string) =>
+    new Promise<WallyOption[]>((resolve) => {
+      resolve(filterWallyPackages(inputValue))
+    })
+
+  const onChange = (option: WallyOption | null) => {
+    if (option) {
+      history.push(`/package/${option.value}`)
+    }
+  }
 
   return (
     <>
@@ -279,21 +349,19 @@ export default function Header() {
             <LogoImage src={logo} alt="Wally" />
           </LogoImageLink>
 
-          <SearchBarWrapper
-            onSubmit={(e) => {
-              e.preventDefault()
-              history.push(`/search?q=${searchValue}`)
+          <AsyncSelect
+            theme={reactSelectSearchTheme}
+            styles={reactSelectSearchStyles}
+            components={{
+              DropdownIndicator: () => null,
+              IndicatorSeparator: () => null,
             }}
-          >
-            <TextInput
-              icon="search"
-              placeholder="Search..."
-              value={searchValue}
-              onChange={(e) => {
-                setSearchValue(e)
-              }}
-            />
-          </SearchBarWrapper>
+            isSearchable={true}
+            loadOptions={loadOptions}
+            onChange={onChange}
+            controlShouldRenderValue={false}
+            placeholder="Search packages..."
+          />
 
           <Curtain
             onClick={() =>

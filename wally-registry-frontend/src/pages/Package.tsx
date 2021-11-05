@@ -119,10 +119,8 @@ export default function Package() {
   }
 
   useEffect(() => {
-    if (!isLoaded && !isError) {
-      loadPackageData(packageScope, packageName)
-    }
-  }, [])
+    loadPackageData(packageScope, packageName)
+  }, [packageScope, packageName])
 
   return (
     <>
