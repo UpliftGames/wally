@@ -3,9 +3,9 @@ import styled from "styled-components"
 import { ButtonLink } from "../../components/Button"
 import CallToActionContainer from "../../components/CallToActionContainer"
 import ContentSection from "../../components/ContentSection"
-import PackageTag from "../../components/PackageTag"
-import { Code, Heading, ResponsiveParagraph } from "../../components/Typography"
-import mockPopularPackages from "../../mocks/popularPackages.mock"
+// import PackageBlip from "../../components/PackageBlip"
+import { Code, Heading, Paragraph } from "../../components/Typography"
+// import mockPackages from "../../mocks/packages.mock"
 
 const Flex = styled.div`
   display: flex;
@@ -15,49 +15,42 @@ const Flex = styled.div`
   margin: 1.5rem 0;
 `
 
-const PopularPackages = () => {
-  const popularPackagesList = [...mockPopularPackages].map(
-    (popPackage, index) => (
-      <PackageTag
-        size="small"
-        key={index}
-        uniqueId={popPackage.package.name
-          .substr(0, 15)
-          .toLowerCase()
-          .replace(/[^a-z]/gi, "")}
-        title={popPackage.package.name}
-        author={popPackage.package.authors.join(" ")}
-        version={popPackage.package.version}
-        linkTo={popPackage.package.name}
-      >
-        <p>{popPackage.package.description}&nbsp;</p>
-      </PackageTag>
-    )
-  )
-
-  if (popularPackagesList.length % 2 !== 0) {
-    popularPackagesList.push(<PackageTag size="small" hidden={true} />)
-  }
-
-  return <>{popularPackagesList}</>
-}
+// const PopularPackages = () => (
+//   <>
+//     {[...mockPackages].map((popPackage, index) => (
+//       <PackageBlip
+//         key={index}
+//         uniqueId={popPackage.package.name
+//           .substr(0, 15)
+//           .toLowerCase()
+//           .replace(/[^a-z]/gi, "")}
+//         title={popPackage.package.name.split("/")[1]}
+//         author={popPackage.package.authors.join(" ")}
+//         version={popPackage.package.version}
+//         linkTo={popPackage.package.name.split("/")[1]}
+//       >
+//         <p>{popPackage.package.description}</p>
+//       </PackageBlip>
+//     ))}
+//   </>
+// )
 
 export default function Home() {
   return (
     <>
       <ContentSection variation="red" placement="floating">
         <Heading>Wally, a package manager for Roblox</Heading>
-        <ResponsiveParagraph>
+        <Paragraph>
           Wally is a package manager for Roblox inspired by Cargo (Rust) and npm
           (JavaScript). It brings the familiar, community-oriented world of
           sharing code from other communities into the Roblox ecosystem.
-        </ResponsiveParagraph>
-        <ResponsiveParagraph>
+        </Paragraph>
+        <Paragraph>
           Wally has two pieces that work together: a command line tool named{" "}
           <Code>wally</Code> and a registry server that hosts packages. Most
           users will only interact with the command line tool, but both are
           available in this repository.
-        </ResponsiveParagraph>
+        </Paragraph>
 
         <CallToActionContainer>
           <ButtonLink to="install">Install Wally</ButtonLink>
@@ -65,10 +58,10 @@ export default function Home() {
       </ContentSection>
 
       <ContentSection variation="light">
-        <Heading>Popular Packages</Heading>
+        {/* <Heading>Popular Packages</Heading>
         <Flex>
           <PopularPackages />
-        </Flex>
+        </Flex> */}
       </ContentSection>
     </>
   )

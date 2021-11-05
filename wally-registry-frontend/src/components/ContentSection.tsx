@@ -1,7 +1,7 @@
 import React from "react"
 import styled, { css } from "styled-components"
 // import albumImage from "../assets/hero/album.png";
-import { breakMobile, isMobileSmall } from "../breakpoints"
+import { breakMobile } from "../breakpoints"
 import { ExternalLink, InternalLink } from "./InlineLink"
 import { Heading } from "./Typography"
 
@@ -63,10 +63,6 @@ const StyledSection = styled.section<StyledSectionProps>`
 
 const ContentWrapper = styled.div`
   padding: 2.8rem 2rem;
-
-  @media screen and (${isMobileSmall}) {
-    padding: 2.8rem 1rem;
-  }
 `
 
 const InnerContent = styled.article<{ narrow: boolean }>`
@@ -103,6 +99,7 @@ export default function ContentSection({
       variation={variation ?? "light"}
       placement={placement ?? "inline"}
     >
+      {/* {variation === "fade" && <BgImg src={albumImage} />} */}
       <ContentWrapper>
         <InnerContent narrow={narrow ?? false}>{children}</InnerContent>
       </ContentWrapper>
