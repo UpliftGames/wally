@@ -1,13 +1,20 @@
-import React, { useState } from "react"
+import React from "react"
 import { useHistory } from "react-router"
 import { Link, NavLink } from "react-router-dom"
+import AsyncSelect from "react-select/async"
 import styled from "styled-components"
 import logo from "../assets/wally-logo.svg"
 import { isCondensed, isMobile, isMobileSmall, notMobile } from "../breakpoints"
+import { getWallyPackages } from "../services/wally.api"
+import { WallyPackageBrief } from "../types/wally"
 import Icon from "./Icon"
 import Img from "./Img"
-import { TextInput } from "./Inputs"
 import SocialLinks from "./SocialLinks"
+
+type WallyOption = {
+  label: string
+  value: string
+}
 
 const mobileHeaderHeight = "4rem"
 const mobileSmallHeaderHeight = "7rem"
@@ -267,14 +274,45 @@ const SearchBarWrapper = styled.form`
   }
 `
 
+const reactSelectSearchStyles = {
+  container: (provided: any) => ({
+    ...provided,
+    flexGrow: 2,
+    margin: "0 2rem",
+  }),
+}
+
 const links = [
   ["Install", "/install"],
   ["Policies", "/policies"],
 ] as const
 
+const filterWallyPackages = async (inputValue: string) => {
+  const packagesListData = await getWallyPackages(inputValue)
+  const searchOptions = packagesListData.map(
+    (packageBrief: WallyPackageBrief) => ({
+      label: `${packageBrief.scope}/${packageBrief.name}`,
+      value: `${packageBrief.scope}/${packageBrief.name}`,
+    })
+  )
+  return searchOptions
+}
+
 export default function Header() {
   const history = useHistory()
-  const [searchValue, setSearchValue] = useState("")
+
+  const loadOptions = async (inputValue: string) =>
+    new Promise<WallyOption[]>((resolve) => {
+      setTimeout(() => {
+        resolve(filterWallyPackages(inputValue))
+      }, 1000)
+    })
+
+  const onChange = (option: WallyOption | null) => {
+    if (option) {
+      history.push(`/package/${option.value}`)
+    }
+  }
 
   return (
     <>
@@ -302,7 +340,21 @@ export default function Header() {
             <LogoImage src={logo} alt="Wally" />
           </LogoImageLink>
 
-          <SearchBarWrapper
+          <AsyncSelect
+            styles={reactSelectSearchStyles}
+            components={{
+              DropdownIndicator: () => null,
+              IndicatorSeparator: () => null,
+            }}
+            isSearchable={true}
+            isClearable={true}
+            loadOptions={loadOptions}
+            onChange={onChange}
+            controlShouldRenderValue={false}
+          />
+
+          {/* Old Search Bar */}
+          {/* <SearchBarWrapper
             onSubmit={(e) => {
               e.preventDefault()
               history.push(`/search?q=${searchValue}`)
@@ -316,7 +368,7 @@ export default function Header() {
                 setSearchValue(e)
               }}
             />
-          </SearchBarWrapper>
+          </SearchBarWrapper> */}
 
           <Curtain
             onClick={() =>
