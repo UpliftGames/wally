@@ -22,19 +22,20 @@ impl PublishSubcommand {
         let manifest = Manifest::load(&self.project_path)?;
         let auth_store = AuthStore::load()?;
 
-        let index_url = match global.test_registry {
-            true => {
-                let index_path = Path::new(&manifest.package.registry)
-                    .join("index")
-                    .canonicalize()?;
-                Url::from_directory_path(index_path).unwrap()
-            }
-            false => Url::parse(&manifest.package.registry)?,
+        let index_url = if global.test_registry {
+            let index_path = Path::new(&manifest.package.registry)
+                .join("index")
+                .canonicalize()?;
+
+            Url::from_directory_path(index_path).unwrap()
+        } else {
+            Url::parse(&manifest.package.registry)?
         };
 
-        let package_index = match global.use_temp_index {
-            true => PackageIndex::new_temp(&index_url, None)?,
-            false => PackageIndex::new(&index_url, None)?,
+        let package_index = if global.use_temp_index {
+            PackageIndex::new_temp(&index_url, None)?
+        } else {
+            PackageIndex::new(&index_url, None)?
         };
 
         let api = package_index.config()?.api;
