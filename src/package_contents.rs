@@ -3,14 +3,13 @@ use std::path::{Path, PathBuf};
 
 use anyhow::format_err;
 use fs_err::File;
-use globset::{Glob, GlobSetBuilder};
+use globset::{Glob, GlobSet, GlobSetBuilder};
 use serde_json::json;
-use walkdir::{DirEntry, WalkDir};
+use walkdir::WalkDir;
 use zip::{write::FileOptions, ZipArchive, ZipWriter};
 
 use crate::manifest::Manifest;
 
-static EXCLUDED_PATHS: &[&str] = &[".git", "wally.lock"];
 static EXCLUDED_GLOBS: &[&str] = &[".*", "wally.lock", "Packages", "ServerPackages"];
 
 /// Container for the contents of a package that have been downloaded.
@@ -85,9 +84,7 @@ impl PackageContents {
 
     pub fn filtered_contents(input: &Path) -> anyhow::Result<Vec<PathBuf>> {
         let manifest = Manifest::load(input)?;
-        let mut glob_builder = GlobSetBuilder::new();
-
-        let mut includes = manifest.package.include;
+        let includes = manifest.package.include;
         let mut excludes = manifest.package.exclude;
 
         if includes.is_empty() && Path::new(".gitignore").exists() {
@@ -106,27 +103,18 @@ impl PackageContents {
             .map(|pattern| pattern.to_string())
             .for_each(|pattern| excludes.push(pattern));
 
-        let mut include = GlobSetBuilder::new();
-
-        for pattern in includes {
-            include.add(Glob::new(&pattern)?);
-        }
-
-        let include = include.build()?;
-
-        let mut exclude = GlobSetBuilder::new();
-
-        for pattern in excludes {
-            exclude.add(Glob::new(&pattern)?);
-        }
-
-        let exclude = exclude.build()?;
+        let include = build_glob_set(&includes)?;
+        let exclude = build_glob_set(&excludes)?;
 
         Ok(WalkDir::new(input)
             .min_depth(1)
             .into_iter()
             .filter_entry(|entry| {
                 let relative = entry.path().strip_prefix(input).unwrap();
+
+                if !includes.is_empty() && !include.matches(relative).is_empty() {
+                    return true;
+                };
 
                 exclude.matches(relative).is_empty()
             })
@@ -145,6 +133,12 @@ impl PackageContents {
     }
 }
 
-fn dir_entry_filter(path: &Path) -> bool {
-    !EXCLUDED_PATHS.iter().any(|p| Path::new(p) == path)
+fn build_glob_set(patterns: &[String]) -> anyhow::Result<GlobSet> {
+    let mut builder = GlobSetBuilder::new();
+
+    for pattern in patterns {
+        builder.add(Glob::new(pattern)?);
+    }
+
+    Ok(builder.build()?)
 }
