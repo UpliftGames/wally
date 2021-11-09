@@ -1,8 +1,5 @@
-use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
+use std::time::Instant;
 
-use fs_err::File;
-use libwally::manifest::Manifest;
 use libwally::package_index::PackageIndex;
 use libwally::package_name::PackageName;
 use tantivy::collector::TopDocs;
@@ -73,13 +70,15 @@ impl SearchBackend {
         Ok(backend)
     }
 
-    fn crawl_packages(&mut self, package_index: &PackageIndex) -> anyhow::Result<()> {
+    pub fn crawl_packages(&mut self, package_index: &PackageIndex) -> anyhow::Result<()> {
         let scope = self.schema.get_field("scope").unwrap();
         let name = self.schema.get_field("name").unwrap();
         let versions = self.schema.get_field("versions").unwrap();
         let description = self.schema.get_field("description").unwrap();
 
         println!("Crawling index...");
+        let now = Instant::now();
+        self.writer.delete_all_documents()?;
 
         for entry in WalkDir::new(package_index.path())
             .min_depth(1)
@@ -126,6 +125,7 @@ impl SearchBackend {
         }
 
         self.writer.commit()?;
+        println!("Finished crawling in {}ms", now.elapsed().as_millis());
 
         Ok(())
     }

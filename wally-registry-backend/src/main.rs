@@ -12,6 +12,7 @@ mod tests;
 
 use std::convert::TryInto;
 use std::io::{Cursor, Read, Seek};
+use std::sync::RwLock;
 
 use anyhow::{format_err, Context};
 use figment::{
@@ -94,18 +95,25 @@ async fn package_info(
 
 #[get("/v1/package-search?<query>")]
 async fn package_search(
-    search_backend: State<'_, SearchBackend>,
+    search_backend: State<'_, RwLock<SearchBackend>>,
     _read: ReadAccess,
     query: String,
 ) -> Result<Json<serde_json::Value>, Error> {
-    println!("Received query: {}", query);
-    let result = search_backend.search(&query)?;
-    Ok(Json(serde_json::to_value(result)?))
+    if let Ok(search_backend) = search_backend.read() {
+        let result = search_backend.search(&query)?;
+        Ok(Json(serde_json::to_value(result)?))
+    } else {
+        Err(
+            format_err!("Unexpected error during search. Try again later.")
+                .status(Status::InternalServerError),
+        )
+    }
 }
 
 #[post("/v1/publish", data = "<data>")]
 async fn publish(
     storage: State<'_, Box<dyn StorageBackend>>,
+    search_backend: State<'_, RwLock<SearchBackend>>,
     index: State<'_, PackageIndex>,
     authorization: WriteAccess,
     data: Data,
@@ -167,8 +175,14 @@ async fn publish(
         .publish(&manifest)
         .context("could not publish package to index")?;
 
+    if let Ok(mut search_backend) = search_backend.try_write() {
+        // TODO: Recrawling the whole index for each publish is very wasteful!
+        // Eventually this will get too expensive and we should only add the new package.
+        search_backend.crawl_packages(&index)?;
+    }
+
     Ok(Json(json!({
-        "message": "TODO: Implement this endpoint"
+        "message": "Package published successfully!"
     })))
 }
 
@@ -222,7 +236,7 @@ pub fn server(figment: Figment) -> rocket::Rocket {
         )
         .manage(storage_backend)
         .manage(package_index)
-        .manage(search_backend)
+        .manage(RwLock::new(search_backend))
         .attach(AdHoc::config::<Config>())
         .attach(Cors)
 }
