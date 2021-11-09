@@ -1,9 +1,9 @@
 import { WallyPackageBrief, WallyPackageMetadata } from "../types/wally"
 
-const wallyApiBaseUrl = "https://api.test.wally.run/v1"
-// https://api.test.wally.run/v1/package-search/<query>
+const wallyApiBaseUrl = `${process.env.REACT_APP_WALLY_API_ENVIRONMENT}/v1`
+// API/v1/package-search?query=<query>
 const wallyApiSearchUrl = `${wallyApiBaseUrl}/package-search`
-// https://api.test.wally.run/v1/package-metadata/<scope>/<name>
+// API/v1/package-metadata/<scope>/<name>
 const wallyApiMetadataUrl = `${wallyApiBaseUrl}/package-metadata`
 
 /**
@@ -14,7 +14,11 @@ const wallyApiMetadataUrl = `${wallyApiBaseUrl}/package-metadata`
  */
 export async function getWallyPackages(searchQuery: string | null) {
   if (searchQuery && searchQuery.length > 1) {
-    return fetch(`${wallyApiSearchUrl}/${searchQuery}`)
+    return fetch(
+      `${wallyApiSearchUrl}?${new URLSearchParams({
+        query: searchQuery,
+      })}`
+    )
       .then((response) => {
         if (!response.ok) {
           throw new Error("HTTP status " + response.status)
