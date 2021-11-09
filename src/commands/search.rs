@@ -24,13 +24,15 @@ impl SearchSubcommand {
         let manifest = Manifest::load(&self.project_path)?;
         let registry = url::Url::parse(&manifest.package.registry)?;
         let auth_store = AuthStore::load()?;
-        let package_index = PackageIndex::new(&registry, None)?;
+        let package_index = PackageIndex::new(&registry, None, false)?;
         let api = package_index.config()?.api;
 
         let auth = auth_store.tokens.get(api.as_str());
 
         let client = Client::new();
-        let mut request = client.get(api.join(&format!("/v1/package-search/{}", self.query))?);
+        let mut request = client
+            .get(api.join("/v1/package-search/")?)
+            .query(&[("query", &self.query)]);
 
         if let Some(auth) = auth {
             request = request.header(AUTHORIZATION, format!("Bearer {}", auth));
