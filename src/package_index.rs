@@ -48,7 +48,11 @@ pub struct PackageIndex {
 }
 
 impl PackageIndex {
-    pub fn new(index_url: &Url, access_token: Option<String>) -> anyhow::Result<Self> {
+    pub fn new(
+        index_url: &Url,
+        access_token: Option<String>,
+        update: bool,
+    ) -> anyhow::Result<Self> {
         let path = index_path(index_url)?;
         let repository = git_util::open_or_clone(access_token.clone(), index_url, &path)?;
 
@@ -61,7 +65,10 @@ impl PackageIndex {
             temp_dir: None,
         };
 
-        index.update()?;
+        if update {
+            index.update()?;
+        }
+
         Ok(index)
     }
 

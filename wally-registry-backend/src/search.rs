@@ -1,8 +1,5 @@
-use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
+use std::time::Instant;
 
-use fs_err::File;
-use libwally::manifest::Manifest;
 use libwally::package_index::PackageIndex;
 use libwally::package_name::PackageName;
 use tantivy::collector::TopDocs;
@@ -57,7 +54,10 @@ impl SearchBackend {
         let name = schema.get_field("name").unwrap();
         let description = schema.get_field("description").unwrap();
 
-        let query_parser = QueryParser::for_index(&index, vec![scope, name, description]);
+        let mut query_parser = QueryParser::for_index(&index, vec![scope, name, description]);
+        query_parser.set_conjunction_by_default();
+        query_parser.set_field_boost(scope, 3.0);
+        query_parser.set_field_boost(name, 5.0);
 
         let mut backend = Self {
             schema,
@@ -66,17 +66,19 @@ impl SearchBackend {
             query_parser,
         };
 
-        backend.crawl_packages(&package_index)?;
+        backend.crawl_packages(package_index)?;
         Ok(backend)
     }
 
-    fn crawl_packages(&mut self, package_index: &PackageIndex) -> anyhow::Result<()> {
+    pub fn crawl_packages(&mut self, package_index: &PackageIndex) -> anyhow::Result<()> {
         let scope = self.schema.get_field("scope").unwrap();
         let name = self.schema.get_field("name").unwrap();
         let versions = self.schema.get_field("versions").unwrap();
         let description = self.schema.get_field("description").unwrap();
 
         println!("Crawling index...");
+        let now = Instant::now();
+        self.writer.delete_all_documents()?;
 
         for entry in WalkDir::new(package_index.path())
             .min_depth(1)
@@ -123,13 +125,16 @@ impl SearchBackend {
         }
 
         self.writer.commit()?;
+        println!("Finished crawling in {}ms", now.elapsed().as_millis());
 
         Ok(())
     }
 
     pub fn search(&self, query_input: &str) -> tantivy::Result<Vec<DocResult>> {
         let searcher = self.reader.searcher();
-        let query = self.query_parser.parse_query(query_input)?;
+        let query = self
+            .query_parser
+            .parse_query(&query_input.replace("/", " "))?;
         let top_docs = searcher.search(&query, &TopDocs::with_limit(DOC_LIMIT))?;
 
         let mut docs = Vec::with_capacity(DOC_LIMIT);
