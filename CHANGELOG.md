@@ -1,6 +1,9 @@
 # Wally Changelog
 
 ## Unreleased Changes
+* Support for registry fallback chains ([#35][#35])
+
+[#35]: https://github.com/UpliftGames/wally/pull/35
 
 ## 0.2.1 (2021-10-01)
 * First iteration of wally frontend. ([#32][#32])
