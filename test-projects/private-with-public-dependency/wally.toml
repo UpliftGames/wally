@@ -1,0 +1,9 @@
+[package]
+name = "private/private-with-public-dependency"
+version = "0.1.0"
+license = "MIT"
+realm = "server"
+registry = "test-registries/tertiary-registry"
+
+[server-dependencies]
+Minimal = "biff/minimal@0.1.0"

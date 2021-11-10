@@ -24,7 +24,7 @@ impl SearchSubcommand {
         let manifest = Manifest::load(&self.project_path)?;
         let registry = url::Url::parse(&manifest.package.registry)?;
         let auth_store = AuthStore::load()?;
-        let package_index = PackageIndex::new(&registry, None, false)?;
+        let package_index = PackageIndex::new(&registry, None)?;
         let api = package_index.config()?.api;
 
         let auth = auth_store.tokens.get(api.as_str());

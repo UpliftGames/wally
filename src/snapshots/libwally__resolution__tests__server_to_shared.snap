@@ -10,9 +10,11 @@ metadata:
   biff/root@1.0.0:
     realm: shared
     server_only: false
+    source_registry: DefaultRegistry
   biff/shared@1.0.0:
     realm: shared
     server_only: true
+    source_registry: DefaultRegistry
 shared_dependencies: {}
 server_dependencies:
   biff/root@1.0.0:

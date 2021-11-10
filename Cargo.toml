@@ -33,7 +33,7 @@ blake3 = "0.3.7"
 dirs = "3.0.1"
 env_logger = "0.8.1"
 fs-err = "2.5.0"
-git2 = "0.13.11"
+git2 = "0.13.23"
 hex = "0.4.2"
 indoc = "1.0.3"
 log = "0.4.11"
@@ -53,6 +53,10 @@ url = { version = "2.1.1", features = ["serde"] }
 walkdir = "2.3.1"
 whoami = "1.1.2"
 zip = "0.5.11"
+globset = "0.4.8"
 
 [dev-dependencies]
 insta = "1.1.0"
+
+[features]
+vendored-libgit2 = ["git2/vendored-libgit2"]
