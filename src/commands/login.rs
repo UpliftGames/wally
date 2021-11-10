@@ -107,7 +107,7 @@ impl LoginSubcommand {
     pub fn run(self) -> anyhow::Result<()> {
         let manifest = Manifest::load(&self.project_path)?;
         let registry = Url::parse(&manifest.package.registry)?;
-        let package_index = PackageIndex::new(&registry, None, true)?;
+        let package_index = PackageIndex::new(&registry, None)?;
         let api = package_index.config()?.api;
         let github_oauth_id = package_index.config()?.github_oauth_id;
 
