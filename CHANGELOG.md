@@ -5,6 +5,10 @@
 
 [#35]: https://github.com/UpliftGames/wally/pull/35
 
+* Fixed Windows generating invalid zip archives. ([#15][15])
+
+[#15]: https://github.com/UpliftGames/wally/issues/15
+
 ## 0.2.1 (2021-10-01)
 * First iteration of wally frontend. ([#32][#32])
 
