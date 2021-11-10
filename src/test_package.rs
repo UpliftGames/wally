@@ -39,6 +39,7 @@ impl PackageBuilder {
                 include: Vec::new(),
                 exclude: Vec::new(),
             },
+            place: Default::default(),
             dependencies: Default::default(),
             server_dependencies: Default::default(),
             dev_dependencies: Default::default(),

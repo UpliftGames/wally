@@ -9,8 +9,11 @@ use std::path::Path;
 
 use anyhow::{bail, format_err, Context};
 use git2::build::RepoBuilder;
-use git2::{Cred, CredentialType, FetchOptions, RemoteCallbacks, Repository};
+use git2::{
+    Cred, CredentialType, FetchOptions, RemoteCallbacks, Repository, RepositoryInitOptions,
+};
 use url::Url;
+use walkdir::WalkDir;
 
 /// Based roughly on Cargo's approach to handling authentication, but very pared
 /// down.
@@ -44,6 +47,47 @@ fn make_credentials_callback(
 
         Err(git2::Error::from_str("no authentication available"))
     }
+}
+
+/// We want to use a mock repo in tests but we don't want have to manually initialise it
+/// or manage commiting new files. This method will ensure the test repo is a valid git repo
+/// with all files commited to the main branch. Typically test-registries/primary-registry/index.
+pub fn init_test_repo(path: &Path) -> anyhow::Result<()> {
+    // If tests previous ran then this may already be a repo however we want to start fresh
+    if path.join(".git").exists() {
+        fs_err::remove_dir_all(path.join(".git"))?;
+    }
+
+    let repository = Repository::init_opts(
+        path,
+        RepositoryInitOptions::new().initial_head("refs/heads/main"),
+    )?;
+    let mut git_index = repository.index()?;
+
+    for entry in WalkDir::new(path).min_depth(1) {
+        let entry = entry?;
+        let relative_path = entry.path().strip_prefix(path)?;
+
+        if !relative_path.starts_with(".git") && entry.file_type().is_file() {
+            // git add $file
+            git_index.add_path(relative_path)?;
+        }
+    }
+
+    // git commit -m "..."
+    let sig = git2::Signature::now("PackageUser", "PackageUser@localhost")?;
+    let tree = repository.find_tree(git_index.write_tree()?)?;
+
+    repository.commit(
+        Some("HEAD"),
+        &sig,
+        &sig,
+        "Commit all files in test repo",
+        &tree,
+        &[],
+    )?;
+
+    Ok(())
 }
 
 pub fn open_or_clone(

@@ -1,7 +1,8 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::Context;
 use structopt::StructOpt;
+use url::Url;
 
 use crate::{
     auth::AuthStore, manifest::Manifest, package_contents::PackageContents,
@@ -19,12 +20,24 @@ pub struct PublishSubcommand {
 impl PublishSubcommand {
     pub fn run(self, global: GlobalOptions) -> anyhow::Result<()> {
         let manifest = Manifest::load(&self.project_path)?;
-        let registry = url::Url::parse(&manifest.package.registry)?;
         let auth_store = AuthStore::load()?;
-        let package_index = match global.use_temp_index {
-            true => PackageIndex::new_temp(&registry, None)?,
-            false => PackageIndex::new(&registry, None)?,
+
+        let index_url = if global.test_registry {
+            let index_path = Path::new(&manifest.package.registry)
+                .join("index")
+                .canonicalize()?;
+
+            Url::from_directory_path(index_path).unwrap()
+        } else {
+            Url::parse(&manifest.package.registry)?
         };
+
+        let package_index = if global.use_temp_index {
+            PackageIndex::new_temp(&index_url, None)?
+        } else {
+            PackageIndex::new(&index_url, None)?
+        };
+
         let api = package_index.config()?.api;
         let contents = PackageContents::pack_from_path(&self.project_path)?;
 

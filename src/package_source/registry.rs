@@ -13,6 +13,8 @@ use crate::package_index::PackageIndex;
 use crate::package_req::PackageReq;
 use crate::package_source::{PackageContents, PackageSource};
 
+use super::PackageSourceId;
+
 pub struct Registry {
     index_url: Url,
     auth_token: OnceCell<Option<Arc<str>>>,
@@ -98,8 +100,9 @@ impl PackageSource for Registry {
 
         if !response.status().is_success() {
             bail!(
-                "Failed to download package {} from registry: {}",
+                "Failed to download package {} from registry: {} \nResponse: {}",
                 package_id,
+                self.api_url()?,
                 response.status()
             );
         }
@@ -108,5 +111,16 @@ impl PackageSource for Registry {
         response.read_to_end(&mut data)?;
 
         Ok(PackageContents::from_buffer(data))
+    }
+
+    fn fallback_sources(&self) -> anyhow::Result<Vec<PackageSourceId>> {
+        let fallback_registries = self.index()?.config()?.fallback_registries;
+
+        let sources = fallback_registries
+            .into_iter()
+            .map(PackageSourceId::Git)
+            .collect();
+
+        Ok(sources)
     }
 }

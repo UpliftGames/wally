@@ -36,7 +36,12 @@ impl PackageContents {
                 )
             })?;
 
-            if path.is_dir() {
+            // Zips embed \ from windows paths causing incorrect extraction on unix operating
+            // systems; we must sanitise here. See: https://github.com/UpliftGames/wally/issues/15
+            // This may be fixed in the zip crate. See: https://github.com/zip-rs/zip/issues/253
+            let archive_name = str::replace(archive_name, "\\", "/");
+
+            if entry.file_type().is_dir() {
                 archive.add_directory(archive_name, FileOptions::default())?;
             } else {
                 archive.start_file(archive_name, FileOptions::default())?;

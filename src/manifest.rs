@@ -18,6 +18,9 @@ pub struct Manifest {
     pub package: Package,
 
     #[serde(default)]
+    pub place: PlaceInfo,
+
+    #[serde(default)]
     pub dependencies: BTreeMap<String, PackageReq>,
 
     #[serde(default)]
@@ -117,6 +120,26 @@ pub struct Package {
     /// Example: ["/Packages", "/node_modules"]
     #[serde(default)]
     pub exclude: Vec<String>,
+}
+
+// Metadata we require when this manifest will be used to generate package folders
+// This information can be present in any package but is only used in the root package
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct PlaceInfo {
+    /// Where the shared packages folder is located in the Roblox Datamodel
+    ///
+    /// Example: `game.ReplicatedStorage.Packages`
+    #[serde(default)]
+    pub shared_packages: Option<String>,
+}
+
+impl Default for PlaceInfo {
+    fn default() -> Self {
+        Self {
+            shared_packages: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
