@@ -41,7 +41,7 @@ impl PackageContents {
             // This may be fixed in the zip crate. See: https://github.com/zip-rs/zip/issues/253
             let archive_name = str::replace(archive_name, "\\", "/");
 
-            if entry.file_type().is_dir() {
+            if path.is_dir() {
                 archive.add_directory(archive_name, FileOptions::default())?;
             } else {
                 archive.start_file(archive_name, FileOptions::default())?;
