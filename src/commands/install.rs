@@ -7,7 +7,9 @@ use crate::installation::InstallationContext;
 use crate::lockfile::{LockPackage, Lockfile};
 use crate::manifest::Manifest;
 use crate::package_id::PackageId;
-use crate::package_source::{PackageSource, PackageSourceMap, Registry, TestRegistry};
+use crate::package_source::{
+    PackageSource, PackageSourceId, PackageSourceMap, Registry, TestRegistry,
+};
 use crate::resolution::resolve;
 
 use super::GlobalOptions;
@@ -27,12 +29,14 @@ impl InstallSubcommand {
         let lockfile = Lockfile::load(&self.project_path)?
             .unwrap_or_else(|| Lockfile::from_manifest(&manifest));
 
-        let default_registry: Box<dyn PackageSource> = match &global.test_registry {
-            Some(test_registry) => Box::new(TestRegistry::new(test_registry)),
-            None => Box::new(Registry::from_registry_spec(&manifest.package.registry)?),
+        let default_registry: Box<dyn PackageSource> = if global.test_registry {
+            Box::new(TestRegistry::new(&manifest.package.registry))
+        } else {
+            Box::new(Registry::from_registry_spec(&manifest.package.registry)?)
         };
 
-        let package_sources = PackageSourceMap::new(default_registry);
+        let mut package_sources = PackageSourceMap::new(default_registry);
+        package_sources.add_fallbacks()?;
 
         let mut try_to_use = BTreeSet::new();
         for package in lockfile.packages {
@@ -53,7 +57,9 @@ impl InstallSubcommand {
         lockfile.save(&self.project_path)?;
 
         let root_package_id = PackageId::new(manifest.package.name, manifest.package.version);
-        let installation = InstallationContext::new(&self.project_path);
+        let installation =
+            InstallationContext::new(&self.project_path, manifest.place.shared_packages);
+
         installation.clean()?;
         installation.install(&package_sources, root_package_id, &resolved)?;
 

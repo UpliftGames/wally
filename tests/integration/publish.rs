@@ -2,7 +2,7 @@ use std::path::Path;
 
 use fs_err::File;
 use libwally::{
-    package_contents::PackageContents, Args, GlobalOptions, PublishSubcommand, Subcommand,
+    git_util, package_contents::PackageContents, Args, GlobalOptions, PublishSubcommand, Subcommand,
 };
 use tempfile::tempdir;
 
@@ -11,9 +11,16 @@ use tempfile::tempdir;
 #[test]
 fn check_prompts_auth() {
     let test_projects = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/test-projects",));
+    let test_registry = Path::new(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/test-registries/primary-registry"
+    ));
+
+    git_util::init_test_repo(&test_registry.join("index")).unwrap();
 
     let args = Args {
         global: GlobalOptions {
+            test_registry: true,
             use_temp_index: true,
             ..Default::default()
         },

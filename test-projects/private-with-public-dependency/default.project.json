@@ -1,0 +1,6 @@
+{
+	"name": "private-with-public-dependency",
+	"tree": {
+		"$path": "src"
+	}
+}

@@ -2,6 +2,16 @@
 
 ## Unreleased Changes
 
+* Fixed Windows generating invalid zip archives. ([#15][#15])
+* Support for registry fallback chains ([#35][#35])
+* Generate cross realm package links ([#38][#38])
+* Support include/exclude lists in manifest ([#44][#44])
+
+[#15]: https://github.com/UpliftGames/wally/issues/15
+[#35]: https://github.com/UpliftGames/wally/pull/35
+[#38]: https://github.com/UpliftGames/wally/pull/38
+[#44]: https://github.com/UpliftGames/wally/pull/44
+
 ## 0.2.1 (2021-10-01)
 * First iteration of wally frontend. ([#32][#32])
 
