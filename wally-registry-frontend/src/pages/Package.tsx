@@ -110,7 +110,14 @@ export default function Package() {
   const loadPackageData = async (packageScope: string, packageName: string) => {
     const packageData = await getWallyPackageMetadata(packageScope, packageName)
     if (packageData !== undefined) {
-      setPackageMetadata(packageData.versions[0])
+      const filteredPackageData = packageData.versions.some(
+        (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
+      )
+        ? packageData.versions.filter(
+            (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
+          )
+        : packageData
+      setPackageMetadata(filteredPackageData[0])
       setIsLoaded(true)
     } else {
       setIsError(true)
