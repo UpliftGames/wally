@@ -65,7 +65,6 @@ impl PackageIndex {
         };
 
         index.update()?;
-
         Ok(index)
     }
 

@@ -1,8 +1,8 @@
 export type IconsId =
   | "chevron"
+  | "copy"
   | "discord"
   | "github"
-  | "glyph"
   | "hamburger"
   | "instagram"
   | "linkedin"
