@@ -51,7 +51,7 @@ impl Registry {
 
     fn index(&self) -> anyhow::Result<&PackageIndex> {
         self.index
-            .get_or_try_init(|| PackageIndex::new(&self.index_url, None, true))
+            .get_or_try_init(|| PackageIndex::new(&self.index_url, None))
     }
 
     fn api_url(&self) -> anyhow::Result<Url> {

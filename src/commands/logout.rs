@@ -16,7 +16,7 @@ impl LogoutSubcommand {
     pub fn run(self) -> anyhow::Result<()> {
         let manifest = Manifest::load(&self.project_path)?;
         let registry = url::Url::parse(&manifest.package.registry)?;
-        let package_index = PackageIndex::new(&registry, None, false)?;
+        let package_index = PackageIndex::new(&registry, None)?;
         let api = package_index.config()?.api;
 
         AuthStore::set_token(api.as_str(), None)?;

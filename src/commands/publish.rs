@@ -35,7 +35,7 @@ impl PublishSubcommand {
         let package_index = if global.use_temp_index {
             PackageIndex::new_temp(&index_url, None)?
         } else {
-            PackageIndex::new(&index_url, None, true)?
+            PackageIndex::new(&index_url, None)?
         };
 
         let api = package_index.config()?.api;
