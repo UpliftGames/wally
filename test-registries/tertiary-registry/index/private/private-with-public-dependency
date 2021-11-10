@@ -1,0 +1,1 @@
+{"package":{"name":"private/private-with-public-dependency","version":"0.1.0","registry":"tertiary-registry","realm":"server","description":null,"license":"MIT","authors":[]},"dependencies":{},"server-dependencies":{"Minimal":"biff/minimal@>=0.1.0, <0.2.0"},"dev-dependencies":{}}

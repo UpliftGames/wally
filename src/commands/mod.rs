@@ -16,8 +16,6 @@ pub use package::PackageSubcommand;
 pub use publish::PublishSubcommand;
 pub use update::UpdateSubcommand;
 
-use std::path::PathBuf;
-
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -53,11 +51,11 @@ pub struct GlobalOptions {
     #[structopt(global = true, parse(from_occurrences), long = "verbose", short)]
     pub verbosity: u8,
 
-    /// Overrides the registry with a local registry. Usable only by tests.
+    /// Flag to indidate if we will be using a test registry. Usable only by tests.
     #[structopt(skip)]
-    pub test_registry: Option<PathBuf>,
+    pub test_registry: bool,
 
-    /// Allows tests to specify if the package index should be temporary (to prevent multiple use conflicts). Usable only by tests.
+    /// Specify if the package index should be temporary (to prevent multiple use conflicts). Usable only by tests.
     #[structopt(skip)]
     pub use_temp_index: bool,
 }
@@ -66,7 +64,7 @@ impl Default for GlobalOptions {
     fn default() -> Self {
         Self {
             verbosity: 0,
-            test_registry: None,
+            test_registry: false,
             use_temp_index: false,
         }
     }

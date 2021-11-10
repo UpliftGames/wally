@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use anyhow::bail;
+use anyhow::format_err;
 use semver::Version;
 use serde::Serialize;
 
@@ -48,6 +49,7 @@ impl Resolve {
 pub struct ResolvePackageMetadata {
     pub realm: Realm,
     pub server_only: bool,
+    pub source_registry: PackageSourceId,
 }
 
 pub fn resolve(
@@ -65,6 +67,7 @@ pub fn resolve(
         ResolvePackageMetadata {
             realm: root_manifest.package.realm,
             server_only: root_manifest.package.realm == Realm::Server,
+            source_registry: PackageSourceId::DefaultRegistry,
         },
     );
 
@@ -130,14 +133,26 @@ pub fn resolve(
             }
         }
 
-        // TODO: Pull PackageSource from our dependency request.
-        let default_registry = package_sources
-            .get(&PackageSourceId::DefaultRegistry)
-            .unwrap();
+        // Look through all our packages sources in order of priority
+        let (source_registry, mut candidates) = package_sources
+            .source_order()
+            .iter()
+            .find_map(|source| {
+                let registry = package_sources.get(source).unwrap();
 
-        // Pull all of the possible candidate versions of the package we're
-        // looking for from the index.
-        let mut candidates = default_registry.query(&dependency_request.package_req)?;
+                // Pull all of the possible candidate versions of the package we're
+                // looking for from the highest priority source which has them.
+                match registry.query(&dependency_request.package_req) {
+                    Ok(manifests) => Some((source, manifests)),
+                    Err(_) => None,
+                }
+            })
+            .ok_or_else(|| {
+                format_err!(
+                    "Failed to find a source for {}",
+                    dependency_request.package_req
+                )
+            })?;
 
         // Sort our candidate packages by descending version, so that we try the
         // highest versions first.
@@ -204,6 +219,7 @@ pub fn resolve(
                 ResolvePackageMetadata {
                     realm: candidate.package.realm,
                     server_only: dependency_request.whole_path_server_only,
+                    source_registry: source_registry.clone(),
                 },
             );
 
