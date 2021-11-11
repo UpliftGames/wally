@@ -54,6 +54,7 @@ Parity with:
 Installs all packages.
 
 `--locked` matches `cargo XXX --locked`, which will error if there is not an up-to-date lockfile. Intended for use on CI machines.
+(locked is a planned feature and not yet implemented)
 
 Parity with:
 * `npm install` with no arguments
@@ -86,8 +87,8 @@ Parity with:
 * `cargo logout`
 * `npm logout`
 
-### `wally package --output <path>`
-Package the current project as a zip file suitable for uploading to the package registry. Useful for adding entries to the registry and debugging what ends up in the blob that will be uploaded.
+### `wally package [--list] --output <path>`
+Package the current project as a zip file suitable for uploading to the package registry. Useful for adding entries to the registry and debugging what ends up in the blob that will be uploaded. `--list` will output which files will be included instead of creating a zip file.
 
 Parity with:
 * `cargo package`
@@ -97,6 +98,9 @@ Prints the current project's manifest as a line of JSON. Used for adding entries
 
 Parity with:
 * `cargo read-manifest`
+
+### `wally search <query>`
+Search the registry to see what packages are available.
 
 ## Prior Art
 Wally aims to stand on the shoulders of giants. Decisions we make are in part backed up by looking at other package managers and other public documentation:
@@ -139,12 +143,19 @@ authors = ["Lucien Greathouse <lucien@uplift.games>"]
 
 # Packages belong to a "realm", which helps prevent using code in the wrong
 # context. For now, we have "server" and "shared" realms.
+# The server realm should only be used for packages which shouldn't be replicated.
 realm = "shared"
 
 # Wally supports multiple registries.
 # This feature can be used to have split public/private registries to
 # keep internal code private and isolated.
 registry = "https://github.com/upliftgames/wally-index"
+
+# You can also specify files to include or exclude from the package
+# By default gitignore files are respected and Wally won't include hidden
+# files/directories or packages downloaded by Wally.
+# include = []
+exclude = ["node_modules"]
 
 [dependencies]
 # Most dependencies will look like this.
@@ -159,24 +170,8 @@ registry = "https://github.com/upliftgames/wally-index"
 Roact = "roblox/roact@1.2.0"
 Promise = "evaera/promise@2.0.1"
 
-# In the future, it'll be possible to pull dependencies from Git.
-#
-# This shouldn't be used for most dependencies. It's intended to be used for
-# testing changes from PRs or other experimental branches.
-CoolThing = { git = "https://github.com/Roblox/cool-thing.git", branch = "pr-1231" }
-
-# Dependencies will optionally also contain a file path. This feature is
-# based on a similar feature in Cargo that is useful for having multiple
-# packages in the same repository, like the client and server halves of the
-# same codebase.
-MonoThing = { registry = "roblox/mono-thing@1.3.2", path = "../MonoThing" }
-
-# Any dependency that we use only for testing goes in a special section.
-#
-# These dependencies will not be shipped with the production version of a
-# project.
-[dev-dependencies]
-TestEZ = "roblox/testez@1.6.3"
+[server-dependencies]
+# Dependencies in the server realm can be required here as shown above.
 ```
 
 ## Lockfile Format
@@ -218,14 +213,17 @@ A Wally registry consists of two pieces, inspired by Cargo and crates.io:
 * A Git repository containing a package index
 * A registry API that handles downloading and publishing package contents
 
-We do not currently host an official Wally registry. This will be coming eventually!
+The official Wally registry is available at https://github.com/upliftgames/wally-index.
 
 ### Registry API
-Authentication is currently done with simple tokens. This isn't feasible for hosting a publicly-writable registry.
 
 * GET `/v1/package-contents/<scope>/<name>/<version>`
 	* Returns the contents of a package for installation
 	* Package contents are ZIP files
+* GET `/v1/package-metadata/<scope>/<name>`
+	* Returns metadata for a package
+* GET `/v1/package-search?query=phrase`
+	* Query what packages are available on this registry
 * POST `/api/v1/publish`
 	* Client will post a package tarball that is extracted and published from the server.
 
