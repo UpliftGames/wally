@@ -9,6 +9,7 @@
 * Backend API for package metadata and search ([#46][#46])
 * Arch users can now use vendored-libgit2 btw ([#52][#52])
 * Frontend can search packages and display package info ([#55][#55])
+* Minimum Wally version enforcement by registry ([#57][#57])
 
 [#15]: https://github.com/UpliftGames/wally/issues/15
 [#35]: https://github.com/UpliftGames/wally/pull/35
@@ -17,6 +18,7 @@
 [#46]: https://github.com/UpliftGames/wally/pull/46
 [#52]: https://github.com/UpliftGames/wally/pull/52
 [#55]: https://github.com/UpliftGames/wally/pull/55
+[#57]: https://github.com/UpliftGames/wally/pull/57
 
 ## 0.2.1 (2021-10-01)
 * First iteration of wally frontend. ([#32][#32])
