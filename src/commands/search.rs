@@ -1,10 +1,12 @@
 use std::path::PathBuf;
 
 use anyhow::bail;
+use crossterm::style::Color;
+use crossterm::style::SetForegroundColor;
+use crossterm::style::Stylize;
 use reqwest::{blocking::Client, header::AUTHORIZATION};
 use serde::Deserialize;
 use structopt::StructOpt;
-use termion::color::{self};
 
 use crate::{auth::AuthStore, manifest::Manifest, package_index::PackageIndex};
 
@@ -52,24 +54,24 @@ impl SearchSubcommand {
         println!();
 
         for result in &mut results {
-            print!("{}{}/", color::Fg(color::LightBlack), result.scope);
-            print!("{}{}", color::Fg(color::Reset), result.name);
+            print!("{}{}/", SetForegroundColor(Color::DarkGrey), result.scope);
+            print!("{}{}", SetForegroundColor(Color::Reset), result.name);
             print!(
                 "{}@{}{}",
-                color::Fg(color::LightBlack),
-                color::Fg(color::Green),
+                SetForegroundColor(Color::DarkGrey),
+                SetForegroundColor(Color::Green),
                 result.versions.pop().unwrap(),
             );
 
             if !result.versions.is_empty() {
                 print!(
                     "{} ({})",
-                    color::Fg(color::LightBlack),
+                    SetForegroundColor(Color::DarkGrey),
                     result.versions.join(", ")
                 );
             }
 
-            println!("{}", color::Fg(color::Reset));
+            println!("{}", SetForegroundColor(Color::Reset));
 
             if let Some(description) = &result.description {
                 println!("    {}", description);
