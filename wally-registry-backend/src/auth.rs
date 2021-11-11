@@ -11,7 +11,8 @@ use rocket::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::config::Config;
+use crate::error::Error;
+use crate::{config::Config, error::ApiErrorStatus};
 
 #[derive(Deserialize, Serialize)]
 #[serde(tag = "type", content = "value", rename_all = "kebab-case")]
@@ -49,29 +50,32 @@ impl fmt::Debug for AuthMode {
     }
 }
 
-fn match_api_key<T>(request: &Request<'_>, key: &str, result: T) -> Outcome<T, anyhow::Error> {
+fn match_api_key<T>(request: &Request<'_>, key: &str, result: T) -> Outcome<T, Error> {
     let input_api_key: String = match request.headers().get_one("authorization") {
         Some(key) if key.starts_with("Bearer ") => (key[6..].trim()).to_owned(),
         _ => {
-            return Outcome::Failure((Status::Unauthorized, format_err!("API key required")));
+            return format_err!("API key required")
+                .status(Status::Unauthorized)
+                .into();
         }
     };
 
     if constant_time_eq(key.as_bytes(), input_api_key.as_bytes()) {
         Outcome::Success(result)
     } else {
-        Outcome::Failure((
-            Status::Unauthorized,
-            format_err!("Invalid API key for read access"),
-        ))
+        format_err!("Invalid API key for read access")
+            .status(Status::Unauthorized)
+            .into()
     }
 }
 
-async fn verify_github_token(request: &Request<'_>) -> Outcome<WriteAccess, anyhow::Error> {
+async fn verify_github_token(request: &Request<'_>) -> Outcome<WriteAccess, Error> {
     let token: String = match request.headers().get_one("authorization") {
         Some(key) if key.starts_with("Bearer ") => (key[6..].trim()).to_owned(),
         _ => {
-            return Outcome::Failure((Status::Unauthorized, format_err!("Github auth required")));
+            return format_err!("Github auth required")
+                .status(Status::Unauthorized)
+                .into();
         }
     };
 
@@ -86,16 +90,15 @@ async fn verify_github_token(request: &Request<'_>) -> Outcome<WriteAccess, anyh
 
     let github_info = match response {
         Err(err) => {
-            return Outcome::Failure((Status::InternalServerError, format_err!(err)));
+            return format_err!(err).status(Status::InternalServerError).into();
         }
         Ok(response) => response.json::<GithubInfo>().await,
     };
 
     match github_info {
-        Err(err) => Outcome::Failure((
-            Status::Unauthorized,
-            format_err!("Github auth failed: {}", err),
-        )),
+        Err(err) => format_err!("Github auth failed: {}", err)
+            .status(Status::Unauthorized)
+            .into(),
         Ok(github_info) => Outcome::Success(WriteAccess::Github(github_info)),
     }
 }
@@ -107,9 +110,9 @@ pub enum ReadAccess {
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for ReadAccess {
-    type Error = anyhow::Error;
+    type Error = Error;
 
-    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
+    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Error> {
         let config = request
             .guard::<State<Config>>()
             .await
@@ -156,19 +159,18 @@ impl WriteAccess {
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for WriteAccess {
-    type Error = anyhow::Error;
+    type Error = Error;
 
-    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
+    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Error> {
         let config = request
             .guard::<State<Config>>()
             .await
             .expect("AuthMode was not configured");
 
         match &config.auth {
-            AuthMode::Unauthenticated => Outcome::Failure((
-                Status::Unauthorized,
-                format_err!("Invalid API key for write access"),
-            )),
+            AuthMode::Unauthenticated => format_err!("Invalid API key for write access")
+                .status(Status::Unauthorized)
+                .into(),
             AuthMode::ApiKey(key) => match_api_key(request, key, WriteAccess::ApiKey),
             AuthMode::DoubleApiKey { write, .. } => {
                 match_api_key(request, write, WriteAccess::ApiKey)

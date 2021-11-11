@@ -4,6 +4,8 @@ use std::io::Cursor;
 
 use rocket::{
     http::{ContentType, Status},
+    outcome::Outcome::Failure,
+    request::Outcome,
     response::Responder,
     Request, Response,
 };
@@ -38,6 +40,7 @@ where
 /// Error type returned by most API endpoints. This type has automatic
 /// conversions from pretty much any error type and uses an `anyhow::Error`
 /// internally.
+#[derive(Debug)]
 pub struct Error {
     message: String,
     status: Status,
@@ -64,6 +67,15 @@ where
             message: format!("{:?}", error.into()),
             status: Status::InternalServerError,
         }
+    }
+}
+
+impl<S, E> From<Error> for Outcome<S, E>
+where
+    E: From<Error>,
+{
+    fn from(err: Error) -> Self {
+        Failure((Status::InternalServerError, err.into()))
     }
 }
 

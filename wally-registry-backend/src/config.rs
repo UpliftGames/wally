@@ -1,3 +1,4 @@
+use semver::Version;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
@@ -18,4 +19,7 @@ pub struct Config {
 
     /// Which storage backend to use.
     pub storage: StorageMode,
+
+    /// The minimum wally cli version required to publish to the registry
+    pub minimum_wally_version: Option<Version>,
 }
