@@ -27,6 +27,7 @@ use libwally::{
 };
 use rocket::fairing::{Fairing, Info, Kind};
 use rocket::http::Header;
+use rocket::request::{FromRequest, Outcome};
 use rocket::{
     data::{Data, ToByteUnit},
     fairing::AdHoc,
@@ -57,11 +58,15 @@ fn root() -> Json<serde_json::Value> {
 #[get("/v1/package-contents/<scope>/<name>/<version>")]
 async fn package_contents(
     storage: State<'_, Box<dyn StorageBackend>>,
-    _read: ReadAccess,
+    _read: Result<ReadAccess, Error>,
     scope: String,
     name: String,
     version: String,
+    _cli_version: Result<WallyVersion, Error>,
 ) -> Result<Content<Stream<StorageOutput>>, Error> {
+    _read?;
+    _cli_version?;
+
     let package_name = PackageName::new(scope, name)
         .context("error parsing package name")
         .status(Status::BadRequest)?;
@@ -80,10 +85,12 @@ async fn package_contents(
 #[get("/v1/package-metadata/<scope>/<name>")]
 async fn package_info(
     index: State<'_, PackageIndex>,
-    _read: ReadAccess,
+    _read: Result<ReadAccess, Error>,
     scope: String,
     name: String,
 ) -> Result<Json<serde_json::Value>, Error> {
+    _read?;
+
     let package_name = PackageName::new(scope, name)
         .context("error parsing package name")
         .status(Status::BadRequest)?;
@@ -96,9 +103,11 @@ async fn package_info(
 #[get("/v1/package-search?<query>")]
 async fn package_search(
     search_backend: State<'_, RwLock<SearchBackend>>,
-    _read: ReadAccess,
+    _read: Result<ReadAccess, Error>,
     query: String,
 ) -> Result<Json<serde_json::Value>, Error> {
+    _read?;
+
     if let Ok(search_backend) = search_backend.read() {
         let result = search_backend.search(&query)?;
         Ok(Json(serde_json::to_value(result)?))
@@ -115,9 +124,13 @@ async fn publish(
     storage: State<'_, Box<dyn StorageBackend>>,
     search_backend: State<'_, RwLock<SearchBackend>>,
     index: State<'_, PackageIndex>,
-    authorization: WriteAccess,
+    authorization: Result<WriteAccess, Error>,
+    _cli_version: Result<WallyVersion, Error>,
     data: Data,
 ) -> Result<Json<serde_json::Value>, Error> {
+    _cli_version?;
+    let authorization = authorization?;
+
     let contents = data
         .open(2.mebibytes())
         .into_bytes()
@@ -151,8 +164,8 @@ async fn publish(
         let user_id = github_info.id();
         let scope = package_id.name().scope();
 
-        if !index.is_scope_owner(&scope, &user_id)? {
-            index.add_scope_owner(&scope, &user_id)?;
+        if !index.is_scope_owner(scope, user_id)? {
+            index.add_scope_owner(scope, user_id)?;
         }
     }
 
@@ -274,7 +287,57 @@ impl Fairing for Cors {
         response.set_header(Header::new("Access-Control-Allow-Origin", "*"));
         response.set_header(Header::new("Access-Control-Allow-Methods", "GET"));
         response.set_header(Header::new("Access-Control-Allow-Headers", "*"));
-        response.set_header(Header::new("Access-Control-Allow-Credentials", "true"));
+    }
+}
+
+struct WallyVersion;
+
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for WallyVersion {
+    type Error = Error;
+
+    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
+        let config = request
+            .guard::<State<Config>>()
+            .await
+            .expect("Failed to load config");
+
+        let minimum_version = match &config.minimum_wally_version {
+            Some(version) => version,
+            None => return Outcome::Success(WallyVersion),
+        };
+
+        let version = match request.headers().get_one("Wally-Version") {
+            Some(version) => version,
+            None => {
+                return format_err!(
+                    "Wally version header required. Try upgrading your wally installation."
+                )
+                .status(Status::BadRequest)
+                .into();
+            }
+        };
+
+        let version = match Version::parse(version) {
+            Ok(version) => version,
+            Err(err) => {
+                return format_err!("Failed to parse wally version header: {}", err)
+                    .status(Status::BadRequest)
+                    .into();
+            }
+        };
+
+        if &version < minimum_version {
+            format_err!(
+                "This registry requires Wally {} (you are using {})",
+                minimum_version,
+                version
+            )
+            .status(Status::BadRequest)
+            .into()
+        } else {
+            Outcome::Success(WallyVersion)
+        }
     }
 }
 

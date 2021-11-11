@@ -9,6 +9,8 @@ use crate::{
     package_index::PackageIndex, GlobalOptions,
 };
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 /// Publish this project to a registry.
 #[derive(Debug, StructOpt)]
 pub struct PublishSubcommand {
@@ -56,6 +58,7 @@ impl PublishSubcommand {
         let response = client
             .post(api.join("/v1/publish")?)
             .header("accept", "application/json")
+            .header("Wally-Version", VERSION)
             .bearer_auth(auth)
             .body(contents.data().to_owned())
             .send()?;
