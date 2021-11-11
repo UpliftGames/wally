@@ -2,6 +2,7 @@
 
 ## Unreleased Changes
 
+## 0.3.0 (2021-11-11)
 * Fixed Windows generating invalid zip archives. ([#15][#15])
 * Support for registry fallback chains ([#35][#35])
 * Generate cross realm package links ([#38][#38])
