@@ -15,6 +15,8 @@ use crate::package_source::{PackageContents, PackageSource};
 
 use super::PackageSourceId;
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 pub struct Registry {
     index_url: Url,
     auth_token: OnceCell<Option<Arc<str>>>,
@@ -91,7 +93,7 @@ impl PackageSource for Registry {
 
         let url = self.api_url()?.join(&path)?;
 
-        let mut request = self.client.get(url);
+        let mut request = self.client.get(url).header("Wally-Version", VERSION);
 
         if let Some(token) = self.auth_token()? {
             request = request.header(AUTHORIZATION, format!("Bearer {}", token));
@@ -100,10 +102,11 @@ impl PackageSource for Registry {
 
         if !response.status().is_success() {
             bail!(
-                "Failed to download package {} from registry: {} \nResponse: {}",
+                "Failed to download package {} from registry: {}\n{} {}",
                 package_id,
                 self.api_url()?,
-                response.status()
+                response.status(),
+                response.text()?
             );
         }
 

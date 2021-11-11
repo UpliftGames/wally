@@ -59,6 +59,7 @@ fn new_client_with_remote(auth: AuthMode, index_url: url::Url) -> Client {
         },
         auth,
         github_token: None,
+        minimum_wally_version: None,
     }));
 
     Client::tracked(server(figment)).expect("valid rocket instance")

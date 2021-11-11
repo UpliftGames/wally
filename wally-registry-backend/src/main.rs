@@ -128,8 +128,8 @@ async fn publish(
     _cli_version: Result<WallyVersion, Error>,
     data: Data,
 ) -> Result<Json<serde_json::Value>, Error> {
-    let authorization = authorization?;
     _cli_version?;
+    let authorization = authorization?;
 
     let contents = data
         .open(2.mebibytes())
