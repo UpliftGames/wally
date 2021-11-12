@@ -313,7 +313,7 @@ impl<'r> FromRequest<'r> for WallyVersion {
                 return format_err!(
                     "Wally version header required. Try upgrading your wally installation."
                 )
-                .status(Status::BadRequest)
+                .status(Status::UpgradeRequired)
                 .into();
             }
         };
@@ -333,7 +333,7 @@ impl<'r> FromRequest<'r> for WallyVersion {
                 minimum_version,
                 version
             )
-            .status(Status::BadRequest)
+            .status(Status::UpgradeRequired)
             .into()
         } else {
             Outcome::Success(WallyVersion)
