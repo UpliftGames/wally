@@ -1,7 +1,11 @@
 # Wally Changelog
 
 ## Unreleased Changes
+
+## 0.3.1 (2021-11-12)
 * Support for dev dependencies ([#63][63])
+* Clarified upgrade response for outdated cli clients
+* Clarified feedback on failure to resolve package
 
 [#63]: https://github.com/UpliftGames/wally/pull/63
 

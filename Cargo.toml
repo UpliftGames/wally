@@ -1,7 +1,7 @@
 [package]
 name = "wally"
 description = "Package manager for Roblox"
-version = "0.3.0"
+version = "0.3.1"
 license = "MPL-2.0"
 authors = ["Lucien Greathouse <lucien@uplift.games>"]
 edition = "2018"

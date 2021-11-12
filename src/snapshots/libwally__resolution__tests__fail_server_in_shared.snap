@@ -3,4 +3,5 @@ source: src/resolution.rs
 expression: err
 
 ---
-No packages were found that matched biff/server@>=1.0.0, <2.0.0 (Shared).
+No packages were found that matched (Shared) biff/server@>=1.0.0, <2.0.0.
+Are you sure this is a Shared dependency?
