@@ -248,9 +248,10 @@ pub fn resolve(
 
         if conflicting.is_empty() {
             bail!(
-                "No packages were found that matched {req} ({req_realm:?}).",
-                req = dependency_request.package_req,
+                "No packages were found that matched ({req_realm:?}) {req}.\
+                \nAre you sure this is a {req_realm:?} dependency?",
                 req_realm = dependency_request.request_realm,
+                req = dependency_request.package_req,
             );
         } else {
             let conflicting_debug: Vec<_> = conflicting
