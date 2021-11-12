@@ -31,6 +31,7 @@ pub struct Resolve {
     /// Graph of all dependencies originating from the "server" dependency realm.
     pub server_dependencies: BTreeMap<PackageId, BTreeMap<String, PackageId>>,
 
+    /// Graph of all dependencies originating from the "dev" dependency realm.
     pub dev_dependencies: BTreeMap<PackageId, BTreeMap<String, PackageId>>,
 }
 
@@ -437,11 +438,11 @@ mod tests {
 
         let package_sources = PackageSourceMap::new(Box::new(registry.source()));
 
-        let resolved = resolve(&root.manifest(), &Default::default(), &package_sources)?;
+        let resolved = resolve(root.manifest(), &Default::default(), &package_sources)?;
         insta::assert_yaml_snapshot!("one_dependency_no_upgrade", resolved);
 
         registry.publish(PackageBuilder::new("biff/minimal@1.1.0"));
-        let new_resolved = resolve(&root.manifest(), &resolved.activated, &package_sources)?;
+        let new_resolved = resolve(root.manifest(), &resolved.activated, &package_sources)?;
         insta::assert_yaml_snapshot!("one_dependency_no_upgrade", new_resolved);
 
         Ok(())
@@ -457,7 +458,7 @@ mod tests {
 
         let package_sources = PackageSourceMap::new(Box::new(registry.source()));
 
-        let resolved = resolve(&root.manifest(), &Default::default(), &package_sources)?;
+        let resolved = resolve(root.manifest(), &Default::default(), &package_sources)?;
         insta::assert_yaml_snapshot!(resolved);
 
         // We can indicate that we'd like to upgrade a package by just removing
@@ -470,7 +471,7 @@ mod tests {
             .collect();
 
         registry.publish(PackageBuilder::new("biff/minimal@1.1.0"));
-        let new_resolved = resolve(&root.manifest(), &try_to_use, &package_sources)?;
+        let new_resolved = resolve(root.manifest(), &try_to_use, &package_sources)?;
         insta::assert_yaml_snapshot!(new_resolved);
 
         Ok(())

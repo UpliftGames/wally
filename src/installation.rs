@@ -152,8 +152,10 @@ impl InstallationContext {
         let shared_path = self.shared_path.as_ref().ok_or_else(|| {
             format_err!(indoc! {r#"
                 A server or dev dependency is depending on a shared dependency.
-                To link these packages correctly you must declare the shared
-                package location in your wally.toml. This typically looks like:
+                To link these packages correctly you must declare where shared
+                packages are placed in the roblox datamodel in your wally.toml.
+                
+                This typically looks like:
 
                 [place]
                 shared-packages = "game.ReplicatedStorage.Packages"
@@ -176,8 +178,10 @@ impl InstallationContext {
         let server_path = self.server_path.as_ref().ok_or_else(|| {
             format_err!(indoc! {r#"
                 A dev dependency is depending on a server dependency.
-                To link these packages correctly you must declare the server
-                package location in your wally.toml. This typically looks like:
+                To link these packages correctly you must declare where server
+                packages are placed in the roblox datamodel in your wally.toml.
+                
+                This typically looks like:
 
                 [place]
                 server-packages = "game.ServerScriptService.Packages"

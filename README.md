@@ -172,6 +172,11 @@ Promise = "evaera/promise@2.0.1"
 
 [server-dependencies]
 # Dependencies in the server realm can be required here as shown above.
+# These are dependencies which should only ever exist on the server.
+
+[dev-dependencies]
+# Dev dependencies can be server or shared but are only needed during development.
+TestEZ = "roblox/testez@0.4.1"
 ```
 
 ## Lockfile Format
