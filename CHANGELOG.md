@@ -1,6 +1,9 @@
 # Wally Changelog
 
 ## Unreleased Changes
+* Support for dev dependencies ([#63][63])
+
+[#63]: https://github.com/UpliftGames/wally/pull/63
 
 ## 0.3.0 (2021-11-11)
 * Fixed Windows generating invalid zip archives. ([#15][#15])

@@ -10,15 +10,15 @@ activated:
 metadata:
   biff/minimal@0.1.0:
     realm: shared
-    server_only: false
+    origin_realm: shared
     source_registry: DefaultRegistry
   biff/one-dependency@0.1.0:
     realm: shared
-    server_only: false
+    origin_realm: shared
     source_registry: DefaultRegistry
   biff/transitive-dependency@0.1.0:
     realm: shared
-    server_only: false
+    origin_realm: shared
     source_registry: DefaultRegistry
 shared_dependencies:
   biff/one-dependency@0.1.0:
@@ -26,4 +26,5 @@ shared_dependencies:
   biff/transitive-dependency@0.1.0:
     OneDependency: biff/one-dependency@0.1.0
 server_dependencies: {}
+dev_dependencies: {}
 

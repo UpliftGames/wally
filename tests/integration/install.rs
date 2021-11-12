@@ -25,6 +25,11 @@ fn private_with_public_dependency() {
     run_test("private-with-public-dependency");
 }
 
+#[test]
+fn dev_dependency() {
+    run_test("dev-dependency");
+}
+
 fn run_test(name: &str) -> TempProject {
     let source_project =
         Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/test-projects",)).join(name);

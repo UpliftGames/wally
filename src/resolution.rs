@@ -30,6 +30,9 @@ pub struct Resolve {
 
     /// Graph of all dependencies originating from the "server" dependency realm.
     pub server_dependencies: BTreeMap<PackageId, BTreeMap<String, PackageId>>,
+
+    /// Graph of all dependencies originating from the "dev" dependency realm.
+    pub dev_dependencies: BTreeMap<PackageId, BTreeMap<String, PackageId>>,
 }
 
 impl Resolve {
@@ -37,8 +40,9 @@ impl Resolve {
         self.activated.insert(dep.clone());
 
         let dependencies = match dep_realm {
-            Realm::Shared => self.shared_dependencies.entry(source.clone()).or_default(),
-            Realm::Server => self.server_dependencies.entry(source.clone()).or_default(),
+            Realm::Shared => self.shared_dependencies.entry(source).or_default(),
+            Realm::Server => self.server_dependencies.entry(source).or_default(),
+            Realm::Dev => self.dev_dependencies.entry(source).or_default(),
         };
         dependencies.insert(dep_name, dep);
     }
@@ -48,7 +52,7 @@ impl Resolve {
 #[derive(Debug, Serialize)]
 pub struct ResolvePackageMetadata {
     pub realm: Realm,
-    pub server_only: bool,
+    pub origin_realm: Realm,
     pub source_registry: PackageSourceId,
 }
 
@@ -66,7 +70,7 @@ pub fn resolve(
         root_manifest.package_id(),
         ResolvePackageMetadata {
             realm: root_manifest.package.realm,
-            server_only: root_manifest.package.realm == Realm::Server,
+            origin_realm: root_manifest.package.realm,
             source_registry: PackageSourceId::DefaultRegistry,
         },
     );
@@ -78,7 +82,7 @@ pub fn resolve(
         packages_to_visit.push_back(DependencyRequest {
             request_source: root_manifest.package_id(),
             request_realm: Realm::Shared,
-            whole_path_server_only: false,
+            origin_realm: Realm::Shared,
             package_alias: alias.clone(),
             package_req: req.clone(),
         });
@@ -88,7 +92,17 @@ pub fn resolve(
         packages_to_visit.push_back(DependencyRequest {
             request_source: root_manifest.package_id(),
             request_realm: Realm::Server,
-            whole_path_server_only: true,
+            origin_realm: Realm::Server,
+            package_alias: alias.clone(),
+            package_req: req.clone(),
+        });
+    }
+
+    for (alias, req) in &root_manifest.dev_dependencies {
+        packages_to_visit.push_back(DependencyRequest {
+            request_source: root_manifest.package_id(),
+            request_realm: Realm::Dev,
+            origin_realm: Realm::Dev,
             package_alias: alias.clone(),
             package_req: req.clone(),
         });
@@ -125,9 +139,19 @@ pub fn resolve(
                     .get_mut(package_id)
                     .expect("activated package was missing metadata");
 
-                if dependency_request.request_realm != Realm::Server {
-                    metadata.server_only = false;
-                }
+                // We want to set the origin to the least restrictive origin possible.
+                // For example we want to keep packages in the dev realm unless a dependency
+                // with a shared/server origin requires it. This way server/shared dependencies
+                // which only originate from dev dependencies get put into the dev folder even
+                // if they usually belong to another realm.
+                metadata.origin_realm =
+                    match (metadata.origin_realm, dependency_request.origin_realm) {
+                        (_, Realm::Shared) => Realm::Shared,
+                        (Realm::Shared, _) => Realm::Shared,
+                        (_, Realm::Server) => Realm::Server,
+                        (Realm::Server, _) => Realm::Server,
+                        (Realm::Dev, Realm::Dev) => Realm::Dev,
+                    };
 
                 continue 'outer;
             }
@@ -172,13 +196,7 @@ pub fn resolve(
         });
 
         let filtered_candidates = candidates.iter().filter(|candidate| {
-            use Realm::*;
-
-            match (dependency_request.request_realm, candidate.package.realm) {
-                (Shared, Shared) => true,
-                (Server, Server) | (Server, Shared) => true,
-                (Shared, Server) => false,
-            }
+            Realm::is_dependency_valid(dependency_request.request_realm, candidate.package.realm)
         });
 
         let mut conflicting = Vec::new();
@@ -218,7 +236,7 @@ pub fn resolve(
                 candidate_id.clone(),
                 ResolvePackageMetadata {
                     realm: candidate.package.realm,
-                    server_only: dependency_request.whole_path_server_only,
+                    origin_realm: dependency_request.origin_realm,
                     source_registry: source_registry.clone(),
                 },
             );
@@ -227,7 +245,7 @@ pub fn resolve(
                 packages_to_visit.push_back(DependencyRequest {
                     request_source: candidate_id.clone(),
                     request_realm: Realm::Shared,
-                    whole_path_server_only: dependency_request.whole_path_server_only,
+                    origin_realm: dependency_request.origin_realm,
                     package_alias: alias.clone(),
                     package_req: req.clone(),
                 })
@@ -237,7 +255,17 @@ pub fn resolve(
                 packages_to_visit.push_back(DependencyRequest {
                     request_source: candidate_id.clone(),
                     request_realm: Realm::Server,
-                    whole_path_server_only: dependency_request.whole_path_server_only,
+                    origin_realm: dependency_request.origin_realm,
+                    package_alias: alias.clone(),
+                    package_req: req.clone(),
+                })
+            }
+
+            for (alias, req) in &candidate.dev_dependencies {
+                packages_to_visit.push_back(DependencyRequest {
+                    request_source: candidate_id.clone(),
+                    request_realm: Realm::Dev,
+                    origin_realm: dependency_request.origin_realm,
                     package_alias: alias.clone(),
                     package_req: req.clone(),
                 })
@@ -288,7 +316,7 @@ fn compatible(a: &Version, b: &Version) -> bool {
 pub struct DependencyRequest {
     request_source: PackageId,
     request_realm: Realm,
-    whole_path_server_only: bool,
+    origin_realm: Realm,
     package_alias: String,
     package_req: PackageReq,
 }
@@ -411,11 +439,11 @@ mod tests {
 
         let package_sources = PackageSourceMap::new(Box::new(registry.source()));
 
-        let resolved = resolve(&root.manifest(), &Default::default(), &package_sources)?;
+        let resolved = resolve(root.manifest(), &Default::default(), &package_sources)?;
         insta::assert_yaml_snapshot!("one_dependency_no_upgrade", resolved);
 
         registry.publish(PackageBuilder::new("biff/minimal@1.1.0"));
-        let new_resolved = resolve(&root.manifest(), &resolved.activated, &package_sources)?;
+        let new_resolved = resolve(root.manifest(), &resolved.activated, &package_sources)?;
         insta::assert_yaml_snapshot!("one_dependency_no_upgrade", new_resolved);
 
         Ok(())
@@ -431,7 +459,7 @@ mod tests {
 
         let package_sources = PackageSourceMap::new(Box::new(registry.source()));
 
-        let resolved = resolve(&root.manifest(), &Default::default(), &package_sources)?;
+        let resolved = resolve(root.manifest(), &Default::default(), &package_sources)?;
         insta::assert_yaml_snapshot!(resolved);
 
         // We can indicate that we'd like to upgrade a package by just removing
@@ -444,7 +472,7 @@ mod tests {
             .collect();
 
         registry.publish(PackageBuilder::new("biff/minimal@1.1.0"));
-        let new_resolved = resolve(&root.manifest(), &try_to_use, &package_sources)?;
+        let new_resolved = resolve(root.manifest(), &try_to_use, &package_sources)?;
         insta::assert_yaml_snapshot!(new_resolved);
 
         Ok(())

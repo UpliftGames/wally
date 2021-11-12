@@ -132,12 +132,19 @@ pub struct PlaceInfo {
     /// Example: `game.ReplicatedStorage.Packages`
     #[serde(default)]
     pub shared_packages: Option<String>,
+
+    /// Where the server packages folder is located in the Roblox Datamodel
+    ///
+    /// Example: `game.ServerScriptStorage.Packages`
+    #[serde(default)]
+    pub server_packages: Option<String>,
 }
 
 impl Default for PlaceInfo {
     fn default() -> Self {
         Self {
             shared_packages: None,
+            server_packages: None,
         }
     }
 }
@@ -147,16 +154,16 @@ impl Default for PlaceInfo {
 pub enum Realm {
     Server,
     Shared,
+    Dev,
 }
 
 impl Realm {
     pub fn is_dependency_valid(dep_type: Self, dep_realm: Self) -> bool {
         use Realm::*;
 
-        match (dep_type, dep_realm) {
-            (Shared, Server) => false,
-            (Server, Server) => true,
-            (Shared, Shared) | (Server, Shared) => true,
-        }
+        matches!(
+            (dep_type, dep_realm),
+            (Server, _) | (Shared, Shared) | (Dev, _)
+        )
     }
 }

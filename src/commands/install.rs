@@ -57,8 +57,11 @@ impl InstallSubcommand {
         lockfile.save(&self.project_path)?;
 
         let root_package_id = PackageId::new(manifest.package.name, manifest.package.version);
-        let installation =
-            InstallationContext::new(&self.project_path, manifest.place.shared_packages);
+        let installation = InstallationContext::new(
+            &self.project_path,
+            manifest.place.shared_packages,
+            manifest.place.server_packages,
+        );
 
         installation.clean()?;
         installation.install(&package_sources, root_package_id, &resolved)?;

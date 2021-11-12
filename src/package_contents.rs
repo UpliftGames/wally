@@ -10,7 +10,13 @@ use zip::{write::FileOptions, ZipArchive, ZipWriter};
 
 use crate::manifest::Manifest;
 
-static EXCLUDED_GLOBS: &[&str] = &[".*", "wally.lock", "Packages", "ServerPackages"];
+static EXCLUDED_GLOBS: &[&str] = &[
+    ".*",
+    "wally.lock",
+    "Packages",
+    "ServerPackages",
+    "DevPackages",
+];
 
 /// Container for the contents of a package that have been downloaded.
 #[derive(Clone)]
