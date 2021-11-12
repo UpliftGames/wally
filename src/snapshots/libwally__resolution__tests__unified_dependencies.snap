@@ -11,19 +11,19 @@ activated:
 metadata:
   biff/a@1.0.0:
     realm: shared
-    server_only: false
+    origin_realm: shared
     source_registry: DefaultRegistry
   biff/b@1.0.0:
     realm: shared
-    server_only: false
+    origin_realm: shared
     source_registry: DefaultRegistry
   biff/c@1.0.0:
     realm: shared
-    server_only: false
+    origin_realm: shared
     source_registry: DefaultRegistry
   biff/d@1.0.0:
     realm: shared
-    server_only: false
+    origin_realm: shared
     source_registry: DefaultRegistry
 shared_dependencies:
   biff/a@1.0.0:
@@ -34,4 +34,5 @@ shared_dependencies:
   biff/c@1.0.0:
     D: biff/d@1.0.0
 server_dependencies: {}
+dev_dependencies: {}
 

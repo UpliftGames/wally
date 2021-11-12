@@ -8,8 +8,9 @@ activated:
 metadata:
   biff/minimal@0.1.0:
     realm: shared
-    server_only: false
+    origin_realm: shared
     source_registry: DefaultRegistry
 shared_dependencies: {}
 server_dependencies: {}
+dev_dependencies: {}
 

@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::format_err;
+use anyhow::{bail, format_err};
 use fs_err as fs;
 use indoc::{formatdoc, indoc};
 
@@ -20,15 +20,24 @@ pub struct InstallationContext {
     server_dir: PathBuf,
     server_index_dir: PathBuf,
     server_path: Option<String>,
+    dev_dir: PathBuf,
+    dev_index_dir: PathBuf,
 }
 
 impl InstallationContext {
     /// Create a new `InstallationContext` for the given path.
-    pub fn new(project_path: &Path, shared_path: Option<String>) -> Self {
+    pub fn new(
+        project_path: &Path,
+        shared_path: Option<String>,
+        server_path: Option<String>,
+    ) -> Self {
         let shared_dir = project_path.join("Packages");
-        let shared_index_dir = shared_dir.join("_Index");
         let server_dir = project_path.join("ServerPackages");
+        let dev_dir = project_path.join("DevPackages");
+
+        let shared_index_dir = shared_dir.join("_Index");
         let server_index_dir = server_dir.join("_Index");
+        let dev_index_dir = dev_dir.join("_Index");
 
         Self {
             shared_dir,
@@ -36,7 +45,9 @@ impl InstallationContext {
             shared_path,
             server_dir,
             server_index_dir,
-            server_path: None,
+            server_path,
+            dev_dir,
+            dev_index_dir,
         }
     }
 
@@ -54,6 +65,7 @@ impl InstallationContext {
 
         remove_ignore_not_found(&self.shared_dir)?;
         remove_ignore_not_found(&self.server_dir)?;
+        remove_ignore_not_found(&self.dev_dir)?;
 
         Ok(())
     }
@@ -71,26 +83,26 @@ impl InstallationContext {
 
             let shared_deps = resolved.shared_dependencies.get(package_id);
             let server_deps = resolved.server_dependencies.get(package_id);
+            let dev_deps = resolved.dev_dependencies.get(package_id);
 
             // We do not need to install the root package, but we should create
             // package links for its dependencies.
             if package_id == &root_package_id {
                 if let Some(deps) = shared_deps {
                     self.write_root_package_links(Realm::Shared, deps, Realm::Shared)?;
-                    self.write_root_package_links(Realm::Server, deps, Realm::Shared)?;
                 }
 
                 if let Some(deps) = server_deps {
                     self.write_root_package_links(Realm::Server, deps, Realm::Server)?;
                 }
+
+                if let Some(deps) = dev_deps {
+                    self.write_root_package_links(Realm::Dev, deps, Realm::Dev)?;
+                }
             } else {
                 let metadata = resolved.metadata.get(package_id).unwrap();
 
-                let package_realm = if metadata.server_only {
-                    Realm::Server
-                } else {
-                    Realm::Shared
-                };
+                let package_realm = metadata.origin_realm;
 
                 if let Some(deps) = shared_deps {
                     self.write_package_links(package_id, package_realm, deps, Realm::Shared)?;
@@ -100,8 +112,12 @@ impl InstallationContext {
                     self.write_package_links(package_id, package_realm, deps, Realm::Server)?;
                 }
 
+                if let Some(deps) = dev_deps {
+                    self.write_package_links(package_id, package_realm, deps, Realm::Dev)?;
+                }
+
                 let source_registry = &resolved.metadata[package_id].source_registry;
-                let package_source = sources.get(&source_registry).unwrap();
+                let package_source = sources.get(source_registry).unwrap();
                 let contents = package_source.download_package(package_id)?;
 
                 self.write_contents(package_id, &contents, package_realm)?;
@@ -135,7 +151,7 @@ impl InstallationContext {
     fn link_shared_index(&self, id: &PackageId) -> anyhow::Result<String> {
         let shared_path = self.shared_path.as_ref().ok_or_else(|| {
             format_err!(indoc! {r#"
-                A Server dependency is depending on a shared dependency.
+                A server or dev dependency is depending on a shared dependency.
                 To link these packages correctly you must declare the shared
                 package location in your wally.toml. This typically looks like:
 
@@ -158,10 +174,14 @@ impl InstallationContext {
     /// Contents of a link into the server index from outside the server index.
     fn link_server_index(&self, id: &PackageId) -> anyhow::Result<String> {
         let server_path = self.server_path.as_ref().ok_or_else(|| {
-            format_err!(
-                "Cannot have shared dependencies depend on \
-                 server dependencies without server_path set"
-            )
+            format_err!(indoc! {r#"
+                A dev dependency is depending on a server dependency.
+                To link these packages correctly you must declare the server
+                package location in your wally.toml. This typically looks like:
+
+                [place]
+                server-packages = "game.ServerScriptService.Packages"
+            "#})
         })?;
 
         let contents = formatdoc! {r#"
@@ -190,6 +210,7 @@ impl InstallationContext {
         let base_path = match root_realm {
             Realm::Shared => &self.shared_dir,
             Realm::Server => &self.server_dir,
+            Realm::Dev => &self.dev_dir,
         };
 
         log::trace!("Creating directory {}", base_path.display());
@@ -202,6 +223,9 @@ impl InstallationContext {
                 (source, dest) if source == dest => self.link_root_same_index(dep_package_id),
                 (_, Realm::Server) => self.link_server_index(dep_package_id)?,
                 (_, Realm::Shared) => self.link_shared_index(dep_package_id)?,
+                (_, Realm::Dev) => {
+                    bail!("A dev dependency cannot be dependened upon by a non-dev dependency")
+                }
             };
 
             log::trace!("Writing {}", path.display());
@@ -223,6 +247,7 @@ impl InstallationContext {
         let mut base_path = match package_realm {
             Realm::Shared => self.shared_index_dir.clone(),
             Realm::Server => self.server_index_dir.clone(),
+            Realm::Dev => self.dev_index_dir.clone(),
         };
 
         base_path.push(package_id_file_name(package_id));
@@ -237,6 +262,9 @@ impl InstallationContext {
                 (source, dest) if source == dest => self.link_sibling_same_index(dep_package_id),
                 (_, Realm::Server) => self.link_server_index(dep_package_id)?,
                 (_, Realm::Shared) => self.link_shared_index(dep_package_id)?,
+                (_, Realm::Dev) => {
+                    bail!("A dev dependency cannot be dependened upon by a non-dev dependency")
+                }
             };
 
             log::trace!("Writing {}", path.display());
@@ -255,6 +283,7 @@ impl InstallationContext {
         let mut path = match realm {
             Realm::Shared => self.shared_index_dir.clone(),
             Realm::Server => self.server_index_dir.clone(),
+            Realm::Dev => self.dev_index_dir.clone(),
         };
 
         path.push(package_id_file_name(package_id));
