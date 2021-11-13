@@ -271,9 +271,9 @@ dependencies = [
 
 [[package]]
 name = "cloud-storage-lite"
-version = "0.1.7"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21a284dee039cc6452a4bd54e9e697a4bd5c0f691c6b14a9f66503233870e84f"
+checksum = "3f4865d743458901f13eaa4d1038b06bef44598e4924743d9ad80ec121de44de"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -288,6 +288,7 @@ dependencies = [
  "serde_with",
  "thiserror",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -2824,7 +2825,19 @@ checksum = "01ebdc2bb4498ab1ab5f5b73c5803825e60199229ccba0698170e3be0e7f959f"
 dependencies = [
  "cfg-if 1.0.0",
  "pin-project-lite",
+ "tracing-attributes",
  "tracing-core",
+]
+
+[[package]]
+name = "tracing-attributes"
+version = "0.1.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4f480b8f81512e825f337ad51e94c1eb5d3bbdf2b363dcd01e2b19a9ffe3f8e"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

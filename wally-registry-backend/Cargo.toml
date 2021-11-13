@@ -14,7 +14,7 @@ wally = { path = ".." }
 
 anyhow = "1.0.38"
 async-trait = "0.1.42"
-cloud-storage-lite = "0.1.7"
+cloud-storage-lite = "0.1.9"
 constant_time_eq = "0.1.5"
 figment = "0.10.3"
 fs-err = "2.5.0"
