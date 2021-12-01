@@ -76,7 +76,7 @@ impl AuthStore {
 }
 
 fn file_path() -> anyhow::Result<PathBuf> {
-    let mut path = dirs::home_dir().context("Failed to find home directory")?;
+    let mut path = dirs::home_dir().context("Failed to find home directory/")?;
     path.push(".wally");
     path.push("auth.toml");
     Ok(path)
