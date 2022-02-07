@@ -228,7 +228,7 @@ impl InstallationContext {
                 (_, Realm::Server) => self.link_server_index(dep_package_id)?,
                 (_, Realm::Shared) => self.link_shared_index(dep_package_id)?,
                 (_, Realm::Dev) => {
-                    bail!("A dev dependency cannot be dependened upon by a non-dev dependency")
+                    bail!("A dev dependency cannot be depended upon by a non-dev dependency")
                 }
             };
 
@@ -267,7 +267,7 @@ impl InstallationContext {
                 (_, Realm::Server) => self.link_server_index(dep_package_id)?,
                 (_, Realm::Shared) => self.link_shared_index(dep_package_id)?,
                 (_, Realm::Dev) => {
-                    bail!("A dev dependency cannot be dependened upon by a non-dev dependency")
+                    bail!("A dev dependency cannot be depended upon by a non-dev dependency")
                 }
             };
 
