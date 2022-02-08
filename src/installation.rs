@@ -112,10 +112,6 @@ impl InstallationContext {
                     self.write_package_links(package_id, package_realm, deps, Realm::Server)?;
                 }
 
-                if let Some(deps) = dev_deps {
-                    self.write_package_links(package_id, package_realm, deps, Realm::Dev)?;
-                }
-
                 let source_registry = &resolved.metadata[package_id].source_registry;
                 let package_source = sources.get(source_registry).unwrap();
                 let contents = package_source.download_package(package_id)?;
