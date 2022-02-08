@@ -182,7 +182,7 @@ TestEZ = "roblox/testez@0.4.1"
 ## Lockfile Format
 The lockfile contains the exact versions of each dependency that a project depends on. They're a critical feature that ensures that everyone who works on a game is getting the exact same version of every package.
 
-Lockfiles are written in [TOML][toml] and stored in a file named `wally.lock`. They're are human readable, but are only written by tools. We've optimized the lockfile format for reading as well as diffing so that they're as easy to review as possible.
+Lockfiles are written in [TOML][toml] and stored in a file named `wally.lock`. They're human readable, but are only written by tools. We've optimized the lockfile format for reading as well as diffing so that they're as easy to review as possible.
 
 ```toml
 [[package]]
