@@ -261,16 +261,6 @@ pub fn resolve(
                 })
             }
 
-            for (alias, req) in &candidate.dev_dependencies {
-                packages_to_visit.push_back(DependencyRequest {
-                    request_source: candidate_id.clone(),
-                    request_realm: Realm::Dev,
-                    origin_realm: dependency_request.origin_realm,
-                    package_alias: alias.clone(),
-                    package_req: req.clone(),
-                })
-            }
-
             continue 'outer;
         }
 

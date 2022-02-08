@@ -112,10 +112,6 @@ impl InstallationContext {
                     self.write_package_links(package_id, package_realm, deps, Realm::Server)?;
                 }
 
-                if let Some(deps) = dev_deps {
-                    self.write_package_links(package_id, package_realm, deps, Realm::Dev)?;
-                }
-
                 let source_registry = &resolved.metadata[package_id].source_registry;
                 let package_source = sources.get(source_registry).unwrap();
                 let contents = package_source.download_package(package_id)?;
@@ -228,7 +224,7 @@ impl InstallationContext {
                 (_, Realm::Server) => self.link_server_index(dep_package_id)?,
                 (_, Realm::Shared) => self.link_shared_index(dep_package_id)?,
                 (_, Realm::Dev) => {
-                    bail!("A dev dependency cannot be dependened upon by a non-dev dependency")
+                    bail!("A dev dependency cannot be depended upon by a non-dev dependency")
                 }
             };
 
@@ -267,7 +263,7 @@ impl InstallationContext {
                 (_, Realm::Server) => self.link_server_index(dep_package_id)?,
                 (_, Realm::Shared) => self.link_shared_index(dep_package_id)?,
                 (_, Realm::Dev) => {
-                    bail!("A dev dependency cannot be dependened upon by a non-dev dependency")
+                    bail!("A dev dependency cannot be depended upon by a non-dev dependency")
                 }
             };
 
