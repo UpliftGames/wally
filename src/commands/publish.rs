@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::Context;
+use anyhow::{bail, Context};
 use structopt::StructOpt;
 use url::Url;
 
@@ -22,6 +22,11 @@ pub struct PublishSubcommand {
 impl PublishSubcommand {
     pub fn run(self, global: GlobalOptions) -> anyhow::Result<()> {
         let manifest = Manifest::load(&self.project_path)?;
+
+        if manifest.package.private {
+            bail!("Cannot publish private package.");
+        }
+
         let auth_store = AuthStore::load()?;
 
         let index_url = if global.test_registry {

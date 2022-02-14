@@ -157,6 +157,9 @@ registry = "https://github.com/upliftgames/wally-index"
 # include = []
 exclude = ["node_modules"]
 
+# Packages can be marked as private to prevent them from being published.
+private = true
+
 [dependencies]
 # Most dependencies will look like this.
 #
