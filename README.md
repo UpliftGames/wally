@@ -76,7 +76,7 @@ Parity with:
 ### `wally login`
 Log into an account to publish packages to a registry.
 
-Partiy with:
+Parity with:
 * `cargo login`
 * `npm login`
 
