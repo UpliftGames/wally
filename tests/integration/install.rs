@@ -30,6 +30,16 @@ fn dev_dependency() {
     run_test("dev-dependency");
 }
 
+#[test]
+fn cross_realm_dependency() {
+    run_test("cross-realm-dependency");
+}
+
+#[test]
+fn cross_realm_explicit_dependency() {
+    run_test("cross-realm-explicit-dependency");
+}
+
 fn run_test(name: &str) -> TempProject {
     let source_project =
         Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/test-projects",)).join(name);
