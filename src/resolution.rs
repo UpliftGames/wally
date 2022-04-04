@@ -130,7 +130,7 @@ pub fn resolve(
                 resolve.activate(
                     dependency_request.request_source.clone(),
                     dependency_request.package_alias.clone(),
-                    dependency_request.request_realm,
+                    dependency_request.origin_realm,
                     package_id.clone(),
                 );
 
@@ -228,7 +228,7 @@ pub fn resolve(
             resolve.activate(
                 dependency_request.request_source.clone(),
                 dependency_request.package_alias.to_owned(),
-                dependency_request.request_realm,
+                dependency_request.origin_realm,
                 candidate_id.clone(),
             );
 
