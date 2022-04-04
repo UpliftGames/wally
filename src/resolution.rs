@@ -383,9 +383,13 @@ mod tests {
     fn server_to_shared() -> anyhow::Result<()> {
         let registry = InMemoryRegistry::new();
         registry.publish(PackageBuilder::new("biff/shared@1.0.0"));
+        registry.publish(
+            PackageBuilder::new("biff/server@1.0.0").with_realm(Realm::Server)
+                .with_dep("Shared", "biff/shared@1.0.0")
+        );
 
         let root =
-            PackageBuilder::new("biff/root@1.0.0").with_server_dep("Shared", "biff/shared@1.0.0");
+            PackageBuilder::new("biff/root@1.0.0").with_server_dep("Server", "biff/server@1.0.0");
 
         test_project(registry, root)
     }
