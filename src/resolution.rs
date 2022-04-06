@@ -137,14 +137,13 @@ pub fn resolve(
                 // with a shared/server origin requires it. This way server/shared dependencies
                 // which only originate from dev dependencies get put into the dev folder even
                 // if they usually belong to another realm.
-                let realm_match = 
-                    match (metadata.origin_realm, dependency_request.origin_realm) {
-                        (_, Realm::Shared) => Realm::Shared,
-                        (Realm::Shared, _) => Realm::Shared,
-                        (_, Realm::Server) => Realm::Server,
-                        (Realm::Server, _) => Realm::Server,
-                        (Realm::Dev, Realm::Dev) => Realm::Dev,
-                    };
+                let realm_match = match (metadata.origin_realm, dependency_request.origin_realm) {
+                    (_, Realm::Shared) => Realm::Shared,
+                    (Realm::Shared, _) => Realm::Shared,
+                    (_, Realm::Server) => Realm::Server,
+                    (Realm::Server, _) => Realm::Server,
+                    (Realm::Dev, Realm::Dev) => Realm::Dev,
+                };
 
                 metadata.origin_realm = realm_match;
 
@@ -386,8 +385,9 @@ mod tests {
         let registry = InMemoryRegistry::new();
         registry.publish(PackageBuilder::new("biff/shared@1.0.0"));
         registry.publish(
-            PackageBuilder::new("biff/server@1.0.0").with_realm(Realm::Server)
-                .with_dep("Shared", "biff/shared@1.0.0")
+            PackageBuilder::new("biff/server@1.0.0")
+                .with_realm(Realm::Server)
+                .with_dep("Shared", "biff/shared@1.0.0"),
         );
 
         let root =
@@ -403,14 +403,14 @@ mod tests {
         let registry = InMemoryRegistry::new();
         registry.publish(PackageBuilder::new("biff/shared@1.0.0"));
         registry.publish(
-            PackageBuilder::new("biff/server@1.0.0").with_realm(Realm::Server)
-                .with_dep("Shared", "biff/shared@1.0.0")
+            PackageBuilder::new("biff/server@1.0.0")
+                .with_realm(Realm::Server)
+                .with_dep("Shared", "biff/shared@1.0.0"),
         );
 
-        let root =
-            PackageBuilder::new("biff/root@1.0.0")
-                .with_server_dep("Server", "biff/server@1.0.0")
-                .with_dep("Shared", "biff/shared@1.0.0");
+        let root = PackageBuilder::new("biff/root@1.0.0")
+            .with_server_dep("Server", "biff/server@1.0.0")
+            .with_dep("Shared", "biff/shared@1.0.0");
 
         test_project(registry, root)
     }
