@@ -1,6 +1,5 @@
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
-use std::fmt::Display;
 
 use anyhow::bail;
 use anyhow::format_err;
@@ -264,13 +263,26 @@ pub fn resolve(
 
             continue 'outer;
         }
-            let test = match &dependency_request.request_realm {
-                Realm::Server => format!("Try putting this in your wally.toml: \n \n[dependencies]\n{req}", req = dependency_request.package_req).to_owned(),
-                Realm::Shared => format!("Try putting this in your wally.toml: \n \n[server-dependencies]\n{req}", req = dependency_request.package_req).to_owned(),
-                _ => format!("Are you sure this is a {req}?", req = dependency_request.package_req).to_owned()
-            };
 
         if conflicting.is_empty() {
+            let test = match &dependency_request.request_realm {
+                Realm::Server => format!(
+                    "Try putting this in your wally.toml: \n \n[dependencies]\n{req}",
+                    req = format!("{}@{}", dependency_request.package_req.name(), dependency_request.package_req.version_req())
+                )
+                .to_owned(),
+                Realm::Shared => format!(
+                    "Try putting this in your wally.toml: \n \n[server-dependencies]\n{req}",
+                    req = format!("{}@{}", dependency_request.package_req.name(), dependency_request.package_req.version_req())
+                )
+                .to_owned(),
+                _ => format!(
+                    "Are you sure this is a {req}?",
+                    req = format!("{}@{}", dependency_request.package_req.name(), dependency_request.package_req.version_req())
+                )
+                .to_owned(),
+            };
+
             bail!(
                 "No packages were found that matched ({req_realm:?}) {req}.\
                 \n{test}",
