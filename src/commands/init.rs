@@ -61,7 +61,9 @@ impl InitSubcommand {
             .parse::<Document>()
             .expect("Built-in default manifest was invalid TOML");
 
-        let full_name = format!("{}/{}", whoami::username(), package_name).to_lowercase();
+        let full_name = format!("{}/{}", whoami::username(), package_name)
+            .to_lowercase()
+            .replace(" ", "-");
         doc["package"]["name"] = value(full_name.clone());
 
         fs_err::write(manifest_path, doc.to_string())?;
