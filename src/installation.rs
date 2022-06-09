@@ -11,7 +11,7 @@ use pathdiff::diff_paths;
 
 use crate::{
     manifest::Realm, package_contents::PackageContents, package_id::PackageId,
-    package_source::PackageSourceMap, resolution::Resolve,
+    package_origin::PackageOrigin, package_source::PackageSourceMap, resolution::Resolve,
 };
 
 pub struct InstallationContext {
@@ -116,8 +116,8 @@ impl InstallationContext {
                 }
 
                 match &resolved.metadata[package_id].package_origin {
-                    crate::package_origin::PackageOrigin::Git(_) => todo!(),
-                    crate::package_origin::PackageOrigin::Path(path_to_package) => {
+                    PackageOrigin::Git(_) => todo!(),
+                    PackageOrigin::Path(path_to_package) => {
                         let mut path = match package_realm {
                             Realm::Shared => self.shared_index_dir.clone(),
                             Realm::Server => self.server_index_dir.clone(),
