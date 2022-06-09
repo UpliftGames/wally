@@ -8,6 +8,7 @@ use serde::Serialize;
 
 use crate::manifest::{Manifest, Realm};
 use crate::package_id::PackageId;
+use crate::package_origin::PackageOrigin;
 use crate::package_req::PackageReq;
 use crate::package_source::{PackageSourceId, PackageSourceMap};
 
@@ -46,6 +47,16 @@ impl Resolve {
         };
         dependencies.insert(dep_name, dep);
     }
+
+    pub fn get_try_to_use(&self) -> BTreeMap<PackageId, PackageOrigin> {
+        let mut try_to_use = BTreeMap::new();
+
+        for (package_id, package_metadata) in self.metadata.iter() {
+            try_to_use.insert(package_id.clone(), package_metadata.package_origin.clone());
+        }
+
+        try_to_use
+    }
 }
 
 /// A single node in the package resolution graph.
@@ -53,12 +64,21 @@ impl Resolve {
 pub struct ResolvePackageMetadata {
     pub realm: Realm,
     pub origin_realm: Realm,
-    pub source_registry: PackageSourceId,
+    pub package_origin: PackageOrigin,
+}
+
+pub struct DependencyRequest {
+    request_source: PackageId,
+    request_realm: Realm,
+    origin_realm: Realm,
+    package_alias: String,
+    package_req: PackageReq,
+    package_origin: PackageOrigin,
 }
 
 pub fn resolve(
     root_manifest: &Manifest,
-    try_to_use: &BTreeSet<PackageId>,
+    try_to_use: &BTreeMap<PackageId, PackageOrigin>,
     package_sources: &PackageSourceMap,
 ) -> anyhow::Result<Resolve> {
     let mut resolve = Resolve::default();
@@ -71,7 +91,7 @@ pub fn resolve(
         ResolvePackageMetadata {
             realm: root_manifest.package.realm,
             origin_realm: root_manifest.package.realm,
-            source_registry: PackageSourceId::DefaultRegistry,
+            package_origin: PackageOrigin::Registry(PackageSourceId::DefaultRegistry),
         },
     );
 
@@ -84,7 +104,8 @@ pub fn resolve(
             request_realm: Realm::Shared,
             origin_realm: Realm::Shared,
             package_alias: alias.clone(),
-            package_req: req.clone(),
+            package_req: req.package_req(),
+            package_origin: req.package_origin(),
         });
     }
 
@@ -94,7 +115,8 @@ pub fn resolve(
             request_realm: Realm::Server,
             origin_realm: Realm::Server,
             package_alias: alias.clone(),
-            package_req: req.clone(),
+            package_req: req.package_req(),
+            package_origin: req.package_origin(),
         });
     }
 
@@ -104,7 +126,8 @@ pub fn resolve(
             request_realm: Realm::Dev,
             origin_realm: Realm::Dev,
             package_alias: alias.clone(),
-            package_req: req.clone(),
+            package_req: req.package_req(),
+            package_origin: req.package_origin(),
         });
     }
 
@@ -157,26 +180,45 @@ pub fn resolve(
             }
         }
 
-        // Look through all our packages sources in order of priority
-        let (source_registry, mut candidates) = package_sources
-            .source_order()
-            .iter()
-            .find_map(|source| {
-                let registry = package_sources.get(source).unwrap();
+        // Based on the origin of the dependency request, let's pull in the possible candidates.
+        let (package_origin, mut candidates) = match dependency_request.package_origin {
+            PackageOrigin::Path(path) => {
+                let candidate = Manifest::load(&path).unwrap();
+                // TODO: Some way to convert source_registry into a PackageSourceId?
+                // That way, it can be used later on for the dependencies of this candidate(?)
+                let _source_registry = candidate.package.registry.clone();
+                let mut manifests = Vec::new();
+                manifests.push(candidate);
 
-                // Pull all of the possible candidate versions of the package we're
-                // looking for from the highest priority source which has them.
-                match registry.query(&dependency_request.package_req) {
-                    Ok(manifests) => Some((source, manifests)),
-                    Err(_) => None,
-                }
-            })
-            .ok_or_else(|| {
-                format_err!(
-                    "Failed to find a source for {}",
-                    dependency_request.package_req
-                )
-            })?;
+                (PackageOrigin::Path(path), manifests)
+            }
+            PackageOrigin::Git(_) => todo!(),
+            // TODO: Worth investigating with what we can do if we're given the originating source.
+            PackageOrigin::Registry(_) => {
+                // Look through all our packages sources in order of priority
+                package_sources
+                    .source_order()
+                    .iter()
+                    .find_map(|source| {
+                        let registry = package_sources.get(source).unwrap();
+
+                        // Pull all of the possible candidate versions of the package we're
+                        // looking for from the highest priority source which has them.
+                        match registry.query(&dependency_request.package_req) {
+                            Ok(manifests) => {
+                                Some((PackageOrigin::Registry(source.clone()), manifests))
+                            }
+                            Err(_) => None,
+                        }
+                    })
+                    .ok_or_else(|| {
+                        format_err!(
+                            "Failed to find a source for {}",
+                            dependency_request.package_req
+                        )
+                    })?
+            }
+        };
 
         // Sort our candidate packages by descending version, so that we try the
         // highest versions first.
@@ -185,8 +227,8 @@ pub fn resolve(
         // our lockfile (in `try_to_use`), prioritize those first. This
         // technique is the one used by Cargo.
         candidates.sort_by(|a, b| {
-            let contains_a = try_to_use.contains(&a.package_id());
-            let contains_b = try_to_use.contains(&b.package_id());
+            let contains_a = try_to_use.contains_key(&a.package_id());
+            let contains_b = try_to_use.contains_key(&b.package_id());
 
             match (contains_a, contains_b) {
                 (true, false) => Ordering::Less,
@@ -195,9 +237,11 @@ pub fn resolve(
             }
         });
 
-        let filtered_candidates = candidates.iter().filter(|candidate| {
-            Realm::is_dependency_valid(dependency_request.request_realm, candidate.package.realm)
-        });
+        let request_realm = dependency_request.request_realm.clone();
+
+        let filtered_candidates = candidates
+            .iter()
+            .filter(|candidate| Realm::is_dependency_valid(request_realm, candidate.package.realm));
 
         let mut conflicting = Vec::new();
 
@@ -237,7 +281,7 @@ pub fn resolve(
                 ResolvePackageMetadata {
                     realm: candidate.package.realm,
                     origin_realm: dependency_request.origin_realm,
-                    source_registry: source_registry.clone(),
+                    package_origin,
                 },
             );
 
@@ -247,7 +291,10 @@ pub fn resolve(
                     request_realm: Realm::Shared,
                     origin_realm: dependency_request.origin_realm,
                     package_alias: alias.clone(),
-                    package_req: req.clone(),
+                    package_req: req.package_req(),
+                    // TODO: what happens if a package dependency also has a path dependency?
+                    // I don't think Wally is going to resolve it correctly...
+                    package_origin: req.package_origin(),
                 })
             }
 
@@ -257,7 +304,9 @@ pub fn resolve(
                     request_realm: Realm::Server,
                     origin_realm: dependency_request.origin_realm,
                     package_alias: alias.clone(),
-                    package_req: req.clone(),
+                    package_req: req.package_req(),
+                    // Same for the loop previously.
+                    package_origin: req.package_origin(),
                 })
             }
 
@@ -301,14 +350,6 @@ fn compatible(a: &Version, b: &Version) -> bool {
     } else {
         a.major == b.major
     }
-}
-
-pub struct DependencyRequest {
-    request_source: PackageId,
-    request_realm: Realm,
-    origin_realm: Realm,
-    package_alias: String,
-    package_req: PackageReq,
 }
 
 #[cfg(test)]
@@ -433,7 +474,11 @@ mod tests {
         insta::assert_yaml_snapshot!("one_dependency_no_upgrade", resolved);
 
         registry.publish(PackageBuilder::new("biff/minimal@1.1.0"));
-        let new_resolved = resolve(root.manifest(), &resolved.activated, &package_sources)?;
+        let new_resolved = resolve(
+            root.manifest(),
+            &resolved.get_try_to_use(),
+            &package_sources,
+        )?;
         insta::assert_yaml_snapshot!("one_dependency_no_upgrade", new_resolved);
 
         Ok(())
@@ -456,9 +501,9 @@ mod tests {
         // it from the try_to_use set!
         let remove_this: PackageName = "biff/minimal".parse().unwrap();
         let try_to_use = resolved
-            .activated
+            .get_try_to_use()
             .into_iter()
-            .filter(|id| id.name() != &remove_this)
+            .filter(|(id, _)| id.name() != &remove_this)
             .collect();
 
         registry.publish(PackageBuilder::new("biff/minimal@1.1.0"));

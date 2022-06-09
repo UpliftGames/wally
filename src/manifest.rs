@@ -5,9 +5,9 @@ use anyhow::Context;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
+use crate::package_location::PackageLocation;
 use crate::package_id::PackageId;
 use crate::package_name::PackageName;
-use crate::package_req::PackageReq;
 
 pub const MANIFEST_FILE_NAME: &str = "wally.toml";
 
@@ -21,13 +21,13 @@ pub struct Manifest {
     pub place: PlaceInfo,
 
     #[serde(default)]
-    pub dependencies: BTreeMap<String, PackageReq>,
+    pub dependencies: BTreeMap<String, PackageLocation>,
 
     #[serde(default)]
-    pub server_dependencies: BTreeMap<String, PackageReq>,
+    pub server_dependencies: BTreeMap<String, PackageLocation>,
 
     #[serde(default)]
-    pub dev_dependencies: BTreeMap<String, PackageReq>,
+    pub dev_dependencies: BTreeMap<String, PackageLocation>,
 }
 
 impl Manifest {

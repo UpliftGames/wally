@@ -1,7 +1,9 @@
 use crate::package_id::PackageId;
 use crate::package_name::PackageName;
+use crate::package_origin::PackageOrigin;
 use crate::package_path::PackagePath;
 use crate::package_req::PackageReq;
+use crate::package_source::PackageSourceId;
 use semver::Version;
 use semver::VersionReq;
 use serde::Deserialize;
@@ -30,8 +32,25 @@ impl PackageLocation {
         }
     }
 
+    pub fn package_req(&self) -> PackageReq {
+        PackageReq::new(self.name().clone(), self.version_req().clone())
+    }
+
     pub fn matches_id(&self, package_id: &PackageId) -> bool {
         self.matches(package_id.name(), package_id.version())
+    }
+
+    pub fn package_origin(&self) -> PackageOrigin {
+        match self {
+            // TODO: PackageLocation does not encode the source registry. It only encodes the packageId itself.
+            // Maybe change it so that it does contain the source registry.
+            // Otherwise, package_origin could take an argument for the expected registry.
+            // *sigh*
+            PackageLocation::Registry(_) => PackageOrigin::Registry(PackageSourceId::DefaultRegistry),
+            PackageLocation::Path(PackagePath { path, .. }) => {
+                PackageOrigin::Path(path.clone())
+            }
+        }
     }
 
     pub fn matches(&self, name: &PackageName, version: &Version) -> bool {

@@ -9,14 +9,14 @@ pub use self::test_registry::TestRegistry;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 
 use crate::manifest::Manifest;
 use crate::package_contents::PackageContents;
 use crate::package_id::PackageId;
 use crate::package_req::PackageReq;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum PackageSourceId {
     DefaultRegistry,
     Git(String),
