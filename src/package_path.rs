@@ -17,6 +17,7 @@ pub struct PackagePath {
     pub req: PackageReq,
 }
 
+// TODO: Make PackagePath use `fs+`
 impl PackagePath {
     fn new(path: path::PathBuf) -> anyhow::Result<Self> {
         let manifest = Manifest::load(&path)?;
