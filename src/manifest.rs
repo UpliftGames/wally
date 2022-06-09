@@ -5,8 +5,8 @@ use anyhow::Context;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
-use crate::package_location::PackageLocation;
 use crate::package_id::PackageId;
+use crate::package_location::PackageLocation;
 use crate::package_name::PackageName;
 
 pub const MANIFEST_FILE_NAME: &str = "wally.toml";
@@ -51,6 +51,23 @@ impl Manifest {
 
     pub fn package_id(&self) -> PackageId {
         PackageId::new(self.package.name.clone(), self.package.version.clone())
+    }
+
+    // TODO: Enforce this on the registry-side as well?
+    // TODO: Provide helpful reasons to why the package cannot be uploaded
+    // i.e specific packages that are paths.
+    /// Returns true or false if the manifest can be uploaded to the registry.
+    pub fn suitable_for_registry(&self) -> bool {
+        let filter_for_path =
+            |x: &&PackageLocation| -> bool { matches!(x, PackageLocation::Path(_)) };
+
+        self.dependencies.values().filter(filter_for_path).count() > 0
+            && self
+                .server_dependencies
+                .values()
+                .filter(filter_for_path)
+                .count()
+                > 0
     }
 }
 
