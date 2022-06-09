@@ -55,8 +55,7 @@ whoami = "1.1.2"
 zip = "0.5.11"
 globset = "0.4.8"
 pathdiff = "0.2.1"
-normpath = { version = "0.3.1", features = ["serde"] }
-relative-path = { version = "1.5.0", features = ["serde"] }
+path-slash = "0.1.4"
 
 [dev-dependencies]
 insta = "1.1.0"

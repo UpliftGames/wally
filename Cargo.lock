@@ -1433,16 +1433,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "normpath"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04aaf5e9cb0fbf883cc0423159eacdf96a9878022084b35c462c428cab73bcaf"
-dependencies = [
- "serde",
- "winapi",
-]
-
-[[package]]
 name = "ntapi"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1573,6 +1563,12 @@ dependencies = [
  "smallvec",
  "winapi",
 ]
+
+[[package]]
+name = "path-slash"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3cacbb3c4ff353b534a67fb8d7524d00229da4cb1dc8c79f4db96e375ab5b619"
 
 [[package]]
 name = "pathdiff"
@@ -1920,15 +1916,6 @@ name = "regex-syntax"
 version = "0.6.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f497285884f3fcff424ffc933e56d7cbca511def0c9831a7f9b5f6153e3cc89b"
-
-[[package]]
-name = "relative-path"
-version = "1.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4e112eddc95bbf25365df3b5414354ad2fe7ee465eddb9965a515faf8c3b6d9"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "remove_dir_all"
@@ -3074,11 +3061,10 @@ dependencies = [
  "indoc",
  "insta",
  "log",
- "normpath",
  "once_cell",
  "opener",
+ "path-slash",
  "pathdiff",
- "relative-path",
  "reqwest",
  "rpassword",
  "semver 0.11.0",

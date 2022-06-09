@@ -4,9 +4,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{bail, format_err};
+use anyhow::{bail, format_err, Context};
 use fs_err as fs;
 use indoc::{formatdoc, indoc};
+use path_slash::PathBufExt;
 use pathdiff::diff_paths;
 
 use crate::{
@@ -118,40 +119,34 @@ impl InstallationContext {
                 match &resolved.metadata[package_id].package_origin {
                     PackageOrigin::Git(_) => todo!(),
                     PackageOrigin::Path(path_to_package) => {
-                        let mut path = match package_realm {
-                            Realm::Shared => self.shared_index_dir.clone(),
-                            Realm::Server => self.server_index_dir.clone(),
-                            Realm::Dev => self.dev_index_dir.clone(),
-                        };
+                        let base_path = self.get_base_path(package_id, package_realm);
 
-                        path.push(package_id_file_name(package_id));
-                        path.push(package_id.name().name());
+                        log::info!("Creating project link for {}", base_path.display());
 
-                        log::info!("Creating directory {}", path.display());
+                        fs::create_dir_all(&base_path)?;
 
-                        fs::create_dir_all(&path)?;
-
-                        let mut path_from_project_file_to_actual_package =
-                            diff_paths(&self.project_path, &path).unwrap();
-
-                        path_from_project_file_to_actual_package.push(&path_to_package);
-
-                        path.push("default.project.json");
+                        let from_project_json_to_package =
+                            diff_paths(&self.project_path, &base_path)
+                                .context(
+                                    "Was unable to diff the base path against the project path.",
+                                )?
+                                .join(&path_to_package);
 
                         let mut handler = fs::OpenOptions::new()
                             .write(true)
                             .read(true)
                             .create(true)
-                            .open(path)?;
+                            .open(base_path.join("default.project.json"))?;
 
                         let _ = handler.write(
-                            serde_json::json!({
-                                "name": short_name(package_id),
-                                "tree": {
-                                    "$path": path_from_project_file_to_actual_package
-                                }
-                            })
-                            .to_string()
+                            serde_json::to_string_pretty(
+                                &serde_json::json!({
+                                    "name": short_name(package_id),
+                                    "tree": {
+                                        "$path": from_project_json_to_package.to_slash().context("Was unable to convert path to forward-slashes")?
+                                    }
+                                })
+                            )?
                             .as_bytes(),
                         )?;
                     }
@@ -325,19 +320,26 @@ impl InstallationContext {
         contents: &PackageContents,
         realm: Realm,
     ) -> anyhow::Result<()> {
-        let mut path = match realm {
-            Realm::Shared => self.shared_index_dir.clone(),
-            Realm::Server => self.server_index_dir.clone(),
-            Realm::Dev => self.dev_index_dir.clone(),
-        };
-
-        path.push(package_id_file_name(package_id));
-        path.push(package_id.name().name());
+        let path = self.get_base_path(package_id, realm);
 
         fs::create_dir_all(&path)?;
         contents.unpack_into_path(&path)?;
 
         Ok(())
+    }
+
+    /// Generates a base path with the given package and its realm.
+    fn get_base_path(&self, package_id: &PackageId, realm: Realm) -> PathBuf {
+        let mut base_path = match realm {
+            Realm::Shared => self.shared_index_dir.clone(),
+            Realm::Server => self.server_index_dir.clone(),
+            Realm::Dev => self.dev_index_dir.clone(),
+        };
+
+        base_path.push(package_id_file_name(package_id));
+        base_path.push(short_name(package_id));
+
+        base_path
     }
 }
 
