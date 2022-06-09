@@ -144,9 +144,9 @@ impl InstallationContext {
                             .create(true)
                             .open(path)?;
 
-                        handler.write(
+                        let _ = handler.write(
                             serde_json::json!({
-                                "name": short_name(&package_id),
+                                "name": short_name(package_id),
                                 "tree": {
                                     "$path": path_from_project_file_to_actual_package
                                 }
@@ -156,7 +156,7 @@ impl InstallationContext {
                         )?;
                     }
                     crate::package_origin::PackageOrigin::Registry(source_registry) => {
-                        let package_source = sources.get(&source_registry).unwrap();
+                        let package_source = sources.get(source_registry).unwrap();
                         let contents = package_source.download_package(package_id)?;
 
                         self.write_contents(package_id, &contents, package_realm)?;
@@ -174,7 +174,7 @@ impl InstallationContext {
             return require(script.Parent.Parent["{full_name}"]["{short_name}"])
             "#,
             full_name = package_id_file_name(id),
-            short_name = short_name(&id)
+            short_name = short_name(id)
         }
     }
 
@@ -184,7 +184,7 @@ impl InstallationContext {
             return require(script.Parent._Index["{full_name}"]["{short_name}"])
             "#,
             full_name = package_id_file_name(id),
-            short_name = short_name(&id)
+            short_name = short_name(id)
         }
     }
 
@@ -208,7 +208,7 @@ impl InstallationContext {
             "#,
             packages = shared_path,
             full_name = package_id_file_name(id),
-            short_name = short_name(&id)
+            short_name = short_name(id)
         };
 
         Ok(contents)

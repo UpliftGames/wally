@@ -41,7 +41,7 @@ impl FromStr for PackagePath {
     type Err = anyhow::Error;
 
     fn from_str(value: &str) -> anyhow::Result<Self> {
-        Ok(Self::new(value.parse()?)?)
+        Self::new(value.parse()?)
     }
 }
 

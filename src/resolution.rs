@@ -187,8 +187,7 @@ pub fn resolve(
                 // TODO: Some way to convert source_registry into a PackageSourceId?
                 // That way, it can be used later on for the dependencies of this candidate(?)
                 let _source_registry = candidate.package.registry.clone();
-                let mut manifests = Vec::new();
-                manifests.push(candidate);
+                let manifests = vec![ candidate ];
 
                 (PackageOrigin::Path(path), manifests)
             }
@@ -237,7 +236,7 @@ pub fn resolve(
             }
         });
 
-        let request_realm = dependency_request.request_realm.clone();
+        let request_realm = dependency_request.request_realm;
 
         let filtered_candidates = candidates
             .iter()
