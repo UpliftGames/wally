@@ -16,6 +16,7 @@ use crate::package_req::PackageReq;
 /// the PackageReq from the manifest for convenience.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct PackagePath {
+    // TODO: Consider only allowing relative paths?
     pub path: path::PathBuf,
     pub req: PackageReq,
 }
