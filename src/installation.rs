@@ -155,7 +155,7 @@ impl InstallationContext {
                             .as_bytes(),
                         )?;
                     }
-                    crate::package_origin::PackageOrigin::Registry(source_registry) => {
+                    PackageOrigin::Registry(source_registry) => {
                         let package_source = sources.get(source_registry).unwrap();
                         let contents = package_source.download_package(package_id)?;
 
