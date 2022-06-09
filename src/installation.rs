@@ -121,7 +121,7 @@ impl InstallationContext {
                     PackageOrigin::Path(path_to_package) => {
                         let base_path = self.get_base_path(package_id, package_realm);
 
-                        log::info!("Creating project link for {}", base_path.display());
+                        log::info!("Creating project link for {}", package_id);
 
                         fs::create_dir_all(&base_path)?;
 
