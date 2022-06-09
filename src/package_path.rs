@@ -11,6 +11,9 @@ use serde::ser::{Serialize, Serializer};
 use crate::manifest::Manifest;
 use crate::package_req::PackageReq;
 
+/// A package path is a path to a valid package.
+/// Contains the path to the package and
+/// the PackageReq from the manifest for convenience.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct PackagePath {
     pub path: path::PathBuf,

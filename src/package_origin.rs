@@ -4,8 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::package_source::PackageSourceId;
 
-// I hate you with all with a burning passion.
-
+/// PackageOrigin is used to track where the package was originally found.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PackageOrigin {
     Path(PathBuf),
