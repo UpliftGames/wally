@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::path::PathBuf;
 
 use anyhow::bail;
 use anyhow::format_err;
@@ -78,6 +79,7 @@ pub struct DependencyRequest {
 
 pub fn resolve(
     root_manifest: &Manifest,
+    root_dir: &PathBuf,
     try_to_use: &BTreeMap<PackageId, PackageOrigin>,
     package_sources: &PackageSourceMap,
 ) -> anyhow::Result<Resolve> {
@@ -183,11 +185,11 @@ pub fn resolve(
         // Based on the origin of the dependency request, let's pull in the possible candidates.
         let (package_origin, mut candidates) = match dependency_request.package_origin {
             PackageOrigin::Path(path) => {
-                let candidate = Manifest::load(&path).unwrap();
+                let candidate = Manifest::load(&path)?;
                 // TODO: Some way to convert source_registry into a PackageSourceId?
                 // That way, it can be used later on for the dependencies of this candidate(?)
                 let _source_registry = candidate.package.registry.clone();
-                let manifests = vec![ candidate ];
+                let manifests = vec![candidate];
 
                 (PackageOrigin::Path(path), manifests)
             }
@@ -362,7 +364,12 @@ mod tests {
     fn test_project(registry: InMemoryRegistry, package: PackageBuilder) -> anyhow::Result<()> {
         let package_sources = PackageSourceMap::new(Box::new(registry.source()));
         let manifest = package.into_manifest();
-        let resolve = resolve(&manifest, &Default::default(), &package_sources)?;
+        let resolve = resolve(
+            &manifest,
+            &Default::default(),
+            &Default::default(),
+            &package_sources,
+        )?;
         insta::assert_yaml_snapshot!(resolve);
         Ok(())
     }
@@ -451,7 +458,13 @@ mod tests {
         let root = PackageBuilder::new("biff/root@1.0.0").with_dep("Server", "biff/server@1.0.0");
 
         let package_sources = PackageSourceMap::new(Box::new(registry.source()));
-        let err = resolve(root.manifest(), &Default::default(), &package_sources).unwrap_err();
+        let err = resolve(
+            root.manifest(),
+            &Default::default(),
+            &Default::default(),
+            &package_sources,
+        )
+        .unwrap_err();
         insta::assert_display_snapshot!(err);
     }
 
@@ -469,12 +482,18 @@ mod tests {
 
         let package_sources = PackageSourceMap::new(Box::new(registry.source()));
 
-        let resolved = resolve(root.manifest(), &Default::default(), &package_sources)?;
+        let resolved = resolve(
+            root.manifest(),
+            &Default::default(),
+            &Default::default(),
+            &package_sources,
+        )?;
         insta::assert_yaml_snapshot!("one_dependency_no_upgrade", resolved);
 
         registry.publish(PackageBuilder::new("biff/minimal@1.1.0"));
         let new_resolved = resolve(
             root.manifest(),
+            &Default::default(),
             &resolved.get_try_to_use(),
             &package_sources,
         )?;
@@ -493,7 +512,12 @@ mod tests {
 
         let package_sources = PackageSourceMap::new(Box::new(registry.source()));
 
-        let resolved = resolve(root.manifest(), &Default::default(), &package_sources)?;
+        let resolved = resolve(
+            root.manifest(),
+            &Default::default(),
+            &Default::default(),
+            &package_sources,
+        )?;
         insta::assert_yaml_snapshot!(resolved);
 
         // We can indicate that we'd like to upgrade a package by just removing
@@ -506,7 +530,12 @@ mod tests {
             .collect();
 
         registry.publish(PackageBuilder::new("biff/minimal@1.1.0"));
-        let new_resolved = resolve(root.manifest(), &try_to_use, &package_sources)?;
+        let new_resolved = resolve(
+            root.manifest(),
+            &Default::default(),
+            &try_to_use,
+            &package_sources,
+        )?;
         insta::assert_yaml_snapshot!(new_resolved);
 
         Ok(())
