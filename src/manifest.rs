@@ -58,16 +58,11 @@ impl Manifest {
     // i.e specific packages that are paths.
     /// Returns true or false if the manifest can be uploaded to the registry.
     pub fn suitable_for_registry(&self) -> bool {
-        let filter_for_path =
-            |x: &&PackageLocation| -> bool { matches!(x, PackageLocation::Path(_)) };
+        let not_path_locations =
+            |x: &PackageLocation| -> bool { !matches!(x, PackageLocation::Path(_)) };
 
-        self.dependencies.values().filter(filter_for_path).count() > 0
-            && self
-                .server_dependencies
-                .values()
-                .filter(filter_for_path)
-                .count()
-                > 0
+        self.dependencies.values().all(not_path_locations)
+            && self.server_dependencies.values().all(not_path_locations)
     }
 }
 
