@@ -238,7 +238,7 @@ impl InstallationContext {
             "#,
             packages = server_path,
             full_name = package_id_file_name(id),
-            short_name = short_name(&id)
+            short_name = short_name(id)
         };
 
         Ok(contents)

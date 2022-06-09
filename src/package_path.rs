@@ -47,7 +47,7 @@ impl FromStr for PackagePath {
 
 impl Serialize for PackagePath {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_str(&self.path.to_string_lossy().into_owned())
+        serializer.serialize_str(&self.path.to_string_lossy())
     }
 }
 
