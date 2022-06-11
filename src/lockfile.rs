@@ -49,12 +49,19 @@ impl Lockfile {
                 })
                 .unwrap_or_else(Vec::new);
 
-            packages.push(LockPackage::Registry(RegistryLockPackage {
-                name: package_id.name().clone(),
-                version: package_id.version().clone(),
-                checksum: None,
-                dependencies,
-            }));
+            packages.push(match &resolve.metadata[package_id].package_origin {
+                PackageOrigin::Registry(_) => LockPackage::Registry(RegistryLockPackage {
+                    name: package_id.name().clone(),
+                    version: package_id.version().clone(),
+                    checksum: None,
+                    dependencies,
+                }),
+                PackageOrigin::Path(path) => LockPackage::Path(PathLockPackage {
+                    path: path.clone(),
+                    dependencies,
+                }),
+                PackageOrigin::Git(_) => todo!(),
+            });
         }
 
         Self {
@@ -98,7 +105,10 @@ impl Lockfile {
             match package {
                 LockPackage::Registry(registry_package) => {
                     try_to_use.insert(
-                        PackageId::new(registry_package.name.clone(), registry_package.version.clone()),
+                        PackageId::new(
+                            registry_package.name.clone(),
+                            registry_package.version.clone(),
+                        ),
                         // TODO: Try using self.registry instead. I do not know how to make it work because it shouldn't be a string in the first place!
                         PackageOrigin::Registry(PackageSourceId::DefaultRegistry),
                     );
