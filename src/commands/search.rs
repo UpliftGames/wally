@@ -19,6 +19,10 @@ pub struct SearchSubcommand {
 
     /// The query to be dispatched to the search endpoint
     pub query: String,
+
+    /// The maximum depth to go to when traversing fallback registries
+    #[structopt(long = "max_depth", default_value = "255")]
+    pub max_depth: usize,
 }
 
 impl SearchSubcommand {
@@ -26,17 +30,17 @@ impl SearchSubcommand {
         let manifest = Manifest::load(&self.project_path)?;
         let auth_store = AuthStore::load()?;
 
-        let mut package_indexes: Vec<PackageIndex> = Vec::new();
-        let mut registry_order = vec![manifest.package.registry];
         let mut registry_index = 0;
+        let mut registry_order = vec![manifest.package.registry];
+        let mut registry_indexes: Vec<PackageIndex> = Vec::new();      
 
-        while registry_index < registry_order.len() {
+        while registry_index < registry_order.len() && registry_index < self.max_depth {
             let registry = &registry_order[registry_index];
             let url = url::Url::parse(&registry)?;
             let package_index = PackageIndex::new(&url, None)?;
             let fallback_registries = package_index.config()?.fallback_registries;
 
-            package_indexes.push(package_index);
+            registry_indexes.push(package_index);
 
             for fallback in fallback_registries {
                 // Prevent circular references by only adding new registries
@@ -49,12 +53,11 @@ impl SearchSubcommand {
         }
 
         let client = Client::new();
-        let mut results: Vec<SearchResult> = Vec::new();
 
-        for package_index in package_indexes {
-            log::info!("Searching package index {}...", package_index.url());
+        println!();
 
-            let api = package_index.config()?.api;
+        for index in registry_indexes {
+            let api = index.config()?.api;
             let auth = auth_store.tokens.get(api.as_str());
 
             let mut request = client
@@ -75,35 +78,36 @@ impl SearchSubcommand {
                 );
             }
 
-            let package_results: Vec<SearchResult> = response.json()?;
-            results.extend(package_results);
-        }
+            let mut results: Vec<SearchResult> = response.json()?;
 
-        println!();
+            if results.len() > 0 {
+                println!("{}Found in {}...", SetForegroundColor(Color::Blue), index.url());
 
-        for result in &mut results {
-            print!("{}{}/", SetForegroundColor(Color::DarkGrey), result.scope);
-            print!("{}{}", SetForegroundColor(Color::Reset), result.name);
-            print!(
-                "{}@{}{}",
-                SetForegroundColor(Color::DarkGrey),
-                SetForegroundColor(Color::Green),
-                result.versions.pop().unwrap(),
-            );
+                for result in &mut results {
+                    print!("{}{}/", SetForegroundColor(Color::DarkGrey), result.scope);
+                    print!("{}{}", SetForegroundColor(Color::Reset), result.name);
+                    print!(
+                        "{}@{}{}",
+                        SetForegroundColor(Color::DarkGrey),
+                        SetForegroundColor(Color::Green),
+                        result.versions.pop().unwrap(),
+                    );
 
-            if !result.versions.is_empty() {
-                print!(
-                    "{} ({})",
-                    SetForegroundColor(Color::DarkGrey),
-                    result.versions.join(", ")
-                );
-            }
+                    if !result.versions.is_empty() {
+                        print!(
+                            "{} ({})",
+                            SetForegroundColor(Color::DarkGrey),
+                            result.versions.join(", ")
+                        );
+                    }
 
-            println!("{}", SetForegroundColor(Color::Reset));
+                    println!("{}", SetForegroundColor(Color::Reset));
 
-            if let Some(description) = &result.description {
-                println!("    {}", description);
-                println!();
+                    if let Some(description) = &result.description {
+                        println!("    {}", description);
+                        println!();
+                    }
+                }
             }
         }
 
