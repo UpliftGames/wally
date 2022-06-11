@@ -21,7 +21,7 @@ pub struct SearchSubcommand {
     pub query: String,
 
     /// The maximum depth to go to when traversing fallback registries
-    #[structopt(long = "max_depth", default_value = "255")]
+    #[structopt(long = "max-depth", default_value = "255")]
     pub max_depth: usize,
 }
 
