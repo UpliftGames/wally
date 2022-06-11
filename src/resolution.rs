@@ -77,12 +77,14 @@ pub struct DependencyRequest {
     package_origin: PackageOrigin,
 }
 
+
 pub fn resolve(
     root_manifest: &Manifest,
     root_dir: &PathBuf,
     try_to_use: &BTreeMap<PackageId, PackageOrigin>,
     package_sources: &PackageSourceMap,
 ) -> anyhow::Result<Resolve> {
+
     let mut resolve = Resolve::default();
 
     // Insert root project into graph and activated dependencies, as it'll
@@ -106,7 +108,7 @@ pub fn resolve(
             request_realm: Realm::Shared,
             origin_realm: Realm::Shared,
             package_alias: alias.clone(),
-            package_req: req.package_req(),
+            package_req: req.package_req(root_dir)?,
             package_origin: req.package_origin(),
         });
     }
@@ -117,7 +119,7 @@ pub fn resolve(
             request_realm: Realm::Server,
             origin_realm: Realm::Server,
             package_alias: alias.clone(),
-            package_req: req.package_req(),
+            package_req: req.package_req(root_dir)?,
             package_origin: req.package_origin(),
         });
     }
@@ -128,7 +130,7 @@ pub fn resolve(
             request_realm: Realm::Dev,
             origin_realm: Realm::Dev,
             package_alias: alias.clone(),
-            package_req: req.package_req(),
+            package_req: req.package_req(root_dir)?,
             package_origin: req.package_origin(),
         });
     }
@@ -292,7 +294,7 @@ pub fn resolve(
                     request_realm: Realm::Shared,
                     origin_realm: dependency_request.origin_realm,
                     package_alias: alias.clone(),
-                    package_req: req.package_req(),
+                    package_req: req.package_req(root_dir)?,
                     // TODO: what happens if a package dependency also has a path dependency?
                     // I don't think Wally is going to resolve it correctly...
                     package_origin: req.package_origin(),
@@ -305,7 +307,7 @@ pub fn resolve(
                     request_realm: Realm::Server,
                     origin_realm: dependency_request.origin_realm,
                     package_alias: alias.clone(),
-                    package_req: req.package_req(),
+                    package_req: req.package_req(root_dir)?,
                     // Same for the loop previously.
                     package_origin: req.package_origin(),
                 })

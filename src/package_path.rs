@@ -4,7 +4,6 @@ use std::fmt;
 use std::str::FromStr;
 
 use semver::VersionReq;
-
 use serde::de::{Deserialize, Deserializer, Error, Visitor};
 use serde::ser::{Serialize, Serializer};
 
@@ -12,26 +11,29 @@ use crate::manifest::Manifest;
 use crate::package_req::PackageReq;
 
 /// A package path is a path to a valid package.
-/// Contains the path to the package and
-/// the PackageReq from the manifest for convenience.
+/// Contains the path to the package.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct PackagePath {
     // TODO: Consider only allowing relative paths?
     pub path: path::PathBuf,
-    pub req: PackageReq,
 }
 
-// TODO: Make PackagePath use `fs+`
 impl PackagePath {
-    fn new(path: path::PathBuf) -> anyhow::Result<Self> {
-        let manifest = Manifest::load(&path)?;
+    pub fn new(path: path::PathBuf) -> Self {
+        Self { path }
+    }
 
-        let package_req = PackageReq::new(
-            manifest.package_id().name().to_owned(),
-            VersionReq::exact(manifest.package_id().version()),
-        );
+    fn get_manifest_relative(&self, project_root: &path::Path) -> anyhow::Result<Manifest> {
+        Manifest::load(&project_root.join(&self.path))
+    }
 
-        Ok(Self { path, req: package_req })
+    pub fn get_package_req(&self, project_root: &path::Path) -> anyhow::Result<PackageReq> {
+        let manifest = self.get_manifest_relative(&project_root)?;
+
+        Ok(PackageReq::new(
+            manifest.package.name.clone(),
+            VersionReq::exact(&manifest.package.version),
+        ))
     }
 }
 
@@ -45,10 +47,11 @@ impl FromStr for PackagePath {
     type Err = anyhow::Error;
 
     fn from_str(value: &str) -> anyhow::Result<Self> {
-        Self::new(value.parse()?)
+        Ok(Self::new(value.parse()?))
     }
 }
 
+// TODO: Make PackagePath use `fs+`
 impl Serialize for PackagePath {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_str(&self.path.to_string_lossy())
@@ -91,13 +94,13 @@ mod test {
 
     #[test]
     fn new() {
-        let package_path = PackagePath::new(from_test_path("minimal")).unwrap();
+        let package_path = PackagePath::new(from_test_path("minimal"));
         assert_eq!(package_path.path, from_test_path("minimal"));
     }
 
     #[test]
     fn display() {
-        let package_path = PackagePath::new(from_test_path("one-dependency")).unwrap();
+        let package_path = PackagePath::new(from_test_path("one-dependency"));
         assert_eq!(
             package_path.to_string(),
             from_test_path_str("one-dependency")
@@ -115,11 +118,6 @@ mod test {
     fn parse_invalid() {
         // Conversion is infalliable and thus, there is never an invaild parse.
         // https://doc.rust-lang.org/src/std/path.rs.html#1684
-        // But, we can still test for invaild paths.
-
-        let _ = from_test_path_str("does-not-exist")
-            .parse::<PackagePath>()
-            .unwrap_err();
     }
 
     #[test]
@@ -128,7 +126,10 @@ mod test {
         let package_path: PackagePath = from_test_path_str("minimal").parse().unwrap();
 
         let serialized = serde_json::to_string(&package_path).unwrap();
-        assert_eq!(serialized, "\"".to_owned() + &from_test_path_str("minimal") + "\"");
+        assert_eq!(
+            serialized,
+            "\"".to_owned() + &from_test_path_str("minimal") + "\""
+        );
 
         let deserialized: PackagePath = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized, package_path)
