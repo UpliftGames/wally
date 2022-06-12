@@ -70,15 +70,11 @@ impl TempProject {
         self.dir.path()
     }
 
-    /// Leak our reference to the temporary directory, allowing it to persist
-    /// after the test runs. Useful for debugging.
+    /// Allow the temporary directory to persist after the test runs. Useful for
+    /// debugging.
     #[allow(unused)]
     fn leak(self) -> PathBuf {
-        let path = self.dir.path().to_owned();
-        let dir = Box::new(self.dir);
-        Box::leak(dir);
-
-        path
+        self.dir.into_path()
     }
 }
 
