@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::bail;
 use anyhow::format_err;
@@ -9,6 +9,7 @@ use serde::Serialize;
 
 use crate::manifest::{Manifest, Realm};
 use crate::package_id::PackageId;
+use crate::package_location::PackageLocation;
 use crate::package_origin::PackageOrigin;
 use crate::package_req::PackageReq;
 use crate::package_source::{PackageSourceId, PackageSourceMap};
@@ -77,6 +78,52 @@ pub struct DependencyRequest {
     package_origin: PackageOrigin,
 }
 
+struct ResolvedPackageLocations {
+    packages: BTreeMap<PackageLocation, PackageReq>,
+    project_dir: PathBuf,
+}
+
+impl ResolvedPackageLocations {
+    fn new(project_dir: &PathBuf) -> Self {
+        ResolvedPackageLocations {
+            packages: BTreeMap::new(),
+            project_dir: project_dir.to_path_buf(),
+        }
+    }
+
+    fn resolve_package_location(&mut self, resolving: &PackageLocation) -> anyhow::Result<()> {
+        let resolved_req = match resolving {
+            PackageLocation::Registry(package_req) => package_req.to_owned(),
+            PackageLocation::Path(package_path) => {
+                package_path.get_package_req(&self.project_dir)?
+            }
+        };
+
+        self.packages
+            .insert(resolving.clone(), resolved_req.clone());
+
+        Ok(())
+    }
+    // fn get_package_req(
+    //     &mut self,
+    //     package: &PackageLocation,
+    //     project_root: &Path,
+    // ) -> anyhow::Result<PackageReq> {
+    //     if let Some(req) = self.packages.get(&package) {
+    //         return Ok(req.clone());
+    //     }
+
+    //     let req = match package {
+    //         PackageLocation::Registry(ref req) => req.clone(),
+    //         PackageLocation::Path(ref package_path) => {
+    //             package_path.get_package_req(project_root)?
+    //         }
+    //     };
+
+    //     self.packages.insert(package.clone(), req.clone());
+    //     Ok(req)
+    // }
+}
 
 pub fn resolve(
     root_manifest: &Manifest,
@@ -84,8 +131,8 @@ pub fn resolve(
     try_to_use: &BTreeMap<PackageId, PackageOrigin>,
     package_sources: &PackageSourceMap,
 ) -> anyhow::Result<Resolve> {
-
     let mut resolve = Resolve::default();
+    // let mut touched_packages = ResolvedPackageLocations::new();
 
     // Insert root project into graph and activated dependencies, as it'll
     // always be present.
@@ -187,7 +234,7 @@ pub fn resolve(
         // Based on the origin of the dependency request, let's pull in the possible candidates.
         let (package_origin, mut candidates) = match dependency_request.package_origin {
             PackageOrigin::Path(path) => {
-                let candidate = Manifest::load(&path)?;
+                let candidate = Manifest::load(&root_dir.join(&path))?;
                 // TODO: Some way to convert source_registry into a PackageSourceId?
                 // That way, it can be used later on for the dependencies of this candidate(?)
                 let _source_registry = candidate.package.registry.clone();
