@@ -28,7 +28,7 @@ impl PackagePath {
     }
 
     pub fn get_package_req(&self, project_root: &path::Path) -> anyhow::Result<PackageReq> {
-        let manifest = self.get_manifest_relative(&project_root)?;
+        let manifest = self.get_manifest_relative(project_root)?;
 
         Ok(PackageReq::new(
             manifest.package.name.clone(),

@@ -21,7 +21,7 @@ pub enum PackageLocation {
     Path(PackagePath),
 }
 
-// Super-hacky: make them into a trait heaven sakes!
+// Helpers for resolution.
 impl PackageLocation {
     pub fn name(&self, project_root: &path::Path) -> anyhow::Result<PackageName> {
         Ok(match self {
@@ -55,9 +55,8 @@ impl PackageLocation {
     pub fn package_origin(&self) -> PackageOrigin {
         match self {
             // TODO: PackageLocation does not encode the source registry. It only encodes the packageId itself.
-            // Maybe change it so that it does contain the source registry.
+            // Maybe change it so that it does contain the source registry?
             // Otherwise, package_origin could take an argument for the expected registry.
-            // *sigh*
             PackageLocation::Registry(_) => {
                 PackageOrigin::Registry(PackageSourceId::DefaultRegistry)
             }
