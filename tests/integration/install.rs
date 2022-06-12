@@ -30,6 +30,11 @@ fn dev_dependency() {
     run_test("dev-dependency");
 }
 
+#[test]
+fn with_path_dependency() {
+    run_test("with-path-dependency");
+}
+
 fn run_test(name: &str) -> TempProject {
     let source_project =
         Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/test-projects",)).join(name);
@@ -82,7 +87,7 @@ impl TempProject {
 /// function with temp directories, the destination directory is expected to
 /// already exist.
 fn copy_dir_all(from: &Path, into: &Path) -> anyhow::Result<()> {
-    let source = WalkDir::new(from).min_depth(1).follow_links(true);
+    let source = WalkDir::new(from).min_depth(1).max_depth(100).follow_links(true);
 
     for entry in source {
         let entry = entry?;
