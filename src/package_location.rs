@@ -15,9 +15,6 @@ use serde::Serialize;
 #[serde(untagged)]
 pub enum PackageLocation {
     Registry(PackageReq),
-    // Path should always be the last enumeration as we want to try parsing a
-    // PackagePath last! Doing it first will always succeed due to a path being
-    // infallible.
     Path(PackagePath),
 }
 

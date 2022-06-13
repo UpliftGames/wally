@@ -3,6 +3,8 @@ use std::path;
 use std::fmt;
 use std::str::FromStr;
 
+use anyhow::bail;
+use anyhow::Context;
 use semver::VersionReq;
 use serde::de::{Deserialize, Deserializer, Error, Visitor};
 use serde::ser::{Serialize, Serializer};
@@ -39,7 +41,7 @@ impl PackagePath {
 
 impl fmt::Display for PackagePath {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "{}", self.path.to_string_lossy())
+        write!(formatter, "fs+{}", self.path.to_string_lossy())
     }
 }
 
@@ -47,14 +49,24 @@ impl FromStr for PackagePath {
     type Err = anyhow::Error;
 
     fn from_str(value: &str) -> anyhow::Result<Self> {
-        Ok(Self::new(value.parse()?))
+        let (package_location_type, path) = value
+            .split_once("+")
+            .context("Expected a delimiter of '+'")?;
+
+        if package_location_type != "fs" {
+            bail!(format!(
+                "Package location is not fs as expected, but instead is {}",
+                package_location_type
+            ))
+        }
+
+        Ok(Self::new(path.parse()?))
     }
 }
 
-// TODO: Make PackagePath use `fs+`
 impl Serialize for PackagePath {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_str(&self.path.to_string_lossy())
+        serializer.serialize_str(&self.to_string())
     }
 }
 
@@ -79,57 +91,48 @@ impl<'de> Visitor<'de> for PackagePathVisitor {
 }
 
 #[cfg(test)]
-// TODO: Test for version!
 mod test {
-    use super::*;
     use std::path::PathBuf;
 
-    fn from_test_path_str(path: &str) -> String {
-        env!("CARGO_MANIFEST_DIR").to_owned() + "/test-projects/" + path + "/"
-    }
-
-    fn from_test_path(path: &str) -> PathBuf {
-        PathBuf::from(from_test_path_str(path))
-    }
+    use super::*;
 
     #[test]
     fn new() {
-        let package_path = PackagePath::new(from_test_path("minimal"));
-        assert_eq!(package_path.path, from_test_path("minimal"));
+        let path = PathBuf::from("test/minimal");
+
+        let package_path = PackagePath::new(path.clone());
+        assert_eq!(package_path.path, path);
     }
 
     #[test]
     fn display() {
-        let package_path = PackagePath::new(from_test_path("one-dependency"));
-        assert_eq!(
-            package_path.to_string(),
-            from_test_path_str("one-dependency")
-        );
+        let path = PathBuf::from("test/minimal");
+        let package_path = PackagePath::new(path);
+
+        assert_eq!(package_path.to_string(), "fs+test/minimal");
     }
 
     #[test]
     fn parse() {
-        let package_path: PackagePath = from_test_path_str("minimal").parse().unwrap();
+        let package_path: PackagePath = "fs+hello/world".parse().unwrap();
 
-        assert_eq!(package_path.to_string(), from_test_path_str("minimal"));
+        assert_eq!(package_path.path.to_str().unwrap(), "hello/world");
     }
 
     #[test]
     fn parse_invalid() {
-        // Conversion is infalliable and thus, there is never an invaild parse.
-        // https://doc.rust-lang.org/src/std/path.rs.html#1684
+        // Requires a '+' to make sure it isn't conflated with a PackageReq.
+        "hello/world".parse::<PackagePath>().unwrap_err();
+        // Requires a 'fs+' specifically.
+        "git+hello/world".parse::<PackagePath>().unwrap_err();
     }
 
     #[test]
-    #[ignore = "Not sure how to handle the mixing between Windows path and unix paths."]
     fn serialization() {
-        let package_path: PackagePath = from_test_path_str("minimal").parse().unwrap();
+        let package_path: PackagePath = "fs+hello/world/among".parse().unwrap();
 
         let serialized = serde_json::to_string(&package_path).unwrap();
-        assert_eq!(
-            serialized,
-            "\"".to_owned() + &from_test_path_str("minimal") + "\""
-        );
+        assert_eq!(serialized, r#""fs+hello/world/among""#);
 
         let deserialized: PackagePath = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized, package_path)

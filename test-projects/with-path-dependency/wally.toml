@@ -6,4 +6,4 @@ realm = "server"
 registry = "test-registries/primary-registry"
 
 [server-dependencies]
-OneDependency = "./path-sub-dependency"
+OneDependency = "fs+./path-sub-dependency"
