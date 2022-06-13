@@ -84,7 +84,6 @@ pub fn resolve(
     package_sources: &PackageSourceMap,
 ) -> anyhow::Result<Resolve> {
     let mut resolve = Resolve::default();
-    // let mut touched_packages = ResolvedPackageLocations::new();
 
     // Insert root project into graph and activated dependencies, as it'll
     // always be present.
@@ -186,6 +185,15 @@ pub fn resolve(
         // Based on the origin of the dependency request, let's pull in the possible candidates.
         let (package_origin, mut candidates) = match dependency_request.package_origin {
             PackageOrigin::Path(path) => {
+                // It's illegal for any sub-packages to have path dependencies.
+                if dependency_request.request_source != root_manifest.package_id() {
+                    bail!(format!(
+                        "Unexpected path dependency ({}) within the {} dependency.",
+                        path.display(),
+                        dependency_request.request_source
+                    ))
+                }
+
                 let candidate = Manifest::load(&root_dir.join(&path))?;
                 // TODO: Some way to convert source_registry into a PackageSourceId?
                 // That way, it can be used later on for the dependencies of this candidate(?)
@@ -296,6 +304,7 @@ pub fn resolve(
                     package_req: req.package_req(root_dir)?,
                     // TODO: what happens if a package dependency also has a path dependency?
                     // I don't think Wally is going to resolve it correctly...
+                    // It shouldn't be possible because a dependency shouldn't have a path dependency.
                     package_origin: req.package_origin(),
                 })
             }
