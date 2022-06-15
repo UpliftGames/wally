@@ -151,6 +151,15 @@ async fn publish(
     let manifest = get_manifest(&mut archive).status(Status::BadRequest)?;
     let package_id = manifest.package_id();
 
+    // TODO: Add better error message.
+    if !manifest.suitable_for_registry() {
+        return Err(format_err!(
+            "Package is not suitable for registry. Do you have any dependencies based on a path?"
+        )
+        // Makes sense, but it's wrong.
+        .status(Status::UnprocessableEntity));
+    }
+
     if !authorization.can_write_package(&package_id, &index)? {
         return Err(format_err!(
             "you do not have permission to write in scope {}",

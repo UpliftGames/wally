@@ -53,10 +53,10 @@ impl Manifest {
         PackageId::new(self.package.name.clone(), self.package.version.clone())
     }
 
-    // TODO: Enforce this on the registry-side as well?
     // TODO: Provide helpful reasons to why the package cannot be uploaded
     // i.e specific packages that are paths.
     /// Returns true or false if the manifest can be uploaded to the registry.
+    /// We don't care if there's any path dependencies listed in dev-dependencies.
     pub fn suitable_for_registry(&self) -> bool {
         let not_path_locations =
             |x: &PackageLocation| -> bool { !matches!(x, PackageLocation::Path(_)) };
