@@ -13,6 +13,7 @@ mod tests;
 use std::convert::TryInto;
 use std::io::{Cursor, Read, Seek};
 use std::sync::RwLock;
+use std::env;
 
 use anyhow::{format_err, Context};
 use figment::{
@@ -46,7 +47,7 @@ use crate::auth::{ReadAccess, WriteAccess};
 use crate::config::Config;
 use crate::error::{ApiErrorContext, ApiErrorStatus, Error};
 use crate::search::SearchBackend;
-use crate::storage::{GcsStorage, LocalStorage, StorageBackend, StorageOutput};
+use crate::storage::{S3Storage, GcsStorage, LocalStorage, StorageBackend, StorageOutput};
 
 #[get("/")]
 fn root() -> Json<serde_json::Value> {
@@ -228,6 +229,7 @@ pub fn server(figment: Figment) -> rocket::Rocket {
     let storage_backend: Box<dyn StorageBackend> = match config.storage {
         StorageMode::Local { path } => Box::new(LocalStorage::new(path)),
         StorageMode::Gcs { bucket } => Box::new(configure_gcs(bucket).unwrap()),
+        StorageMode::S3 { bucket } => Box::new(configure_s3(bucket).unwrap()),
     };
 
     println!("Cloning package index repository...");
@@ -270,6 +272,27 @@ fn configure_gcs(bucket: String) -> anyhow::Result<GcsStorage> {
     let client = Client::new(token_provider).into_bucket_client(bucket);
 
     Ok(GcsStorage::new(client))
+}
+
+fn configure_s3(bucket: String) -> anyhow::Result<S3Storage> {
+    use rusoto_core::{
+        request::HttpClient,
+        credential::ChainProvider,
+        Region
+    };
+
+    use rusoto_s3::S3Client;
+
+    let client = S3Client::new_with(
+        HttpClient::new()?,
+        ChainProvider::new(),
+        Region::Custom {
+            name: env::var("AWS_REGION_NAME").unwrap_or("us-east-1".to_string()).to_owned(),
+            endpoint: env::var("AWS_REGION_ENDPOINT")?.to_owned(),
+        }
+    );
+
+    Ok(S3Storage::new(client, bucket))
 }
 
 struct Cors;

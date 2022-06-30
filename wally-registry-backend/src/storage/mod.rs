@@ -1,5 +1,6 @@
 mod gcs;
 mod local;
+mod s3;
 
 use std::path::PathBuf;
 
@@ -10,12 +11,14 @@ use tokio::io::AsyncRead;
 
 pub use gcs::GcsStorage;
 pub use local::LocalStorage;
+pub use s3::S3Storage;
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum StorageMode {
     Local { path: Option<PathBuf> },
     Gcs { bucket: String },
+    S3 { bucket: String },
 }
 
 pub type StorageOutput = Box<dyn AsyncRead + Unpin + Send + Sync + 'static>;
