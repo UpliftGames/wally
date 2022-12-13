@@ -149,7 +149,7 @@ impl WriteAccess {
             WriteAccess::Github(github_info) => {
                 let id = github_info.id();
 
-                if banned_github_ids.0.contains(id) {
+                if banned_github_ids.contains(id) {
                     // This user is banned from publishing any packages
                     return Ok(false);
                 }

@@ -12,6 +12,7 @@ mod tests;
 
 use std::convert::TryInto;
 use std::io::{Cursor, Read, Seek};
+use std::ops::Deref;
 use std::sync::RwLock;
 
 use anyhow::{format_err, Context};
@@ -278,6 +279,14 @@ fn configure_gcs(bucket: String) -> anyhow::Result<GcsStorage> {
 
 #[derive(Debug)]
 pub struct BannedGithubIds(pub Vec<u64>);
+
+impl Deref for BannedGithubIds {
+    type Target = Vec<u64>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 struct Cors;
 
