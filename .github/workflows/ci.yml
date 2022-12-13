@@ -26,6 +26,8 @@ jobs:
 
     - name: Build
       run: cargo build --all --verbose --locked
+      env:
+        OPENSSL_STATIC: 1
 
     - name: Run tests
       run: cargo test --all --verbose --locked
