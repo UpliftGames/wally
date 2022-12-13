@@ -1,0 +1,25 @@
+name: Tree
+
+on:
+  push:
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        rust_version: [stable]
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup Rust toolchain
+      run: rustup default ${{ matrix.rust_version }}
+
+    - name: Build
+      run: cargo tree
+      
+    - name: Build
+      run: cargo tree -i openssl-sys
