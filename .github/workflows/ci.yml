@@ -25,7 +25,9 @@ jobs:
       run: rustup default ${{ matrix.rust_version }}
 
     - name: Build
-      run: cargo build --all --verbose --locked
+      run: |
+        sudo apt-get install libssl-dev
+        cargo build --all --verbose --locked
 
     - name: Run tests
       run: cargo test --all --verbose --locked
