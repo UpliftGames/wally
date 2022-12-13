@@ -22,4 +22,7 @@ pub struct Config {
 
     /// The minimum wally cli version required to publish to the registry
     pub minimum_wally_version: Option<Version>,
+
+    /// List of GitHub user IDs that are banned from writing to any package.
+    pub banned_github_ids: Option<Vec<u64>>,
 }

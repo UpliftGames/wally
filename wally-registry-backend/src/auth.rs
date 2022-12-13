@@ -11,8 +11,8 @@ use rocket::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::error::Error;
 use crate::{config::Config, error::ApiErrorStatus};
+use crate::{error::Error, BannedGithubIds};
 
 #[derive(Deserialize, Serialize)]
 #[serde(tag = "type", content = "value", rename_all = "kebab-case")]
@@ -140,13 +140,21 @@ impl WriteAccess {
         &self,
         package_id: &PackageId,
         index: &PackageIndex,
+        banned_github_ids: &BannedGithubIds,
     ) -> anyhow::Result<bool> {
         let scope = package_id.name().scope();
 
         let has_permission = match self {
             WriteAccess::ApiKey => true,
             WriteAccess::Github(github_info) => {
-                match index.is_scope_owner(scope, github_info.id())? {
+                let id = github_info.id();
+
+                if banned_github_ids.0.contains(id) {
+                    // This user is banned from publishing any packages
+                    return Ok(false);
+                }
+
+                match index.is_scope_owner(scope, id)? {
                     true => true,
                     false => github_info.login().to_lowercase() == scope,
                 }

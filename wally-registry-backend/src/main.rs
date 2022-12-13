@@ -124,6 +124,7 @@ async fn publish(
     storage: State<'_, Box<dyn StorageBackend>>,
     search_backend: State<'_, RwLock<SearchBackend>>,
     index: State<'_, PackageIndex>,
+    banned_user_ids: State<'_, BannedGithubIds>,
     authorization: Result<WriteAccess, Error>,
     _cli_version: Result<WallyVersion, Error>,
     data: Data,
@@ -151,7 +152,7 @@ async fn publish(
     let manifest = get_manifest(&mut archive).status(Status::BadRequest)?;
     let package_id = manifest.package_id();
 
-    if !authorization.can_write_package(&package_id, &index)? {
+    if !authorization.can_write_package(&package_id, &index, &banned_user_ids)? {
         return Err(format_err!(
             "you do not have permission to write in scope {}",
             package_id.name().scope()
@@ -236,6 +237,8 @@ pub fn server(figment: Figment) -> rocket::Rocket {
     println!("Initializing search backend...");
     let search_backend = SearchBackend::new(&package_index).unwrap();
 
+    let banned_github_ids = BannedGithubIds(config.banned_github_ids.unwrap_or_else(|| Vec::new()));
+
     rocket::custom(figment)
         .mount(
             "/",
@@ -249,6 +252,7 @@ pub fn server(figment: Figment) -> rocket::Rocket {
         )
         .manage(storage_backend)
         .manage(package_index)
+        .manage(banned_github_ids)
         .manage(RwLock::new(search_backend))
         .attach(AdHoc::config::<Config>())
         .attach(Cors)
@@ -271,6 +275,9 @@ fn configure_gcs(bucket: String) -> anyhow::Result<GcsStorage> {
 
     Ok(GcsStorage::new(client))
 }
+
+#[derive(Debug)]
+pub struct BannedGithubIds(pub Vec<u64>);
 
 struct Cors;
 
