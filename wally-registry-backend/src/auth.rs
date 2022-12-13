@@ -148,7 +148,8 @@ impl WriteAccess {
             WriteAccess::Github(github_info) => {
                 match index.is_scope_owner(scope, github_info.id())? {
                     true => true,
-                    false => github_info.login().to_lowercase() == scope,
+                    // Only grant write access if the username matches the scope AND the scope has no existing owners
+                    false => github_info.login().to_lowercase() == scope && index.get_scope_owners(scope)?.len() == 0,
                 }
             }
         };
