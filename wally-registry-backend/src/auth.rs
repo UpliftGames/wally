@@ -150,7 +150,7 @@ impl WriteAccess {
                     true => true,
                     // Only grant write access if the username matches the scope AND the scope has no existing owners
                     false => github_info.login().to_lowercase() == scope 
-                        && index.get_scope_owners(scope)?.is_empty(),
+                            && index.get_scope_owners(scope)?.is_empty(),
                 }
             }
         };
