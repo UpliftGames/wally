@@ -23,3 +23,15 @@ jobs:
       
     - name: Build
       run: cargo tree -i openssl-sys
+
+    - name: Build
+      run: cargo build --all --verbose --locked
+
+    - name: Run tests
+      run: cargo test --all --verbose --locked
+
+    - name: Rustfmt and Clippy
+      run: |
+        cargo fmt --all -- --check
+        cargo clippy --all
+      if: matrix.rust_version == 'stable'
