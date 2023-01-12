@@ -17,6 +17,16 @@ pub struct LoginSubcommand {
     /// Path to a project to decide how to login
     #[structopt(long = "project-path", default_value = ".")]
     pub project_path: PathBuf,
+    /// GitHub auth token to set directly
+    ///
+    /// Must be used in conjunction with --api
+    #[structopt(long = "token")]
+    pub token: Option<String>,
+    /// URL of the remote index to add an auth token for
+    ///
+    /// Must be used in conjunction with --token
+    #[structopt(long = "api")]
+    pub api: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -105,15 +115,23 @@ fn prompt_github_auth(api: url::Url, github_oauth_id: &str) -> anyhow::Result<()
 
 impl LoginSubcommand {
     pub fn run(self) -> anyhow::Result<()> {
-        let manifest = Manifest::load(&self.project_path)?;
-        let registry = Url::parse(&manifest.package.registry)?;
-        let package_index = PackageIndex::new(&registry, None)?;
-        let api = package_index.config()?.api;
-        let github_oauth_id = package_index.config()?.github_oauth_id;
+        if self.api.is_some() != self.token.is_some() {
+            anyhow::bail!("Both --api and --token must be passed to manually set an auth token")
+        }
+        match self.api.zip(self.token) {
+            Some((api, token)) => AuthStore::set_token(&api, Some(&token)),
+            None => {
+                let manifest = Manifest::load(&self.project_path)?;
+                let registry = Url::parse(&manifest.package.registry)?;
+                let package_index = PackageIndex::new(&registry, None)?;
+                let api = package_index.config()?.api;
+                let github_oauth_id = package_index.config()?.github_oauth_id;
 
-        match github_oauth_id {
-            None => prompt_api_key(api),
-            Some(github_oauth_id) => prompt_github_auth(api, &github_oauth_id),
+                match github_oauth_id {
+                    None => prompt_api_key(api),
+                    Some(github_oauth_id) => prompt_github_auth(api, &github_oauth_id),
+                }
+            }
         }
     }
 }
