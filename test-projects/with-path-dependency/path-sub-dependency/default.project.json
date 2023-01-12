@@ -1,0 +1,6 @@
+{
+	"name": "path-sub-dependency",
+	"tree": {
+		"$path": "src"
+	}
+}

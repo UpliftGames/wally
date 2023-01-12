@@ -67,7 +67,7 @@ Parity with:
 * `npm update` (npm 7+, equivalent to `--depth 9999` in npm 6.x and older)
 
 ### `wally publish`
-Publish the current package.
+Publish the current package. Path dependencies are forbidden.
 
 Parity with:
 * `cargo publish`
@@ -169,6 +169,12 @@ exclude = ["node_modules"]
 # Cargo, or npm with the `^` version specifier.
 Roact = "roblox/roact@1.2.0"
 Promise = "evaera/promise@2.0.1"
+
+# It's possible to require a dependency via path as well.
+# Use the format: "fs+with/path/here/to/folder"
+#
+# For example, you may want to develop a package and test locally, without publishing.
+Rodux = "fs+../Rodux"
 
 [server-dependencies]
 # Dependencies in the server realm can be required here as shown above.

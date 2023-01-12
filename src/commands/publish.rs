@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::Context;
+use anyhow::{bail, Context};
 use structopt::StructOpt;
 use url::Url;
 
@@ -22,6 +22,15 @@ pub struct PublishSubcommand {
 impl PublishSubcommand {
     pub fn run(self, global: GlobalOptions) -> anyhow::Result<()> {
         let manifest = Manifest::load(&self.project_path)?;
+
+        if !manifest.suitable_for_registry() {
+            bail!(
+                "The manifest is not suitable to be published. It is likely that \
+                there is a non-dev dependency(s) which has a path location. \
+                Replace those dependency(s) with a non-path version and try again."
+            )
+        }
+
         let auth_store = AuthStore::load()?;
 
         let index_url = if global.test_registry {

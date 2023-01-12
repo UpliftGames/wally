@@ -1,7 +1,6 @@
 ---
 source: src/resolution.rs
 expression: resolve
-
 ---
 activated:
   - biff/a@1.0.0
@@ -12,19 +11,23 @@ metadata:
   biff/a@1.0.0:
     realm: shared
     origin_realm: shared
-    source_registry: DefaultRegistry
+    package_origin:
+      Registry: DefaultRegistry
   biff/b@1.0.0:
     realm: shared
     origin_realm: shared
-    source_registry: DefaultRegistry
+    package_origin:
+      Registry: DefaultRegistry
   biff/c@1.0.0:
     realm: shared
     origin_realm: shared
-    source_registry: DefaultRegistry
+    package_origin:
+      Registry: DefaultRegistry
   biff/d@1.0.0:
     realm: shared
     origin_realm: shared
-    source_registry: DefaultRegistry
+    package_origin:
+      Registry: DefaultRegistry
 shared_dependencies:
   biff/a@1.0.0:
     B: biff/b@1.0.0

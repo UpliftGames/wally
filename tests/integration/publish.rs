@@ -60,3 +60,35 @@ fn check_mismatched_names() {
     // default.project.json should now contain mismatched-name instead of Mismatched-name
     assert_eq!(project_name, "mismatched-name");
 }
+
+/// If there's any path dependencies listed in wally.toml, then it shouldn't be uplaoded.
+#[test]
+fn fail_to_upload_with_path_dependencies() {
+    let test_projects = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/test-projects",));
+    let test_registry = Path::new(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/test-registries/primary-registry"
+    ));
+
+    git_util::init_test_repo(&test_registry.join("index")).unwrap();
+
+    let args = Args {
+        global: GlobalOptions {
+            test_registry: true,
+            use_temp_index: true,
+            ..Default::default()
+        },
+        subcommand: Subcommand::Publish(PublishSubcommand {
+            project_path: test_projects.join("with-path-dependency"),
+        }),
+    };
+
+    let error = args.run()
+        .expect_err("Should not be able to publish due to path dependency present.");
+
+    assert!(
+        error.to_string().contains("suitable"),
+        "Expected error message regarding disallowed dependencies. Instead we got: {:#}",
+        error
+    )
+}

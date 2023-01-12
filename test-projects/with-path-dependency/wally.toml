@@ -1,0 +1,9 @@
+[package]
+name = "biff/with-path-dependency"
+version = "0.1.0"
+license = "MIT"
+realm = "server"
+registry = "test-registries/primary-registry"
+
+[server-dependencies]
+OneDependency = "fs+./path-sub-dependency"

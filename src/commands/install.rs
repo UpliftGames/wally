@@ -1,15 +1,13 @@
-use std::collections::BTreeSet;
 use std::path::PathBuf;
 
 use structopt::StructOpt;
 
 use crate::installation::InstallationContext;
-use crate::lockfile::{LockPackage, Lockfile};
+use crate::lockfile::Lockfile;
 use crate::manifest::Manifest;
 use crate::package_id::PackageId;
-use crate::package_source::{
-    PackageSource, PackageSourceId, PackageSourceMap, Registry, TestRegistry,
-};
+use crate::package_source::{PackageSource, PackageSourceMap, Registry, TestRegistry};
+
 use crate::resolution::resolve;
 
 use super::GlobalOptions;
@@ -38,20 +36,9 @@ impl InstallSubcommand {
         let mut package_sources = PackageSourceMap::new(default_registry);
         package_sources.add_fallbacks()?;
 
-        let mut try_to_use = BTreeSet::new();
-        for package in lockfile.packages {
-            match package {
-                LockPackage::Registry(registry_package) => {
-                    try_to_use.insert(PackageId::new(
-                        registry_package.name,
-                        registry_package.version,
-                    ));
-                }
-                LockPackage::Git(_) => {}
-            }
-        }
+        let try_to_use = lockfile.get_try_to_use();
 
-        let resolved = resolve(&manifest, &try_to_use, &package_sources)?;
+        let resolved = resolve(&manifest, &self.project_path, &try_to_use, &package_sources)?;
 
         let lockfile = Lockfile::from_resolve(&resolved);
         lockfile.save(&self.project_path)?;

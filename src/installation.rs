@@ -1,16 +1,18 @@
 use std::{
     fmt::Display,
-    io,
+    io::{self, Write},
     path::{Path, PathBuf},
 };
 
-use anyhow::{bail, format_err};
+use anyhow::{bail, format_err, Context};
 use fs_err as fs;
 use indoc::{formatdoc, indoc};
+use path_slash::PathBufExt;
+use pathdiff::diff_paths;
 
 use crate::{
     manifest::Realm, package_contents::PackageContents, package_id::PackageId,
-    package_source::PackageSourceMap, resolution::Resolve,
+    package_origin::PackageOrigin, package_source::PackageSourceMap, resolution::Resolve,
 };
 
 pub struct InstallationContext {
@@ -22,6 +24,7 @@ pub struct InstallationContext {
     server_path: Option<String>,
     dev_dir: PathBuf,
     dev_index_dir: PathBuf,
+    project_path: PathBuf,
 }
 
 impl InstallationContext {
@@ -40,6 +43,7 @@ impl InstallationContext {
         let dev_index_dir = dev_dir.join("_Index");
 
         Self {
+            project_path: project_path.to_path_buf(),
             shared_dir,
             shared_index_dir,
             shared_path,
@@ -112,11 +116,47 @@ impl InstallationContext {
                     self.write_package_links(package_id, package_realm, deps, Realm::Server)?;
                 }
 
-                let source_registry = &resolved.metadata[package_id].source_registry;
-                let package_source = sources.get(source_registry).unwrap();
-                let contents = package_source.download_package(package_id)?;
+                match &resolved.metadata[package_id].package_origin {
+                    PackageOrigin::Git(_) => todo!(),
+                    PackageOrigin::Path(path_to_package) => {
+                        let base_path = self.get_base_path(package_id, package_realm);
 
-                self.write_contents(package_id, &contents, package_realm)?;
+                        log::info!("Creating project link for {}", package_id);
+
+                        fs::create_dir_all(&base_path)?;
+
+                        let from_project_json_to_package =
+                            diff_paths(&self.project_path, &base_path)
+                                .context(
+                                    "Was unable to diff the base path against the project path.",
+                                )?
+                                .join(&path_to_package);
+
+                        let mut handler = fs::OpenOptions::new()
+                            .write(true)
+                            .read(true)
+                            .create(true)
+                            .open(base_path.join("default.project.json"))?;
+
+                        let _ = handler.write(
+                            serde_json::to_string_pretty(
+                                &serde_json::json!({
+                                    "name": short_name(package_id),
+                                    "tree": {
+                                        "$path": from_project_json_to_package.to_slash().context("Was unable to convert path to forward-slashes")?
+                                    }
+                                })
+                            )?
+                            .as_bytes(),
+                        )?;
+                    }
+                    PackageOrigin::Registry(source_registry) => {
+                        let package_source = sources.get(source_registry).unwrap();
+                        let contents = package_source.download_package(package_id)?;
+
+                        self.write_contents(package_id, &contents, package_realm)?;
+                    }
+                }
             }
         }
 
@@ -129,7 +169,7 @@ impl InstallationContext {
             return require(script.Parent.Parent["{full_name}"]["{short_name}"])
             "#,
             full_name = package_id_file_name(id),
-            short_name = id.name().name()
+            short_name = short_name(id)
         }
     }
 
@@ -139,7 +179,7 @@ impl InstallationContext {
             return require(script.Parent._Index["{full_name}"]["{short_name}"])
             "#,
             full_name = package_id_file_name(id),
-            short_name = id.name().name()
+            short_name = short_name(id)
         }
     }
 
@@ -150,7 +190,7 @@ impl InstallationContext {
                 A server or dev dependency is depending on a shared dependency.
                 To link these packages correctly you must declare where shared
                 packages are placed in the roblox datamodel in your wally.toml.
-                
+
                 This typically looks like:
 
                 [place]
@@ -163,7 +203,7 @@ impl InstallationContext {
             "#,
             packages = shared_path,
             full_name = package_id_file_name(id),
-            short_name = id.name().name()
+            short_name = short_name(id)
         };
 
         Ok(contents)
@@ -176,7 +216,7 @@ impl InstallationContext {
                 A dev dependency is depending on a server dependency.
                 To link these packages correctly you must declare where server
                 packages are placed in the roblox datamodel in your wally.toml.
-                
+
                 This typically looks like:
 
                 [place]
@@ -193,7 +233,7 @@ impl InstallationContext {
             "#,
             packages = server_path,
             full_name = package_id_file_name(id),
-            short_name = id.name().name()
+            short_name = short_name(id)
         };
 
         Ok(contents)
@@ -280,19 +320,26 @@ impl InstallationContext {
         contents: &PackageContents,
         realm: Realm,
     ) -> anyhow::Result<()> {
-        let mut path = match realm {
-            Realm::Shared => self.shared_index_dir.clone(),
-            Realm::Server => self.server_index_dir.clone(),
-            Realm::Dev => self.dev_index_dir.clone(),
-        };
-
-        path.push(package_id_file_name(package_id));
-        path.push(package_id.name().name());
+        let path = self.get_base_path(package_id, realm);
 
         fs::create_dir_all(&path)?;
         contents.unpack_into_path(&path)?;
 
         Ok(())
+    }
+
+    /// Generates a base path with the given package and its realm.
+    fn get_base_path(&self, package_id: &PackageId, realm: Realm) -> PathBuf {
+        let mut base_path = match realm {
+            Realm::Shared => self.shared_index_dir.clone(),
+            Realm::Server => self.server_index_dir.clone(),
+            Realm::Dev => self.dev_index_dir.clone(),
+        };
+
+        base_path.push(package_id_file_name(package_id));
+        base_path.push(short_name(package_id));
+
+        base_path
     }
 }
 
@@ -304,4 +351,9 @@ fn package_id_file_name(id: &PackageId) -> String {
         id.name().name(),
         id.version()
     )
+}
+
+/// Generates a short-name to use
+fn short_name(id: &PackageId) -> String {
+    id.name().name().to_string()
 }

@@ -1,13 +1,17 @@
-use std::path::Path;
+use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
 use std::{
     fs::read_to_string,
     io::{self, BufWriter, Write},
 };
 
+use anyhow::Context;
 use fs_err::File;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
+use crate::package_origin::PackageOrigin;
+use crate::package_source::PackageSourceId;
 use crate::{
     manifest::Manifest, package_id::PackageId, package_name::PackageName, resolution::Resolve,
 };
@@ -45,12 +49,19 @@ impl Lockfile {
                 })
                 .unwrap_or_else(Vec::new);
 
-            packages.push(LockPackage::Registry(RegistryLockPackage {
-                name: package_id.name().clone(),
-                version: package_id.version().clone(),
-                checksum: None,
-                dependencies,
-            }));
+            packages.push(match &resolve.metadata[package_id].package_origin {
+                PackageOrigin::Registry(_) => LockPackage::Registry(RegistryLockPackage {
+                    name: package_id.name().clone(),
+                    version: package_id.version().clone(),
+                    checksum: None,
+                    dependencies,
+                }),
+                PackageOrigin::Path(path) => LockPackage::Path(PathLockPackage {
+                    path: path.clone(),
+                    dependencies,
+                }),
+                PackageOrigin::Git(_) => todo!(),
+            });
         }
 
         Self {
@@ -86,6 +97,36 @@ impl Lockfile {
 
         Ok(())
     }
+
+    pub fn get_try_to_use(&self) -> BTreeMap<PackageId, PackageOrigin> {
+        let mut try_to_use = BTreeMap::new();
+
+        for package in &self.packages {
+            match package {
+                LockPackage::Registry(registry_package) => {
+                    try_to_use.insert(
+                        PackageId::new(
+                            registry_package.name.clone(),
+                            registry_package.version.clone(),
+                        ),
+                        // TODO: Try using self.registry instead. I do not know how to make it work because it shouldn't be a string in the first place!
+                        PackageOrigin::Registry(PackageSourceId::DefaultRegistry),
+                    );
+                }
+                LockPackage::Path(path_package) => {
+                    let path_package_manifest = Manifest::load(&path_package.path)
+                        .context("Lockfile should not be wrong about package path.")
+                        .unwrap();
+
+                    let package_id = path_package_manifest.package_id();
+                    try_to_use.insert(package_id, PackageOrigin::Path(path_package.path.clone()));
+                }
+                LockPackage::Git(_) => {}
+            }
+        }
+
+        try_to_use
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -93,6 +134,7 @@ impl Lockfile {
 pub enum LockPackage {
     Registry(RegistryLockPackage),
     Git(GitLockPackage),
+    Path(PathLockPackage),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -106,11 +148,19 @@ pub struct RegistryLockPackage {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct PathLockPackage {
+    pub path: PathBuf,
+
+    #[serde(default)]
+    pub dependencies: Vec<(String, PackageId)>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GitLockPackage {
     pub name: String,
     pub rev: String,
     pub commit: String,
 
     #[serde(default)]
-    pub dependencies: Vec<PackageId>,
+    pub dependencies: Vec<(String, PackageId)>,
 }
