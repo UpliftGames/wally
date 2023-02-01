@@ -2,6 +2,10 @@
 
 ## Unreleased Changes
 * Support for directly providing token to `wally login` ([#105][#105])
+* Added private field to package manifest ([#9])
+
+[#9]: https://github.com/UpliftGames/wally/issues/9
+[#105]: https://github.com/UpliftGames/wally/issues/105
 
 ## 0.3.1 (2021-11-12)
 * Support for dev dependencies ([#63][63])
