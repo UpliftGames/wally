@@ -60,3 +60,29 @@ fn check_mismatched_names() {
     // default.project.json should now contain mismatched-name instead of Mismatched-name
     assert_eq!(project_name, "mismatched-name");
 }
+
+/// If the private field in wally.toml is set to true, it should not publish
+/// the package.
+#[test]
+fn check_private_field() {
+    let test_projects = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/test-projects",));
+
+    let args = Args {
+        global: GlobalOptions {
+            test_registry: true,
+            use_temp_index: true,
+            ..Default::default()
+        },
+        subcommand: Subcommand::Publish(PublishSubcommand {
+            project_path: test_projects.join("private-package"),
+        }),
+    };
+
+    let error = args.run().expect_err("Expected publish to return an error");
+
+    assert!(
+        error.to_string().contains("Cannot publish"),
+        "Expected error message that a private package cannot be published. Instead we got: {:#}",
+        error
+    )
+}

@@ -1,0 +1,6 @@
+{
+	"name": "private-package",
+	"tree": {
+		"$path": "src"
+	}
+}
