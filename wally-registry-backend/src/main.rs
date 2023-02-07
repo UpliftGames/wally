@@ -289,8 +289,7 @@ fn configure_s3(bucket: String) -> anyhow::Result<S3Storage> {
         HttpClient::new()?,
         ChainProvider::new(),
         Region::Custom {
-            name: env::var("AWS_REGION_NAME")
-                .unwrap_or_else(|_| "us-east-1".to_string()),
+            name: env::var("AWS_REGION_NAME").unwrap_or_else(|_| "us-east-1".to_string()),
             endpoint: env::var("AWS_REGION_ENDPOINT")?,
         },
     );
