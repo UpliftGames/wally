@@ -18,6 +18,7 @@ pub use s3::S3Storage;
 pub enum StorageMode {
     Local { path: Option<PathBuf> },
     Gcs { bucket: String },
+    #[cfg(feature = "s3-storage")]
     S3 { bucket: String },
 }
 

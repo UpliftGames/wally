@@ -13,7 +13,6 @@ mod tests;
 use std::convert::TryInto;
 use std::io::{Cursor, Read, Seek};
 use std::sync::RwLock;
-use std::env;
 
 use anyhow::{format_err, Context};
 use figment::{
@@ -47,7 +46,10 @@ use crate::auth::{ReadAccess, WriteAccess};
 use crate::config::Config;
 use crate::error::{ApiErrorContext, ApiErrorStatus, Error};
 use crate::search::SearchBackend;
-use crate::storage::{S3Storage, GcsStorage, LocalStorage, StorageBackend, StorageOutput};
+use crate::storage::{GcsStorage, LocalStorage, StorageBackend, StorageOutput};
+
+#[cfg(feature = "s3-storage")]
+use crate::storage::S3Storage;
 
 #[get("/")]
 fn root() -> Json<serde_json::Value> {
@@ -229,6 +231,7 @@ pub fn server(figment: Figment) -> rocket::Rocket {
     let storage_backend: Box<dyn StorageBackend> = match config.storage {
         StorageMode::Local { path } => Box::new(LocalStorage::new(path)),
         StorageMode::Gcs { bucket } => Box::new(configure_gcs(bucket).unwrap()),
+        #[cfg(feature = "s3-storage")]
         StorageMode::S3 { bucket } => Box::new(configure_s3(bucket).unwrap()),
     };
 
@@ -274,7 +277,10 @@ fn configure_gcs(bucket: String) -> anyhow::Result<GcsStorage> {
     Ok(GcsStorage::new(client))
 }
 
+#[cfg(feature = "s3-storage")]
 fn configure_s3(bucket: String) -> anyhow::Result<S3Storage> {
+    use std::env;
+    
     use rusoto_core::{
         request::HttpClient,
         credential::ChainProvider,
