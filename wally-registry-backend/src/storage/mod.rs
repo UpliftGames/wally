@@ -16,10 +16,16 @@ pub use s3::S3Storage;
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum StorageMode {
-    Local { path: Option<PathBuf> },
-    Gcs { bucket: String },
+    Local {
+        path: Option<PathBuf>,
+    },
+    Gcs {
+        bucket: String,
+    },
     #[cfg(feature = "s3-storage")]
-    S3 { bucket: String },
+    S3 {
+        bucket: String,
+    },
 }
 
 pub type StorageOutput = Box<dyn AsyncRead + Unpin + Send + Sync + 'static>;

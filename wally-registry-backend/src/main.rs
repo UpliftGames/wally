@@ -280,12 +280,8 @@ fn configure_gcs(bucket: String) -> anyhow::Result<GcsStorage> {
 #[cfg(feature = "s3-storage")]
 fn configure_s3(bucket: String) -> anyhow::Result<S3Storage> {
     use std::env;
-    
-    use rusoto_core::{
-        request::HttpClient,
-        credential::ChainProvider,
-        Region
-    };
+
+    use rusoto_core::{credential::ChainProvider, request::HttpClient, Region};
 
     use rusoto_s3::S3Client;
 
@@ -293,9 +289,10 @@ fn configure_s3(bucket: String) -> anyhow::Result<S3Storage> {
         HttpClient::new()?,
         ChainProvider::new(),
         Region::Custom {
-            name: env::var("AWS_REGION_NAME").unwrap_or("us-east-1".to_string()).to_owned(),
-            endpoint: env::var("AWS_REGION_ENDPOINT")?.to_owned(),
-        }
+            name: env::var("AWS_REGION_NAME")
+                .unwrap_or_else(|_| "us-east-1".to_string()),
+            endpoint: env::var("AWS_REGION_ENDPOINT")?,
+        },
     );
 
     Ok(S3Storage::new(client, bucket))
