@@ -30,10 +30,11 @@ FROM debian:buster-slim
 RUN apt-get update
 RUN apt-get install -y git ca-certificates libssl-dev && rm -rf /var/lib/apt/lists/*
 
+RUN useradd -ms /bin/bash 1000
+
 COPY --chown=1000 --from=build /usr/app/target/release/wally-registry-backend "/app/launch"
 COPY --chown=1000 --from=build /usr/app/wally-registry-backend/Rocket.toml "/app/Rocket.toml"
 
-RUN useradd -ms /bin/bash 1000
 USER 1000
 
 EXPOSE 8000
