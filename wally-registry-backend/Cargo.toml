@@ -8,7 +8,7 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["s3-storage"]
+default = []
 s3-storage = ["dep:rusoto_core", "dep:rusoto_s3"]
 
 [dependencies]
@@ -34,7 +34,7 @@ serde = { version = "1.0.120", features = ["derive"] }
 serde_json = "1.0.61"
 tantivy = "0.16.1"
 tokio = "1.1.1"
-url = { version =  "2.2.1", features = ["serde"] }
+url = { version = "2.2.1", features = ["serde"] }
 walkdir = "2.3.1"
 zip = "0.5.11"
 
