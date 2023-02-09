@@ -1,5 +1,7 @@
 mod gcs;
 mod local;
+
+#[cfg(feature = "s3-storage")]
 mod s3;
 
 use std::path::PathBuf;
@@ -11,6 +13,8 @@ use tokio::io::AsyncRead;
 
 pub use gcs::GcsStorage;
 pub use local::LocalStorage;
+
+#[cfg(feature = "s3-storage")]
 pub use s3::S3Storage;
 
 #[derive(Debug, Deserialize, Serialize)]
