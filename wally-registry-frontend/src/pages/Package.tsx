@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react"
-import { useParams } from "react-router"
+import { useParams, useLocation } from "react-router"
 import styled from "styled-components"
 import { isMobile, notMobile } from "../breakpoints"
 import ContentSection from "../components/ContentSection"
@@ -9,6 +9,14 @@ import { Heading, Paragraph } from "../components/Typography"
 import { getWallyPackageMetadata } from "../services/wally.api"
 import { WallyPackageMetadata } from "../types/wally"
 import capitalize from "../utils/capitalize"
+
+// A custom hook that builds on useLocation to parse
+// the query string for you.
+function useQuery() {
+  const { search } = useLocation()
+
+  return React.useMemo(() => new URLSearchParams(search), [search])
+}
 
 type WidthVariation = "full" | "half"
 
@@ -120,27 +128,44 @@ type PackageParams = {
 }
 
 export default function Package() {
+  let query = useQuery()
   const { packageScope, packageName } = useParams<PackageParams>()
+  const [packageHistory, setPackageHistory] = useState<[WallyPackageMetadata]>()
   const [packageMetadata, setPackageMetadata] = useState<WallyPackageMetadata>()
   const [isLoaded, setIsLoaded] = useState(false)
   const [isError, setIsError] = useState(false)
 
   const loadPackageData = async (packageScope: string, packageName: string) => {
     const packageData = await getWallyPackageMetadata(packageScope, packageName)
-    if (packageData !== undefined) {
-      const filteredPackageData = packageData.versions.some(
-        (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
-      )
-        ? packageData.versions.filter(
-            (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
-          )
-        : packageData
-      setPackageMetadata(filteredPackageData[0])
-      setIsLoaded(true)
-    } else {
+    if (packageData == undefined) {
       setIsError(true)
       setIsLoaded(true)
+      return
     }
+
+    const filteredPackageData = packageData.versions.some(
+      (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
+    )
+      ? packageData.versions.filter(
+          (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
+        )
+      : packageData
+    setPackageHistory(filteredPackageData)
+
+	// TODO: Instead of setting version in the URL, use a dropdown to select the version
+    const packageVersion = query.get("version")
+    if (packageVersion === undefined) {
+      setPackageMetadata(filteredPackageData[0])
+      setIsLoaded(true)
+      return
+    }
+
+    let chosen = filteredPackageData.find(
+      (item: WallyPackageMetadata) => item.package.version === packageVersion
+    ) || filteredPackageData[0]
+
+    setPackageMetadata(chosen)
+    setIsLoaded(true)
   }
 
   useEffect(() => {
