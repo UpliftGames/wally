@@ -28,7 +28,7 @@ const FlexColumns = styled.article`
 `
 
 const WideColumn = styled.section`
-  width: 70%;
+  width: 65%;
 
   @media screen and (${notMobile}) {
     border-right: solid 2px rgba(0, 0, 0, 0.1);
@@ -41,7 +41,7 @@ const WideColumn = styled.section`
 `
 
 const NarrowColumn = styled.aside`
-  width: 30%;
+  width: 35%;
 
   @media screen and (${notMobile}) {
     padding-left: 1rem;
@@ -93,6 +93,24 @@ const MetaItem = ({
       <MetaSubheader>{title}</MetaSubheader>
       {children}
     </MetaItemWrapper>
+  )
+}
+
+const DependencyLink = ({ packageInfo }: { packageInfo: string }) => {
+  let packageMatch = packageInfo.match(/(.+\/.+)@[^\d]+([\d\.]+)/)
+  if (packageMatch != null) {
+    let name = packageMatch[1]
+    let version = packageMatch[2]
+    return (
+      <a href={"/package/" + name} style={{ display: "block" }}>
+        {name + "@" + version}
+      </a>
+    )
+  }
+  return (
+    <a href={"/"} style={{ display: "block" }}>
+      {packageInfo}
+    </a>
   )
 }
 
@@ -195,6 +213,52 @@ export default function Package() {
                       {packageMetadata?.package.authors.map((author) => (
                         <p key={author}>{author}</p>
                       ))}
+                    </MetaItem>
+                  )}
+
+                {packageMetadata?.dependencies &&
+                  Object.values(packageMetadata?.dependencies).length > 0 && (
+                    <MetaItem title="Dependencies" width="full">
+                      {Object.values(packageMetadata?.dependencies).map(
+                        (dependency) => (
+                          <DependencyLink
+                            key={dependency}
+                            packageInfo={dependency}
+                          />
+                        )
+                      )}
+                    </MetaItem>
+                  )}
+
+                {packageMetadata &&
+                  packageMetadata["server-dependencies"] &&
+                  Object.values(packageMetadata["server-dependencies"]).length >
+                    0 && (
+                    <MetaItem title="Server Dependencies" width="full">
+                      {Object.values(
+                        packageMetadata["server-dependencies"]
+                      ).map((dependency) => (
+                        <DependencyLink
+                          key={dependency}
+                          packageInfo={dependency}
+                        />
+                      ))}
+                    </MetaItem>
+                  )}
+
+                {packageMetadata &&
+                  packageMetadata["dev-dependencies"] &&
+                  Object.values(packageMetadata["dev-dependencies"]).length >
+                    0 && (
+                    <MetaItem title="Dev Dependencies" width="full">
+                      {Object.values(packageMetadata["dev-dependencies"]).map(
+                        (dependency) => (
+                          <DependencyLink
+                            key={dependency}
+                            packageInfo={dependency}
+                          />
+                        )
+                      )}
                     </MetaItem>
                   )}
               </NarrowColumn>
