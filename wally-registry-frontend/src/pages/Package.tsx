@@ -2,11 +2,15 @@ import React, { useEffect, useState } from "react"
 import { useParams } from "react-router"
 import styled from "styled-components"
 import { isMobile, notMobile } from "../breakpoints"
+import iconDownload from "../assets/icon-download.svg"
 import ContentSection from "../components/ContentSection"
 import CopyCode from "../components/CopyCode"
 import NotFoundMessage from "../components/NotFoundMessage"
 import { Heading, Paragraph } from "../components/Typography"
-import { getWallyPackageMetadata } from "../services/wally.api"
+import {
+  getWallyPackageMetadata,
+  buildWallyPackageDownloadLink,
+} from "../services/wally.api"
 import { WallyPackageMetadata } from "../types/wally"
 import capitalize from "../utils/capitalize"
 
@@ -175,6 +179,32 @@ export default function Package() {
                       packageName={packageMetadata?.package.name}
                       version={packageMetadata?.package.version}
                     />
+                  </MetaItem>
+                )}
+
+                {packageMetadata?.package && (
+                  <MetaItem title="Download" width="half">
+                    <a
+                      href={buildWallyPackageDownloadLink(
+                        packageScope,
+                        packageName,
+                        packageMetadata.package.version
+                      )}
+                      download={
+                        packageScope +
+                        "/" +
+                        packageName +
+                        "@" +
+                        packageMetadata.package.version
+                      }
+                      style={{ display: "inline-block", width: "1rem" }}
+                    >
+                      <img
+                        src={iconDownload}
+                        alt="Download"
+                        style={{ fill: "var(--wally-mauve)" }}
+                      />
+                    </a>
                   </MetaItem>
                 )}
 
