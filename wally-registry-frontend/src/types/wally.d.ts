@@ -6,8 +6,8 @@ export interface WallyPackageBrief {
 }
 
 export interface WallyPackageMetadata {
-  dependencies: {}
-  "dev-dependencies": {}
+  dependencies: { string: string }
+  "dev-dependencies": { string: string }
   package: {
     authors: string[]
     description: string
@@ -17,5 +17,5 @@ export interface WallyPackageMetadata {
     registry: string
     version: string
   }
-  "server-dependences": {}
+  "server-dependencies": { string: string }
 }
