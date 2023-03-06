@@ -244,7 +244,7 @@ export default function Package() {
                   <div
                     style={{
                       display: "grid",
-                      overflow: "scroll",
+                      overflow: "auto",
                       height: "7rem",
                     }}
                   >
