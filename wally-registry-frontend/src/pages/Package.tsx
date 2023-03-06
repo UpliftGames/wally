@@ -110,7 +110,7 @@ const DependencyLink = ({ packageInfo }: { packageInfo: string }) => {
     let name = packageMatch[1]
     let version = packageMatch[2]
     return (
-      <a href={"/package/" + name} style={{ display: "block" }}>
+      <a href={`/package/${name}?version=${version}`} style={{ display: "block" }}>
         {name + "@" + version}
       </a>
     )
