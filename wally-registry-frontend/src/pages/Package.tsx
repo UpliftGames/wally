@@ -160,7 +160,7 @@ export default function Package() {
 
     setPackageHistory(filteredPackageData)
 
-	if (packageVersion == undefined) {
+	if (urlPackageVersion == null) {
 		const latestVersion = filteredPackageData[0].package.version
 		setPackageVersion(latestVersion)
 		hist.replace(`/package/${packageScope}/${packageName}?version=${latestVersion}`)
