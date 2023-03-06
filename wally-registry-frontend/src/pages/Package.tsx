@@ -203,7 +203,27 @@ export default function Package() {
                 )}
 
                 <MetaItem title="Version" width="half">
-                  {packageMetadata?.package.version || "?.?.?"}
+                  <select
+                    name="version"
+                    id="version-select"
+                    value={packageVersion || "?.?.?"}
+                    onChange={(a) => {
+                      hist.push(
+                        `/package/${packageScope}/${packageName}?version=${a.target.value}`
+                      )
+                    }}
+                  >
+                    {packageHistory?.map((item: WallyPackageMetadata) => {
+                      return (
+                        <option
+                          key={item.package.version}
+                          value={item.package.version}
+                        >
+                          {item.package.version}
+                        </option>
+                      )
+                    })}
+                  </select>
                 </MetaItem>
 
                 {packageMetadata?.package.license && (
@@ -239,36 +259,6 @@ export default function Package() {
                       ))}
                     </MetaItem>
                   )}
-
-                <MetaItem title="Versions" width="full">
-                  <div
-                    style={{
-                      display: "grid",
-                      overflow: "auto",
-                      height: "7rem",
-                    }}
-                  >
-                    {packageHistory?.map((item: WallyPackageMetadata) => {
-                      return (
-                        <a
-                          onClick={() => {
-                            hist.push(
-                              "/package/" +
-                                packageScope +
-                                "/" +
-                                packageName +
-                                "?version=" +
-                                item.package.version
-                            )
-                          }}
-                          style={{ cursor: "pointer" }}
-                        >
-                          {item.package.version}
-                        </a>
-                      )
-                    })}
-                  </div>
-                </MetaItem>
 
                 {packageMetadata?.dependencies &&
                   Object.values(packageMetadata?.dependencies).length > 0 && (
