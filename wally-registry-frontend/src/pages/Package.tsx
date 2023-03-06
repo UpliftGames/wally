@@ -160,6 +160,13 @@ export default function Package() {
       : packageData
 
     setPackageHistory(filteredPackageData)
+
+	if (packageVersion == undefined) {
+		const latestVersion = filteredPackageData[0].package.version
+		setPackageVersion(latestVersion)
+		hist.push(`/package/${packageScope}/${packageName}?version=${latestVersion}`)
+	}
+
     setIsLoaded(true)
   }
 
