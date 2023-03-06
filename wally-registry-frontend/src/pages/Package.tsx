@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react"
-import { useParams, useLocation } from "react-router"
+import { useParams, useLocation, useHistory } from "react-router"
 import styled from "styled-components"
 import { isMobile, notMobile } from "../breakpoints"
 import ContentSection from "../components/ContentSection"
 import CopyCode from "../components/CopyCode"
+import { Button } from "../components/Button"
 import NotFoundMessage from "../components/NotFoundMessage"
 import { Heading, Paragraph } from "../components/Typography"
 import { getWallyPackageMetadata } from "../services/wally.api"
@@ -129,11 +130,18 @@ type PackageParams = {
 
 export default function Package() {
   let query = useQuery()
+  let hist = useHistory()
+
   const { packageScope, packageName } = useParams<PackageParams>()
   const [packageHistory, setPackageHistory] = useState<[WallyPackageMetadata]>()
-  const [packageMetadata, setPackageMetadata] = useState<WallyPackageMetadata>()
+  const [packageVersion, setPackageVersion] = useState<string>()
   const [isLoaded, setIsLoaded] = useState(false)
   const [isError, setIsError] = useState(false)
+
+  const urlPackageVersion = query.get("version")
+  if (urlPackageVersion != null && urlPackageVersion !== packageVersion) {
+    setPackageVersion(urlPackageVersion)
+  }
 
   const loadPackageData = async (packageScope: string, packageName: string) => {
     const packageData = await getWallyPackageMetadata(packageScope, packageName)
@@ -150,27 +158,18 @@ export default function Package() {
           (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
         )
       : packageData
+
     setPackageHistory(filteredPackageData)
-
-	// TODO: Instead of setting version in the URL, use a dropdown to select the version
-    const packageVersion = query.get("version")
-    if (packageVersion === undefined) {
-      setPackageMetadata(filteredPackageData[0])
-      setIsLoaded(true)
-      return
-    }
-
-    let chosen = filteredPackageData.find(
-      (item: WallyPackageMetadata) => item.package.version === packageVersion
-    ) || filteredPackageData[0]
-
-    setPackageMetadata(chosen)
     setIsLoaded(true)
   }
 
   useEffect(() => {
     loadPackageData(packageScope, packageName)
   }, [packageScope, packageName])
+
+  let packageMetadata = packageHistory?.find(
+    (item: WallyPackageMetadata) => item.package.version === packageVersion
+  )
 
   return (
     <>
@@ -240,6 +239,36 @@ export default function Package() {
                       ))}
                     </MetaItem>
                   )}
+
+                <MetaItem title="Versions" width="full">
+                  <div
+                    style={{
+                      display: "grid",
+                      overflow: "scroll",
+                      height: "7rem",
+                    }}
+                  >
+                    {packageHistory?.map((item: WallyPackageMetadata) => {
+                      return (
+                        <a
+                          onClick={() => {
+                            hist.push(
+                              "/package/" +
+                                packageScope +
+                                "/" +
+                                packageName +
+                                "?version=" +
+                                item.package.version
+                            )
+                          }}
+                          style={{ cursor: "pointer" }}
+                        >
+                          {item.package.version}
+                        </a>
+                      )
+                    })}
+                  </div>
+                </MetaItem>
 
                 {packageMetadata?.dependencies &&
                   Object.values(packageMetadata?.dependencies).length > 0 && (
