@@ -4,7 +4,6 @@ import styled from "styled-components"
 import { isMobile, notMobile } from "../breakpoints"
 import ContentSection from "../components/ContentSection"
 import CopyCode from "../components/CopyCode"
-import { Button } from "../components/Button"
 import NotFoundMessage from "../components/NotFoundMessage"
 import { Heading, Paragraph } from "../components/Typography"
 import { getWallyPackageMetadata } from "../services/wally.api"
@@ -129,8 +128,8 @@ type PackageParams = {
 }
 
 export default function Package() {
-  let query = useQuery()
-  let hist = useHistory()
+  const query = useQuery()
+  const hist = useHistory()
 
   const { packageScope, packageName } = useParams<PackageParams>()
   const [packageHistory, setPackageHistory] = useState<[WallyPackageMetadata]>()
@@ -174,7 +173,7 @@ export default function Package() {
     loadPackageData(packageScope, packageName)
   }, [packageScope, packageName])
 
-  let packageMetadata = packageHistory?.find(
+  const packageMetadata = packageHistory?.find(
     (item: WallyPackageMetadata) => item.package.version === packageVersion
   )
 
