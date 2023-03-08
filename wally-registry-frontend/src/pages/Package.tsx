@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react"
-import { useParams } from "react-router"
+import { useParams, useLocation, useHistory } from "react-router"
 import styled from "styled-components"
 import { isMobile, notMobile } from "../breakpoints"
 import ContentSection from "../components/ContentSection"
@@ -9,6 +9,14 @@ import { Heading, Paragraph } from "../components/Typography"
 import { getWallyPackageMetadata } from "../services/wally.api"
 import { WallyPackageMetadata } from "../types/wally"
 import capitalize from "../utils/capitalize"
+
+// A custom hook that builds on useLocation to parse
+// the query string for you.
+function useQuery() {
+  const { search } = useLocation()
+
+  return React.useMemo(() => new URLSearchParams(search), [search])
+}
 
 type WidthVariation = "full" | "half"
 
@@ -102,7 +110,7 @@ const DependencyLink = ({ packageInfo }: { packageInfo: string }) => {
     let name = packageMatch[1]
     let version = packageMatch[2]
     return (
-      <a href={"/package/" + name} style={{ display: "block" }}>
+      <a href={`/package/${name}?version=${version}`} style={{ display: "block" }}>
         {name + "@" + version}
       </a>
     )
@@ -120,32 +128,54 @@ type PackageParams = {
 }
 
 export default function Package() {
+  const query = useQuery()
+  const hist = useHistory()
+
   const { packageScope, packageName } = useParams<PackageParams>()
-  const [packageMetadata, setPackageMetadata] = useState<WallyPackageMetadata>()
+  const [packageHistory, setPackageHistory] = useState<[WallyPackageMetadata]>()
+  const [packageVersion, setPackageVersion] = useState<string>()
   const [isLoaded, setIsLoaded] = useState(false)
   const [isError, setIsError] = useState(false)
 
+  const urlPackageVersion = query.get("version")
+  if (urlPackageVersion != null && urlPackageVersion !== packageVersion) {
+    setPackageVersion(urlPackageVersion)
+  }
+
   const loadPackageData = async (packageScope: string, packageName: string) => {
     const packageData = await getWallyPackageMetadata(packageScope, packageName)
-    if (packageData !== undefined) {
-      const filteredPackageData = packageData.versions.some(
-        (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
-      )
-        ? packageData.versions.filter(
-            (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
-          )
-        : packageData
-      setPackageMetadata(filteredPackageData[0])
-      setIsLoaded(true)
-    } else {
+    if (packageData == undefined) {
       setIsError(true)
       setIsLoaded(true)
+      return
     }
+
+    const filteredPackageData = packageData.versions.some(
+      (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
+    )
+      ? packageData.versions.filter(
+          (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
+        )
+      : packageData
+
+    setPackageHistory(filteredPackageData)
+
+	if (urlPackageVersion == null) {
+		const latestVersion = filteredPackageData[0].package.version
+		setPackageVersion(latestVersion)
+		hist.replace(`/package/${packageScope}/${packageName}?version=${latestVersion}`)
+	}
+
+    setIsLoaded(true)
   }
 
   useEffect(() => {
     loadPackageData(packageScope, packageName)
   }, [packageScope, packageName])
+
+  const packageMetadata = packageHistory?.find(
+    (item: WallyPackageMetadata) => item.package.version === packageVersion
+  )
 
   return (
     <>
@@ -179,7 +209,27 @@ export default function Package() {
                 )}
 
                 <MetaItem title="Version" width="half">
-                  {packageMetadata?.package.version || "?.?.?"}
+                  <select
+                    name="version"
+                    id="version-select"
+                    value={packageVersion || "?.?.?"}
+                    onChange={(a) => {
+                      hist.push(
+                        `/package/${packageScope}/${packageName}?version=${a.target.value}`
+                      )
+                    }}
+                  >
+                    {packageHistory?.map((item: WallyPackageMetadata) => {
+                      return (
+                        <option
+                          key={item.package.version}
+                          value={item.package.version}
+                        >
+                          {item.package.version}
+                        </option>
+                      )
+                    })}
+                  </select>
                 </MetaItem>
 
                 {packageMetadata?.package.license && (
