@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react"
 import { useParams, useLocation, useHistory } from "react-router"
 import styled from "styled-components"
 import { isMobile, notMobile } from "../breakpoints"
+import { Button } from "../components/Button"
 import ContentSection from "../components/ContentSection"
 import CopyCode from "../components/CopyCode"
 import NotFoundMessage from "../components/NotFoundMessage"
@@ -110,7 +111,10 @@ const DependencyLink = ({ packageInfo }: { packageInfo: string }) => {
     let name = packageMatch[1]
     let version = packageMatch[2]
     return (
-      <a href={`/package/${name}?version=${version}`} style={{ display: "block" }}>
+      <a
+        href={`/package/${name}?version=${version}`}
+        style={{ display: "block" }}
+      >
         {name + "@" + version}
       </a>
     )
@@ -160,11 +164,13 @@ export default function Package() {
 
     setPackageHistory(filteredPackageData)
 
-	if (urlPackageVersion == null) {
-		const latestVersion = filteredPackageData[0].package.version
-		setPackageVersion(latestVersion)
-		hist.replace(`/package/${packageScope}/${packageName}?version=${latestVersion}`)
-	}
+    if (urlPackageVersion == null) {
+      const latestVersion = filteredPackageData[0].package.version
+      setPackageVersion(latestVersion)
+      hist.replace(
+        `/package/${packageScope}/${packageName}?version=${latestVersion}`
+      )
+    }
 
     setIsLoaded(true)
   }
@@ -189,13 +195,30 @@ export default function Package() {
                 <Heading>{packageName}</Heading>
 
                 <Paragraph>
-                  {packageMetadata?.package.description
+                  {packageMetadata == undefined
+                    ? `Couldn't find ${capitalize(
+                        packageName
+                      )} version ${packageVersion}. Are you sure that's a valid version?`
+                    : packageMetadata?.package.description
                     ? packageMetadata?.package.description
-                    : `${capitalize(
-                        packageMetadata?.package.name
-                      )} has no provided description.`}
+                    : `${capitalize(packageName)} has no provided description.`}
                 </Paragraph>
+                {packageMetadata == undefined ? (
+                  <Button
+                    onClick={() => {
+                      if (packageHistory == undefined) {
+                        return
+                      }
+                      hist.push(
+                        `/package/${packageScope}/${packageName}?version=${packageHistory[0].package.version}`
+                      )
+                    }}
+                  >
+                    View Latest Version
+                  </Button>
+                ) : undefined}
               </WideColumn>
+
               <NarrowColumn>
                 <MetaHeader>Metadata</MetaHeader>
 
