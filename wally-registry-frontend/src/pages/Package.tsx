@@ -106,64 +106,84 @@ const MetaItem = ({
 }
 
 const DependencyLink = ({ packageInfo }: { packageInfo: string }) => {
-	const packageMatch = packageInfo.match(/(.+)\/(.+)@/)
-	if (packageMatch == null) {
-		// This is some unknown dependency format
-		return (
-			<a href={"/"} style={{ display: "block" }}>
-			  {packageInfo}
-			</a>
-		  )
-	}
-	const packageScope = packageMatch[1]
-	const packageName = packageMatch[2]
+  const packageMatch = packageInfo.match(/(.+)\/(.+)@/)
+  if (packageMatch == null) {
+    // This is some unknown dependency format
+    return (
+      <a href={"/"} style={{ display: "block" }}>
+        {packageInfo}
+      </a>
+    )
+  }
+  const packageScope = packageMatch[1]
+  const packageName = packageMatch[2]
 
-	const rangeMatch = packageInfo.match(/@(.+)$/)
-	if (rangeMatch == null) {
-		// This is an unknown version, fallback to default link
-		return (
-			<a href={`/package/${packageScope}/${packageName}`} style={{ display: "block" }}>
-			  {packageInfo}
-			</a>
-		  )
-	}
+  const rangeMatch = packageInfo.match(/@(.+)$/)
+  if (rangeMatch == null) {
+    // This is an unknown version, fallback to default link
+    return (
+      <a
+        href={`/package/${packageScope}/${packageName}`}
+        style={{ display: "block" }}
+      >
+        {packageInfo}
+      </a>
+    )
+  }
 
-	// Semver ranges use spaces, not commas
-	const range = Semver.validRange(rangeMatch[1].split(", ").join(" "))
-	if (range == null) {
-		// This is an invalid range, fallback to default link
-		return (
-			<a href={`/package/${packageScope}/${packageName}`} style={{ display: "block" }}>
-			  {`${packageScope}/${packageName}@${rangeMatch[1]}`}
-			</a>
-		  )
-	}
+  // Semver ranges use spaces, not commas
+  const range = Semver.validRange(rangeMatch[1].split(", ").join(" "))
+  if (range == null) {
+    // This is an invalid range, fallback to default link
+    return (
+      <a
+        href={`/package/${packageScope}/${packageName}`}
+        style={{ display: "block" }}
+      >
+        {`${packageScope}/${packageName}@${rangeMatch[1]}`}
+      </a>
+    )
+  }
 
-	// Now we have the range of versions this package depends on,
-	// so let's find the best version that matches this range
-	const [dependencyVersion, setDependencyVersion] = useState<string>()
+  // Now we have the range of versions this package depends on,
+  // so let's find the best version that matches this range
+  const [dependencyVersion, setDependencyVersion] = useState<string>()
 
-	const loadVersion = async () => {
-		const dependencyData = await getWallyPackageMetadata(packageScope, packageName)
+  const loadVersion = async () => {
+    const dependencyData = await getWallyPackageMetadata(
+      packageScope,
+      packageName
+    )
 
-		if (dependencyData != undefined) {
-			const dependencyVersions = dependencyData.versions.map((pack: WallyPackageMetadata) => pack.package.version)
-			const validVersion = Semver.maxSatisfying(dependencyVersions, range) || Semver.minSatisfying(dependencyVersions, range)
-			if (validVersion != null) {
-				setDependencyVersion(validVersion.toString())
-			}
-		}
-	  }
+    if (dependencyData != undefined) {
+      const dependencyVersions = dependencyData.versions.map(
+        (pack: WallyPackageMetadata) => pack.package.version
+      )
+      const validVersion =
+        Semver.maxSatisfying(dependencyVersions, range) ||
+        Semver.minSatisfying(dependencyVersions, range)
+      if (validVersion != null) {
+        setDependencyVersion(validVersion.toString())
+      }
+    }
+  }
 
-	useEffect(() => {
-		loadVersion()
-	}, [packageScope, packageName])
+  useEffect(() => {
+    loadVersion()
+  }, [packageScope, packageName])
 
-	return (
-		<a href={`/package/${packageScope}/${packageName}${dependencyVersion ? `?version=${dependencyVersion}` : ''}`} style={{ display: "block" }}>
-			{`${packageScope}/${packageName}@${dependencyVersion ? dependencyVersion : Semver.minVersion(range)?.raw}`}
-		</a>
-	)
+  return (
+    <a
+      href={`/package/${packageScope}/${packageName}${
+        dependencyVersion ? `?version=${dependencyVersion}` : ""
+      }`}
+      style={{ display: "block" }}
+    >
+      {`${packageScope}/${packageName}@${
+        dependencyVersion ? dependencyVersion : Semver.minVersion(range)?.raw
+      }`}
+    </a>
+  )
 }
 
 type PackageParams = {
@@ -204,11 +224,13 @@ export default function Package() {
 
     setPackageHistory(filteredPackageData)
 
-	if (urlPackageVersion == null) {
-		const latestVersion = filteredPackageData[0].package.version
-		setPackageVersion(latestVersion)
-		hist.replace(`/package/${packageScope}/${packageName}?version=${latestVersion}`)
-	}
+    if (urlPackageVersion == null) {
+      const latestVersion = filteredPackageData[0].package.version
+      setPackageVersion(latestVersion)
+      hist.replace(
+        `/package/${packageScope}/${packageName}?version=${latestVersion}`
+      )
+    }
 
     setIsLoaded(true)
   }
