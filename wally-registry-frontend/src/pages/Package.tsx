@@ -207,29 +207,25 @@ export default function Package() {
     return (
       <>
         <ContentSection>
-          <FlexColumns>
-            <WideColumn>
-              <Heading>{packageName}</Heading>
+          <Heading>{packageName}</Heading>
 
-              <Paragraph>
-                Couldn't find {capitalize(packageName)} version {packageVersion}. Are you sure that's a valid version?
-              </Paragraph>
+          <Paragraph>
+            Couldn't find {capitalize(packageName)} version {packageVersion}.
+            Are you sure that's a valid version?
+          </Paragraph>
 
-              <Button
-                onClick={() => {
-                  if (packageHistory == undefined) {
-                    return
-                  }
-                  hist.push(
-                    `/package/${packageScope}/${packageName}?version=${packageHistory[0].package.version}`
-                  )
-                }}
-              >
-                View Latest Version
-              </Button>
-
-            </WideColumn>
-          </FlexColumns>
+          <Button
+            onClick={() => {
+              if (packageHistory == undefined) {
+                return
+              }
+              hist.push(
+                `/package/${packageScope}/${packageName}?version=${packageHistory[0].package.version}`
+              )
+            }}
+          >
+            View Latest Version
+          </Button>
         </ContentSection>
       </>
     )
@@ -244,7 +240,7 @@ export default function Package() {
 
             <Paragraph>
               {packageMetadata?.package.description
-                ? packageMetadata?.package.description
+                ? packageMetadata.package.description
                 : `${capitalize(packageName)} has no provided description.`}
             </Paragraph>
           </WideColumn>
@@ -255,8 +251,8 @@ export default function Package() {
             {packageMetadata?.package && (
               <MetaItem title="Install" width="full">
                 <CopyCode
-                  packageName={packageMetadata?.package.name}
-                  version={packageMetadata?.package.version}
+                  packageName={packageMetadata.package.name}
+                  version={packageMetadata.package.version}
                 />
               </MetaItem>
             )}
@@ -265,7 +261,7 @@ export default function Package() {
               <select
                 name="version"
                 id="version-select"
-                value={packageVersion || "?.?.?"}
+                value={packageVersion ?? "?.?.?"}
                 onChange={(a) => {
                   hist.push(
                     `/package/${packageScope}/${packageName}?version=${a.target.value}`
