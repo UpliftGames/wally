@@ -179,100 +179,130 @@ export default function Package() {
     loadPackageData(packageScope, packageName)
   }, [packageScope, packageName])
 
+  if (!isLoaded) {
+    return (
+      <>
+        <ContentSection>
+          <div>Loading...</div>
+        </ContentSection>
+      </>
+    )
+  }
+
+  if (isError) {
+    return (
+      <>
+        <ContentSection>
+          <NotFoundMessage errorMessage="HTTP 404: Resource Not Found" />
+        </ContentSection>
+      </>
+    )
+  }
+
   const packageMetadata = packageHistory?.find(
     (item: WallyPackageMetadata) => item.package.version === packageVersion
   )
 
+  if (packageMetadata == undefined) {
+    return (
+      <>
+        <ContentSection>
+          <FlexColumns>
+            <WideColumn>
+              <Heading>{packageName}</Heading>
+
+              <Paragraph>
+                Couldn't find {capitalize(packageName)} version {packageVersion}. Are you sure that's a valid version?
+              </Paragraph>
+
+              <Button
+                onClick={() => {
+                  if (packageHistory == undefined) {
+                    return
+                  }
+                  hist.push(
+                    `/package/${packageScope}/${packageName}?version=${packageHistory[0].package.version}`
+                  )
+                }}
+              >
+                View Latest Version
+              </Button>
+
+            </WideColumn>
+          </FlexColumns>
+        </ContentSection>
+      </>
+    )
+  }
+
   return (
     <>
       <ContentSection>
-        {isLoaded ? (
-          isError ? (
-            <NotFoundMessage errorMessage="HTTP 404: Resource Not Found" />
-          ) : (
-            <FlexColumns>
-              <WideColumn>
-                <Heading>{packageName}</Heading>
+        <FlexColumns>
+          <WideColumn>
+            <Heading>{packageName}</Heading>
 
-                <Paragraph>
-                  {packageMetadata == undefined
-                    ? `Couldn't find ${capitalize(
-                        packageName
-                      )} version ${packageVersion}. Are you sure that's a valid version?`
-                    : packageMetadata?.package.description
-                    ? packageMetadata?.package.description
-                    : `${capitalize(packageName)} has no provided description.`}
-                </Paragraph>
-                {packageMetadata == undefined ? (
-                  <Button
-                    onClick={() => {
-                      if (packageHistory == undefined) {
-                        return
-                      }
-                      hist.push(
-                        `/package/${packageScope}/${packageName}?version=${packageHistory[0].package.version}`
-                      )
-                    }}
-                  >
-                    View Latest Version
-                  </Button>
-                ) : undefined}
-              </WideColumn>
+            <Paragraph>
+              {packageMetadata?.package.description
+                ? packageMetadata?.package.description
+                : `${capitalize(packageName)} has no provided description.`}
+            </Paragraph>
+          </WideColumn>
 
-              <NarrowColumn>
-                <MetaHeader>Metadata</MetaHeader>
+          <NarrowColumn>
+            <MetaHeader>Metadata</MetaHeader>
 
-                {packageMetadata?.package && (
-                  <MetaItem title="Install" width="full">
-                    <CopyCode
-                      packageName={packageMetadata?.package.name}
-                      version={packageMetadata?.package.version}
-                    />
-                  </MetaItem>
-                )}
+            {packageMetadata?.package && (
+              <MetaItem title="Install" width="full">
+                <CopyCode
+                  packageName={packageMetadata?.package.name}
+                  version={packageMetadata?.package.version}
+                />
+              </MetaItem>
+            )}
 
-                <MetaItem title="Version" width="half">
-                  <select
-                    name="version"
-                    id="version-select"
-                    value={packageVersion || "?.?.?"}
-                    onChange={(a) => {
-                      hist.push(
-                        `/package/${packageScope}/${packageName}?version=${a.target.value}`
-                      )
-                    }}
-                  >
-                    {packageHistory?.map((item: WallyPackageMetadata) => {
-                      return (
-                        <option
-                          key={item.package.version}
-                          value={item.package.version}
-                        >
-                          {item.package.version}
-                        </option>
-                      )
-                    })}
-                  </select>
-                </MetaItem>
-
-                {packageMetadata?.package.license && (
-                  <MetaItem title="License" width="half">
-                    <a
-                      href={`https://choosealicense.com/licenses/${packageMetadata?.package.license.toLocaleLowerCase()}`}
+            <MetaItem title="Version" width="half">
+              <select
+                name="version"
+                id="version-select"
+                value={packageVersion || "?.?.?"}
+                onChange={(a) => {
+                  hist.push(
+                    `/package/${packageScope}/${packageName}?version=${a.target.value}`
+                  )
+                }}
+              >
+                {packageHistory?.map((item: WallyPackageMetadata) => {
+                  return (
+                    <option
+                      key={item.package.version}
+                      value={item.package.version}
                     >
-                      {packageMetadata?.package.license}
-                    </a>
-                  </MetaItem>
-                )}
+                      {item.package.version}
+                    </option>
+                  )
+                })}
+              </select>
+            </MetaItem>
 
-                {packageMetadata?.package.realm && (
-                  <MetaItem title="Realm" width="half">
-                    {capitalize(packageMetadata?.package.realm)}
-                  </MetaItem>
-                )}
+            {packageMetadata?.package.license && (
+              <MetaItem title="License" width="half">
+                <a
+                  href={`https://choosealicense.com/licenses/${packageMetadata?.package.license.toLocaleLowerCase()}`}
+                >
+                  {packageMetadata?.package.license}
+                </a>
+              </MetaItem>
+            )}
 
-                {/* TODO: Re-implement when Wally API supports custom source repos */}
-                {/* {packageMetadata?.package.registry && (
+            {packageMetadata?.package.realm && (
+              <MetaItem title="Realm" width="half">
+                {capitalize(packageMetadata?.package.realm)}
+              </MetaItem>
+            )}
+
+            {/* TODO: Re-implement when Wally API supports custom source repos */}
+            {/* {packageMetadata?.package.registry && (
                 <MetaItem title="Repository" width="full">
                   <a href={packageMetadata?.package.registry}>
                     {packageMetadata?.package.registry.replace("https://", "")}
@@ -280,66 +310,61 @@ export default function Package() {
                 </MetaItem>
               )} */}
 
-                {packageMetadata?.package.authors &&
-                  packageMetadata?.package.authors.length > 0 && (
-                    <MetaItem title="Authors" width="full">
-                      {packageMetadata?.package.authors.map((author) => (
-                        <p key={author}>{author}</p>
-                      ))}
-                    </MetaItem>
-                  )}
+            {packageMetadata?.package.authors &&
+              packageMetadata?.package.authors.length > 0 && (
+                <MetaItem title="Authors" width="full">
+                  {packageMetadata?.package.authors.map((author) => (
+                    <p key={author}>{author}</p>
+                  ))}
+                </MetaItem>
+              )}
 
-                {packageMetadata?.dependencies &&
-                  Object.values(packageMetadata?.dependencies).length > 0 && (
-                    <MetaItem title="Dependencies" width="full">
-                      {Object.values(packageMetadata?.dependencies).map(
-                        (dependency) => (
-                          <DependencyLink
-                            key={dependency}
-                            packageInfo={dependency}
-                          />
-                        )
-                      )}
-                    </MetaItem>
+            {packageMetadata?.dependencies &&
+              Object.values(packageMetadata?.dependencies).length > 0 && (
+                <MetaItem title="Dependencies" width="full">
+                  {Object.values(packageMetadata?.dependencies).map(
+                    (dependency) => (
+                      <DependencyLink
+                        key={dependency}
+                        packageInfo={dependency}
+                      />
+                    )
                   )}
+                </MetaItem>
+              )}
 
-                {packageMetadata &&
-                  packageMetadata["server-dependencies"] &&
-                  Object.values(packageMetadata["server-dependencies"]).length >
-                    0 && (
-                    <MetaItem title="Server Dependencies" width="full">
-                      {Object.values(
-                        packageMetadata["server-dependencies"]
-                      ).map((dependency) => (
-                        <DependencyLink
-                          key={dependency}
-                          packageInfo={dependency}
-                        />
-                      ))}
-                    </MetaItem>
+            {packageMetadata &&
+              packageMetadata["server-dependencies"] &&
+              Object.values(packageMetadata["server-dependencies"]).length >
+                0 && (
+                <MetaItem title="Server Dependencies" width="full">
+                  {Object.values(packageMetadata["server-dependencies"]).map(
+                    (dependency) => (
+                      <DependencyLink
+                        key={dependency}
+                        packageInfo={dependency}
+                      />
+                    )
                   )}
+                </MetaItem>
+              )}
 
-                {packageMetadata &&
-                  packageMetadata["dev-dependencies"] &&
-                  Object.values(packageMetadata["dev-dependencies"]).length >
-                    0 && (
-                    <MetaItem title="Dev Dependencies" width="full">
-                      {Object.values(packageMetadata["dev-dependencies"]).map(
-                        (dependency) => (
-                          <DependencyLink
-                            key={dependency}
-                            packageInfo={dependency}
-                          />
-                        )
-                      )}
-                    </MetaItem>
+            {packageMetadata &&
+              packageMetadata["dev-dependencies"] &&
+              Object.values(packageMetadata["dev-dependencies"]).length > 0 && (
+                <MetaItem title="Dev Dependencies" width="full">
+                  {Object.values(packageMetadata["dev-dependencies"]).map(
+                    (dependency) => (
+                      <DependencyLink
+                        key={dependency}
+                        packageInfo={dependency}
+                      />
+                    )
                   )}
-              </NarrowColumn>
-            </FlexColumns>
-          )
-        ) : (
-          <div>Loading...</div>
-        )}
+                </MetaItem>
+              )}
+          </NarrowColumn>
+        </FlexColumns>
       </ContentSection>
     </>
   )
