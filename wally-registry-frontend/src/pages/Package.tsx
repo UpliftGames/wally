@@ -336,7 +336,7 @@ export default function Package() {
 
             {packageMetadata["dev-dependencies"]).length > 0 && (
                 <MetaItem title="Dev Dependencies" width="full">
-                  {Object.values(packageMetadata["dev-dependencies"]).map(
+                  {packageMetadata["dev-dependencies"].map(
                     (dependency) => (
                       <DependencyLink
                         key={dependency}
