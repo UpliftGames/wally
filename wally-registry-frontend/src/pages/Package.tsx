@@ -322,10 +322,7 @@ export default function Package() {
                 </MetaItem>
               )}
 
-            {packageMetadata &&
-              packageMetadata["server-dependencies"] &&
-              Object.values(packageMetadata["server-dependencies"]).length >
-                0 && (
+            {packageMetadata["server-dependencies"].length > 0 && (
                 <MetaItem title="Server Dependencies" width="full">
                   {Object.values(packageMetadata["server-dependencies"]).map(
                     (dependency) => (
