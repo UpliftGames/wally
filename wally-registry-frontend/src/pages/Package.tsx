@@ -246,14 +246,12 @@ export default function Package() {
           <NarrowColumn>
             <MetaHeader>Metadata</MetaHeader>
 
-            {packageMetadata?.package && (
-              <MetaItem title="Install" width="full">
-                <CopyCode
-                  packageName={packageMetadata.package.name}
-                  version={packageMetadata.package.version}
-                />
-              </MetaItem>
-            )}
+            <MetaItem title="Install" width="full">
+              <CopyCode
+                packageName={packageMetadata.package.name}
+                version={packageMetadata.package.version}
+              />
+            </MetaItem>
 
             <MetaItem title="Version" width="half">
               <select
