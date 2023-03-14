@@ -308,9 +308,9 @@ export default function Package() {
                 </MetaItem>
               )}
 
-            {packageMetadata.dependencies.length > 0 && (
+            {Object.keys(packageMetadata.dependencies).length > 0 && (
                 <MetaItem title="Dependencies" width="full">
-                  {packageMetadata.dependencies.map(
+                  {Object.values(packageMetadata.dependencies).map(
                     (dependency) => (
                       <DependencyLink
                         key={dependency}
@@ -321,9 +321,9 @@ export default function Package() {
                 </MetaItem>
               )}
 
-            {packageMetadata["server-dependencies"].length > 0 && (
+            {Object.keys(packageMetadata["server-dependencies"]).length > 0 && (
                 <MetaItem title="Server Dependencies" width="full">
-                  {packageMetadata["server-dependencies"].map(
+                  {Object.values(packageMetadata["server-dependencies"]).map(
                     (dependency) => (
                       <DependencyLink
                         key={dependency}
@@ -334,9 +334,9 @@ export default function Package() {
                 </MetaItem>
               )}
 
-            {packageMetadata["dev-dependencies"].length > 0 && (
+            {Object.keys(packageMetadata["dev-dependencies"]).length > 0 && (
                 <MetaItem title="Dev Dependencies" width="full">
-                  {packageMetadata["dev-dependencies"].map(
+                  {Object.values(packageMetadata["dev-dependencies"]).map(
                     (dependency) => (
                       <DependencyLink
                         key={dependency}
