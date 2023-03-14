@@ -287,11 +287,9 @@ export default function Package() {
               </MetaItem>
             )}
 
-            {packageMetadata?.package.realm && (
-              <MetaItem title="Realm" width="half">
-                {capitalize(packageMetadata?.package.realm)}
-              </MetaItem>
-            )}
+            <MetaItem title="Realm" width="half">
+              {capitalize(packageMetadata.package.realm)}
+            </MetaItem>
 
             {/* TODO: Re-implement when Wally API supports custom source repos */}
             {/* {packageMetadata?.package.registry && (
