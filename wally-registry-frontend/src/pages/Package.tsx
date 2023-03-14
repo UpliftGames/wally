@@ -302,7 +302,7 @@ export default function Package() {
 
               {packageMetadata.package.authors.length > 0 && (
                 <MetaItem title="Authors" width="full">
-                  {packageMetadata?.package.authors.map((author) => (
+                  {packageMetadata.package.authors.map((author) => (
                     <p key={author}>{author}</p>
                   ))}
                 </MetaItem>
