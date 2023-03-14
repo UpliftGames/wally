@@ -334,7 +334,7 @@ export default function Package() {
                 </MetaItem>
               )}
 
-            {packageMetadata["dev-dependencies"]).length > 0 && (
+            {packageMetadata["dev-dependencies"].length > 0 && (
                 <MetaItem title="Dev Dependencies" width="full">
                   {packageMetadata["dev-dependencies"].map(
                     (dependency) => (
