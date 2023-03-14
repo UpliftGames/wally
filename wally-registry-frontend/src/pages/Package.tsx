@@ -277,7 +277,7 @@ export default function Package() {
               </select>
             </MetaItem>
 
-            {packageMetadata?.package.license && (
+            {packageMetadata.package.license && (
               <MetaItem title="License" width="half">
                 <a
                   href={`https://choosealicense.com/licenses/${packageMetadata?.package.license.toLocaleLowerCase()}`}
