@@ -239,9 +239,7 @@ export default function Package() {
             <Heading>{packageName}</Heading>
 
             <Paragraph>
-              {packageMetadata?.package.description
-                ? packageMetadata.package.description
-                : `${capitalize(packageName)} has no provided description.`}
+              {packageMetadata.package.description ?? `${capitalize(packageName)} has no provided description.`}
             </Paragraph>
           </WideColumn>
 
