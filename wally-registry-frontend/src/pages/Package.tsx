@@ -310,7 +310,7 @@ export default function Package() {
 
             {packageMetadata.dependencies.length > 0 && (
                 <MetaItem title="Dependencies" width="full">
-                  {Object.values(packageMetadata?.dependencies).map(
+                  {packageMetadata.dependencies.map(
                     (dependency) => (
                       <DependencyLink
                         key={dependency}
