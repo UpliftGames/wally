@@ -308,8 +308,7 @@ export default function Package() {
                 </MetaItem>
               )}
 
-            {packageMetadata?.dependencies &&
-              Object.values(packageMetadata?.dependencies).length > 0 && (
+            {packageMetadata.dependencies.length > 0 && (
                 <MetaItem title="Dependencies" width="full">
                   {Object.values(packageMetadata?.dependencies).map(
                     (dependency) => (
