@@ -55,6 +55,7 @@ fn run_test(name: &str) -> TempProject {
         },
         subcommand: Subcommand::Install(InstallSubcommand {
             project_path: project.path().to_owned(),
+            locked: false,
         }),
     };
 
