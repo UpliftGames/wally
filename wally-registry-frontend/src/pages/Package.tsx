@@ -87,6 +87,19 @@ const MetaItemWrapper = styled.div<StyledMetaItemProps>`
   }
 `
 
+const AuthorItem = styled.p`
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`
+
+const DependencyLinkItem = styled.a`
+  display: "block",
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+`
+
 const MetaItem = ({
   title,
   width,
@@ -110,16 +123,12 @@ const DependencyLink = ({ packageInfo }: { packageInfo: string }) => {
     let name = packageMatch[1]
     let version = packageMatch[2]
     return (
-      <a href={`/package/${name}?version=${version}`} style={{ display: "block" }}>
+      <DependencyLinkItem href={`/package/${name}?version=${version}`}>
         {name + "@" + version}
-      </a>
+      </DependencyLinkItem>
     )
   }
-  return (
-    <a href={"/"} style={{ display: "block" }}>
-      {packageInfo}
-    </a>
-  )
+  return <DependencyLinkItem href={"/"}>{packageInfo}</DependencyLinkItem>
 }
 
 type PackageParams = {
@@ -261,7 +270,7 @@ export default function Package() {
                   packageMetadata?.package.authors.length > 0 && (
                     <MetaItem title="Authors" width="full">
                       {packageMetadata?.package.authors.map((author) => (
-                        <p key={author}>{author}</p>
+                        <AuthorItem key={author}>{author}</AuthorItem>
                       ))}
                     </MetaItem>
                   )}
