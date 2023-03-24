@@ -154,7 +154,7 @@ const MetaItem = ({
 }
 
 const DependencyLink = ({ packageInfo }: { packageInfo: string }) => {
-  let packageMatch = packageInfo.match(/(.+\/.+)@[^\d]+([\d\.]+)/)
+  let packageMatch = packageInfo.match(/(.+\/.+)@[^\d]+([\d.]+)/)
   if (packageMatch != null) {
     let name = packageMatch[1]
     let version = packageMatch[2]
@@ -208,11 +208,13 @@ export default function Package() {
 
     setPackageHistory(filteredPackageData)
 
-	if (urlPackageVersion == null) {
-		const latestVersion = filteredPackageData[0].package.version
-		setPackageVersion(latestVersion)
-		hist.replace(`/package/${packageScope}/${packageName}?version=${latestVersion}`)
-	}
+    if (urlPackageVersion == null) {
+      const latestVersion = filteredPackageData[0].package.version
+      setPackageVersion(latestVersion)
+      hist.replace(
+        `/package/${packageScope}/${packageName}?version=${latestVersion}`
+      )
+    }
 
     setIsLoaded(true)
   }
