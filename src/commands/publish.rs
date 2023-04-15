@@ -48,6 +48,10 @@ impl PublishSubcommand {
         let api = package_index.config()?.api;
         let contents = PackageContents::pack_from_path(&self.project_path)?;
 
+        if contents.data().len() > 2 * 1024 * 1024 {
+            bail!("Package size exceeds 2MB. Reduce package size and try again.");
+        }
+
         let auth = auth_store
             .tokens
             .get(api.as_str())
