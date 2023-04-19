@@ -247,7 +247,7 @@ export default function Package() {
                       <img
                         src={iconDownload}
                         alt="Download"
-                        style={{ fill: "var(--wally-mauve)", height: "2rem" }}
+                        style={{ fill: "var(--wally-mauve)", height: "1rem" }}
                       />
                     </DownloadLink>
                   </MetaItem>
