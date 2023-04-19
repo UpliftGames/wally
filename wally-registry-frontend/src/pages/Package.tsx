@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, createRef } from "react"
 import { useParams } from "react-router"
 import styled from "styled-components"
 import { isMobile, notMobile } from "../breakpoints"
@@ -118,6 +118,52 @@ const DependencyLink = ({ packageInfo }: { packageInfo: string }) => {
   )
 }
 
+const DownloadLink = ({
+  url,
+  filename,
+  children,
+}: {
+  url: string
+  filename: string
+  children: React.ReactNode
+}) => {
+  const link = createRef<HTMLAnchorElement>()
+
+  const handleAction = async () => {
+    console.log(`Attempting to download ${url}`)
+
+    if (link.current === null) {
+      return
+    }
+    if (link.current.href) {
+      // Already has the download blob
+      return
+    }
+
+    const result = await fetch(url, {
+      headers: {
+        "wally-version": "0.3.1",
+      },
+    })
+
+    const blob = await result.blob()
+    const href = window.URL.createObjectURL(blob)
+
+    link.current.download = filename
+    link.current.href = href
+
+    link.current.click()
+  }
+
+  return (
+    <>
+      <a role="button" ref={link} onClick={handleAction}>
+        {children}
+      </a>
+    </>
+  )
+}
+
 type PackageParams = {
   packageScope: string
   packageName: string
@@ -184,27 +230,26 @@ export default function Package() {
 
                 {packageMetadata?.package && (
                   <MetaItem title="Download" width="half">
-                    <a
-                      href={buildWallyPackageDownloadLink(
+                    <DownloadLink
+                      url={buildWallyPackageDownloadLink(
                         packageScope,
                         packageName,
                         packageMetadata.package.version
                       )}
-                      download={
+                      filename={
                         packageScope +
                         "/" +
                         packageName +
                         "@" +
                         packageMetadata.package.version
                       }
-                      style={{ display: "inline-block", width: "1rem" }}
                     >
                       <img
                         src={iconDownload}
                         alt="Download"
-                        style={{ fill: "var(--wally-mauve)" }}
+                        style={{ fill: "var(--wally-mauve)", height: "2rem" }}
                       />
-                    </a>
+                    </DownloadLink>
                   </MetaItem>
                 )}
 
