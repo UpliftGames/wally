@@ -150,21 +150,13 @@ export default function Package() {
       return
     }
 
-    const filteredPackageData = packageData.versions.some(
-      (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
-    )
-      ? packageData.versions.filter(
-          (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
-        )
-      : packageData
+    setPackageHistory(packageData)
 
-    setPackageHistory(filteredPackageData)
-
-	if (urlPackageVersion == null) {
-		const latestVersion = filteredPackageData[0].package.version
-		setPackageVersion(latestVersion)
-		hist.replace(`/package/${packageScope}/${packageName}?version=${latestVersion}`)
-	}
+    if (urlPackageVersion == null) {
+      const latestVersion = packageData[0].package.version
+      setPackageVersion(latestVersion)
+      hist.replace(`/package/${packageScope}/${packageName}?version=${latestVersion}`)
+    }
 
     setIsLoaded(true)
   }
