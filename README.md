@@ -24,7 +24,7 @@ Pre-built binaries are available for Windows, macOS, and Linux from the [GitHub 
 [releases]: https://github.com/UpliftGames/wally/releases
 
 ### With Homebrew
-[Homebrew](homebrew) is a package manager that can be used on both macOS and Linux. You can install using the following command:
+[Homebrew][homebrew] is a package manager that can be used on both macOS and Linux. You can install using the following command:
 
 ```
 brew install wally
