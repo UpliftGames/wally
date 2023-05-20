@@ -41,8 +41,6 @@ struct DeviceCodeResponse {
 #[derive(Deserialize)]
 struct DeviceCodeAuth {
     access_token: String,
-    token_type: String,
-    scope: String,
 }
 
 #[derive(Deserialize)]
