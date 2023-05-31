@@ -34,10 +34,10 @@ use rocket::{
     data::{Data, ToByteUnit},
     fairing::AdHoc,
     http::{ContentType, Status},
-    response::{content, stream},
+    response::{content},
     State,
 };
-use rocket::{Request, Response, Phase, Build};
+use rocket::{Request, Response, Build};
 use semver::Version;
 use serde_json::json;
 use storage::StorageMode;
@@ -67,7 +67,7 @@ async fn package_contents(
     name: String,
     version: String,
     _cli_version: Result<WallyVersion, Error>,
-) -> Result<ReaderStream![StorageOutput], Error> {
+) -> Result<(ContentType, ReaderStream![StorageOutput]), Error> {
     _read?;
     _cli_version?;
 
@@ -81,7 +81,7 @@ async fn package_contents(
     let package_id = PackageId::new(package_name, version);
 
     match storage.read(&package_id).await.map(ReaderStream::one) {
-        Ok(stream) => Ok(stream),
+        Ok(stream) => Ok((ContentType::GZIP, stream)),
         Err(e) => Err(e).status(Status::NotFound),
     }
 }
