@@ -56,7 +56,7 @@ zip = "0.5.11"
 globset = "0.4.8"
 
 [dev-dependencies]
-insta = "1.1.0"
+insta = { version = "1.1.0" }
 
 [features]
 vendored-libgit2 = ["git2/vendored-libgit2"]

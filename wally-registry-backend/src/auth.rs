@@ -114,7 +114,7 @@ impl<'r> FromRequest<'r> for ReadAccess {
 
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Error> {
         let config = request
-            .guard::<State<Config>>()
+            .guard::<&State<Config>>()
             .await
             .expect("AuthMode was not configured");
 
@@ -167,7 +167,7 @@ impl<'r> FromRequest<'r> for WriteAccess {
 
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Error> {
         let config = request
-            .guard::<State<Config>>()
+            .guard::<&State<Config>>()
             .await
             .expect("AuthMode was not configured");
 
