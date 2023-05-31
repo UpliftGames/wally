@@ -34,10 +34,10 @@ use rocket::{
     data::{Data, ToByteUnit},
     fairing::AdHoc,
     http::{ContentType, Status},
-    response::{content},
+    response::content,
     State,
 };
-use rocket::{Request, Response, Build};
+use rocket::{Build, Request, Response};
 use semver::Version;
 use serde_json::json;
 use storage::StorageMode;
