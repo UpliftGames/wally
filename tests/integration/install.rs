@@ -31,6 +31,11 @@ fn dev_dependency() {
 }
 
 #[test]
+fn dev_dependency_also_required_as_non_dev() {
+    run_test("dev-dependency-also-required-as-non-dev");
+}
+
+#[test]
 fn cross_realm_dependency() {
     run_test("cross-realm-dependency");
 }
