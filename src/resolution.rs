@@ -49,6 +49,9 @@ impl Resolve {
 }
 
 /// A single node in the package resolution graph.
+/// Origin realm is the "most restrictive" realm the package can still be dependended
+/// upon. It is where the package gets placed during install.
+/// See [ origin_realm clarification ]. In the resolve function for more info.
 #[derive(Debug, Serialize)]
 pub struct ResolvePackageMetadata {
     pub realm: Realm,
@@ -132,11 +135,14 @@ pub fn resolve(
                     .get_mut(package_id)
                     .expect("activated package was missing metadata");
 
-                // We want to set the origin to the least restrictive origin possible.
+                // [ origin_realm clarification ]
+                // We want to set the origin to the most restrictive origin possible.
                 // For example we want to keep packages in the dev realm unless a dependency
                 // with a shared/server origin requires it. This way server/shared dependencies
                 // which only originate from dev dependencies get put into the dev folder even
-                // if they usually belong to another realm.
+                // if they usually belong to another realm. Likewise we want to keep shared
+                // dependencies in the server realm unless they are explicitly required as a
+                // shared dependency.
                 let realm_match = match (metadata.origin_realm, dependency_request.origin_realm) {
                     (_, Realm::Shared) => Realm::Shared,
                     (Realm::Shared, _) => Realm::Shared,

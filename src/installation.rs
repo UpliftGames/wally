@@ -89,27 +89,30 @@ impl InstallationContext {
             // package links for its dependencies.
             if package_id == &root_package_id {
                 if let Some(deps) = shared_deps {
-                    self.write_root_package_links(Realm::Shared, deps, Realm::Shared)?;
+                    self.write_root_package_links(Realm::Shared, deps, resolved)?;
                 }
 
                 if let Some(deps) = server_deps {
-                    self.write_root_package_links(Realm::Server, deps, Realm::Server)?;
+                    self.write_root_package_links(Realm::Server, deps, resolved)?;
                 }
 
                 if let Some(deps) = dev_deps {
-                    self.write_root_package_links(Realm::Dev, deps, Realm::Dev)?;
+                    self.write_root_package_links(Realm::Dev, deps, resolved)?;
                 }
             } else {
                 let metadata = resolved.metadata.get(package_id).unwrap();
-
                 let package_realm = metadata.origin_realm;
 
                 if let Some(deps) = shared_deps {
-                    self.write_package_links(package_id, package_realm, deps, Realm::Shared)?;
+                    self.write_package_links(package_id, package_realm, deps, resolved)?;
                 }
 
                 if let Some(deps) = server_deps {
-                    self.write_package_links(package_id, package_realm, deps, Realm::Server)?;
+                    self.write_package_links(package_id, package_realm, deps, resolved)?;
+                }
+
+                if let Some(deps) = dev_deps {
+                    self.write_package_links(package_id, package_realm, deps, resolved)?;
                 }
 
                 let source_registry = &resolved.metadata[package_id].source_registry;
@@ -185,10 +188,6 @@ impl InstallationContext {
         })?;
 
         let contents = formatdoc! {r#"
-            if not game:GetService("RunService"):IsServer() then
-                error("{full_name} is a server-only package.", 2)
-            end
-
             return require({packages}._Index["{full_name}"]["{short_name}"])
             "#,
             packages = server_path,
@@ -203,7 +202,7 @@ impl InstallationContext {
         &self,
         root_realm: Realm,
         dependencies: impl IntoIterator<Item = (K, &'a PackageId)>,
-        dependencies_realm: Realm,
+        resolved: &Resolve,
     ) -> anyhow::Result<()> {
         log::debug!("Writing root package links");
 
@@ -217,6 +216,7 @@ impl InstallationContext {
         fs::create_dir_all(base_path)?;
 
         for (dep_name, dep_package_id) in dependencies {
+            let dependencies_realm = resolved.metadata.get(dep_package_id).unwrap().origin_realm;
             let path = base_path.join(format!("{}.lua", dep_name));
 
             let contents = match (root_realm, dependencies_realm) {
@@ -240,7 +240,7 @@ impl InstallationContext {
         package_id: &PackageId,
         package_realm: Realm,
         dependencies: impl IntoIterator<Item = (K, &'a PackageId)>,
-        dependencies_realm: Realm,
+        resolved: &Resolve,
     ) -> anyhow::Result<()> {
         log::debug!("Writing package links for {}", package_id);
 
@@ -256,6 +256,7 @@ impl InstallationContext {
         fs::create_dir_all(&base_path)?;
 
         for (dep_name, dep_package_id) in dependencies {
+            let dependencies_realm = resolved.metadata.get(dep_package_id).unwrap().origin_realm;
             let path = base_path.join(format!("{}.lua", dep_name));
 
             let contents = match (package_realm, dependencies_realm) {
