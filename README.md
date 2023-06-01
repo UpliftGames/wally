@@ -76,6 +76,8 @@ Parity with:
 ### `wally login`
 Log into an account to publish packages to a registry.
 
+You can also directly provide a token via `wally login --token "$WALLY_AUTH_TOKEN"`.
+
 Parity with:
 * `cargo login`
 * `npm login`
@@ -156,6 +158,9 @@ registry = "https://github.com/upliftgames/wally-index"
 # files/directories or packages downloaded by Wally.
 # include = []
 exclude = ["node_modules"]
+
+# Packages can be marked as private to prevent them from being published.
+private = true
 
 [dependencies]
 # Most dependencies will look like this.

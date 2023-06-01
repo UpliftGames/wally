@@ -120,6 +120,12 @@ pub struct Package {
     /// Example: ["/Packages", "/node_modules"]
     #[serde(default)]
     pub exclude: Vec<String>,
+
+    /// Indicates whether the package can be published or not.
+    ///
+    /// Example: true
+    #[serde(default)]
+    pub private: bool,
 }
 
 // Metadata we require when this manifest will be used to generate package folders

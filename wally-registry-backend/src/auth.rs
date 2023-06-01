@@ -114,7 +114,7 @@ impl<'r> FromRequest<'r> for ReadAccess {
 
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Error> {
         let config = request
-            .guard::<State<Config>>()
+            .guard::<&State<Config>>()
             .await
             .expect("AuthMode was not configured");
 
@@ -148,7 +148,11 @@ impl WriteAccess {
             WriteAccess::Github(github_info) => {
                 match index.is_scope_owner(scope, github_info.id())? {
                     true => true,
-                    false => github_info.login().to_lowercase() == scope,
+                    // Only grant write access if the username matches the scope AND the scope has no existing owners
+                    false => {
+                        github_info.login().to_lowercase() == scope
+                            && index.get_scope_owners(scope)?.is_empty()
+                    }
                 }
             }
         };
@@ -163,7 +167,7 @@ impl<'r> FromRequest<'r> for WriteAccess {
 
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Error> {
         let config = request
-            .guard::<State<Config>>()
+            .guard::<&State<Config>>()
             .await
             .expect("AuthMode was not configured");
 

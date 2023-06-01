@@ -38,6 +38,7 @@ impl PackageBuilder {
                 authors: Vec::new(),
                 include: Vec::new(),
                 exclude: Vec::new(),
+                private: false,
             },
             place: Default::default(),
             dependencies: Default::default(),
