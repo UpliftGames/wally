@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use anyhow::bail;
 use once_cell::sync::OnceCell;
+use reqwest::blocking::ClientBuilder;
 use reqwest::{blocking::Client, header::AUTHORIZATION};
 use url::Url;
 
@@ -11,7 +12,7 @@ use crate::manifest::Manifest;
 use crate::package_id::PackageId;
 use crate::package_index::PackageIndex;
 use crate::package_req::PackageReq;
-use crate::package_source::{PackageContents, PackageSource};
+use crate::package_source::PackageContents;
 
 use super::{PackageSourceId, PackageSourceImpl};
 
@@ -35,7 +36,7 @@ impl Registry {
             index_url,
             auth_token: OnceCell::new(),
             index: OnceCell::new(),
-            client: Client::new(),
+            client: ClientBuilder::new().gzip(true).build()?,
         })
     }
 

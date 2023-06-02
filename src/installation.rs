@@ -2,7 +2,6 @@ use std::{
     fmt::Display,
     io,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
 use anyhow::{bail, format_err};
@@ -13,7 +12,7 @@ use crate::{
     manifest::Realm,
     package_contents::PackageContents,
     package_id::PackageId,
-    package_source::{PackageSource, PackageSourceImpl, PackageSourceMap},
+    package_source::{PackageSourceImpl, PackageSourceMap},
     resolution::Resolve,
 };
 
@@ -129,10 +128,8 @@ impl InstallationContext {
 
                 let handle = std::thread::spawn(move || {
                     let package_source = source_copy.get(&source_registry).unwrap();
-                    let contents = package_source.download_package(&package_id).unwrap();
-                    context
-                        .write_contents(&package_id, &contents, package_realm)
-                        .unwrap();
+                    let contents = package_source.download_package(&package_id)?;
+                    context.write_contents(&package_id, &contents, package_realm)
                 });
 
                 handles.push(handle);
@@ -142,7 +139,7 @@ impl InstallationContext {
         let num_packages = handles.len();
 
         for handle in handles {
-            handle.join().unwrap();
+            handle.join().expect("Package failed to be installed.")?;
         }
 
         log::info!("Downloaded {} packages!", num_packages);
