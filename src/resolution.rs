@@ -9,13 +9,13 @@ use serde::Serialize;
 use crate::manifest::{Manifest, Realm};
 use crate::package_id::PackageId;
 use crate::package_req::PackageReq;
-use crate::package_source::{PackageSourceId, PackageSourceMap};
+use crate::package_source::{PackageSourceId, PackageSourceImpl, PackageSourceMap};
 
 /// A completely resolved graph of packages returned by `resolve`.
 ///
 /// State here is stored in multiple maps, all keyed by PackageId, to facilitate
 /// concurrent mutable access to unrelated information about different packages.
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default, Serialize, Clone)]
 pub struct Resolve {
     /// Set of all packages that have been chosen to be part of the package
     /// graph.
@@ -52,7 +52,7 @@ impl Resolve {
 /// Origin realm is the "most restrictive" realm the package can still be dependended
 /// upon. It is where the package gets placed during install.
 /// See [ origin_realm clarification ]. In the resolve function for more info.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct ResolvePackageMetadata {
     pub realm: Realm,
     pub origin_realm: Realm,

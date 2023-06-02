@@ -2,7 +2,7 @@ use std::io::Read;
 use std::sync::Arc;
 
 use anyhow::bail;
-use once_cell::unsync::OnceCell;
+use once_cell::sync::OnceCell;
 use reqwest::{blocking::Client, header::AUTHORIZATION};
 use url::Url;
 
@@ -13,14 +13,15 @@ use crate::package_index::PackageIndex;
 use crate::package_req::PackageReq;
 use crate::package_source::{PackageContents, PackageSource};
 
-use super::PackageSourceId;
+use super::{PackageSourceId, PackageSourceImpl};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+#[derive(Clone)]
 pub struct Registry {
     index_url: Url,
     auth_token: OnceCell<Option<Arc<str>>>,
-    index: OnceCell<PackageIndex>,
+    index: OnceCell<Arc<PackageIndex>>,
     client: Client,
 }
 
@@ -51,9 +52,9 @@ impl Registry {
             .map(|token| token.clone())
     }
 
-    fn index(&self) -> anyhow::Result<&PackageIndex> {
+    fn index(&self) -> anyhow::Result<&Arc<PackageIndex>> {
         self.index
-            .get_or_try_init(|| PackageIndex::new(&self.index_url, None))
+            .get_or_try_init(|| Ok(Arc::new(PackageIndex::new(&self.index_url, None)?)))
     }
 
     fn api_url(&self) -> anyhow::Result<Url> {
@@ -62,7 +63,7 @@ impl Registry {
     }
 }
 
-impl PackageSource for Registry {
+impl PackageSourceImpl for Registry {
     fn update(&self) -> anyhow::Result<()> {
         self.index()?.update()
     }
@@ -82,8 +83,6 @@ impl PackageSource for Registry {
     }
 
     fn download_package(&self, package_id: &PackageId) -> anyhow::Result<PackageContents> {
-        log::info!("Downloading {}...", package_id);
-
         let path = format!(
             "/v1/package-contents/{}/{}/{}",
             package_id.name().scope(),
@@ -112,6 +111,8 @@ impl PackageSource for Registry {
 
         let mut data = Vec::new();
         response.read_to_end(&mut data)?;
+
+        log::info!("Downloaded {}...", package_id);
 
         Ok(PackageContents::from_buffer(data))
     }

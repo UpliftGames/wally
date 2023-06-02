@@ -2,6 +2,7 @@ use std::{
     fmt::Display,
     io,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use anyhow::{bail, format_err};
@@ -9,10 +10,14 @@ use fs_err as fs;
 use indoc::{formatdoc, indoc};
 
 use crate::{
-    manifest::Realm, package_contents::PackageContents, package_id::PackageId,
-    package_source::PackageSourceMap, resolution::Resolve,
+    manifest::Realm,
+    package_contents::PackageContents,
+    package_id::PackageId,
+    package_source::{PackageSource, PackageSourceImpl, PackageSourceMap},
+    resolution::Resolve,
 };
 
+#[derive(Clone)]
 pub struct InstallationContext {
     shared_dir: PathBuf,
     shared_index_dir: PathBuf,
@@ -74,54 +79,73 @@ impl InstallationContext {
     /// `InstallationContext` was built for.
     pub fn install(
         &self,
-        sources: &PackageSourceMap,
+        sources: PackageSourceMap,
         root_package_id: PackageId,
-        resolved: &Resolve,
+        resolved: Resolve,
     ) -> anyhow::Result<()> {
-        for package_id in &resolved.activated {
+        let mut handles = Vec::new();
+        let resolved_copy = resolved.clone();
+
+        for package_id in resolved_copy.activated {
             log::debug!("Installing {}...", package_id);
 
-            let shared_deps = resolved.shared_dependencies.get(package_id);
-            let server_deps = resolved.server_dependencies.get(package_id);
-            let dev_deps = resolved.dev_dependencies.get(package_id);
+            let shared_deps = resolved.shared_dependencies.get(&package_id);
+            let server_deps = resolved.server_dependencies.get(&package_id);
+            let dev_deps = resolved.dev_dependencies.get(&package_id);
 
             // We do not need to install the root package, but we should create
             // package links for its dependencies.
-            if package_id == &root_package_id {
+            if package_id == root_package_id {
                 if let Some(deps) = shared_deps {
-                    self.write_root_package_links(Realm::Shared, deps, resolved)?;
+                    self.write_root_package_links(Realm::Shared, deps, &resolved)?;
                 }
 
                 if let Some(deps) = server_deps {
-                    self.write_root_package_links(Realm::Server, deps, resolved)?;
+                    self.write_root_package_links(Realm::Server, deps, &resolved)?;
                 }
 
                 if let Some(deps) = dev_deps {
-                    self.write_root_package_links(Realm::Dev, deps, resolved)?;
+                    self.write_root_package_links(Realm::Dev, deps, &resolved)?;
                 }
             } else {
-                let metadata = resolved.metadata.get(package_id).unwrap();
+                let metadata = resolved.metadata.get(&package_id).unwrap();
                 let package_realm = metadata.origin_realm;
 
                 if let Some(deps) = shared_deps {
-                    self.write_package_links(package_id, package_realm, deps, resolved)?;
+                    self.write_package_links(&package_id, package_realm, deps, &resolved)?;
                 }
 
                 if let Some(deps) = server_deps {
-                    self.write_package_links(package_id, package_realm, deps, resolved)?;
+                    self.write_package_links(&package_id, package_realm, deps, &resolved)?;
                 }
 
                 if let Some(deps) = dev_deps {
-                    self.write_package_links(package_id, package_realm, deps, resolved)?;
+                    self.write_package_links(&package_id, package_realm, deps, &resolved)?;
                 }
 
-                let source_registry = &resolved.metadata[package_id].source_registry;
-                let package_source = sources.get(source_registry).unwrap();
-                let contents = package_source.download_package(package_id)?;
+                let source_registry = resolved_copy.metadata[&package_id].source_registry.clone();
+                let source_copy = sources.clone();
+                let context = (*self).clone();
 
-                self.write_contents(package_id, &contents, package_realm)?;
+                let handle = std::thread::spawn(move || {
+                    let package_source = source_copy.get(&source_registry).unwrap();
+                    let contents = package_source.download_package(&package_id).unwrap();
+                    context
+                        .write_contents(&package_id, &contents, package_realm)
+                        .unwrap();
+                });
+
+                handles.push(handle);
             }
         }
+
+        let num_packages = handles.len();
+
+        for handle in handles {
+            handle.join().unwrap();
+        }
+
+        log::info!("Downloaded {} packages!", num_packages);
 
         Ok(())
     }

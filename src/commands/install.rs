@@ -29,10 +29,14 @@ impl InstallSubcommand {
         let lockfile = Lockfile::load(&self.project_path)?
             .unwrap_or_else(|| Lockfile::from_manifest(&manifest));
 
-        let default_registry: Box<dyn PackageSource> = if global.test_registry {
-            Box::new(TestRegistry::new(&manifest.package.registry))
+        let default_registry: Box<PackageSource> = if global.test_registry {
+            Box::new(PackageSource::TestRegistry(TestRegistry::new(
+                &manifest.package.registry,
+            )))
         } else {
-            Box::new(Registry::from_registry_spec(&manifest.package.registry)?)
+            Box::new(PackageSource::Registry(Registry::from_registry_spec(
+                &manifest.package.registry,
+            )?))
         };
 
         let mut package_sources = PackageSourceMap::new(default_registry);
@@ -64,7 +68,7 @@ impl InstallSubcommand {
         );
 
         installation.clean()?;
-        installation.install(&package_sources, root_package_id, &resolved)?;
+        installation.install(package_sources, root_package_id, resolved)?;
 
         Ok(())
     }
