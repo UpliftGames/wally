@@ -2,6 +2,7 @@ use std::{
     fmt::Display,
     io,
     path::{Path, PathBuf},
+    thread,
 };
 
 use anyhow::{bail, format_err};
@@ -77,7 +78,7 @@ impl InstallationContext {
     /// Install all packages from the given `Resolve` into the package that this
     /// `InstallationContext` was built for.
     pub fn install(
-        &self,
+        self,
         sources: PackageSourceMap,
         root_package_id: PackageId,
         resolved: Resolve,
@@ -124,9 +125,9 @@ impl InstallationContext {
 
                 let source_registry = resolved_copy.metadata[&package_id].source_registry.clone();
                 let source_copy = sources.clone();
-                let context = (*self).clone();
+                let context = self.clone();
 
-                let handle = std::thread::spawn(move || {
+                let handle = thread::spawn(move || {
                     let package_source = source_copy.get(&source_registry).unwrap();
                     let contents = package_source.download_package(&package_id)?;
                     context.write_contents(&package_id, &contents, package_realm)
