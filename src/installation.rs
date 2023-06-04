@@ -7,6 +7,7 @@ use std::{
 
 use anyhow::{bail, format_err};
 use fs_err as fs;
+use indicatif::ProgressBar;
 use indoc::{formatdoc, indoc};
 
 use crate::{
@@ -85,6 +86,7 @@ impl InstallationContext {
     ) -> anyhow::Result<()> {
         let mut handles = Vec::new();
         let resolved_copy = resolved.clone();
+        let bar = ProgressBar::new((resolved_copy.activated.len() - 1) as u64);
 
         for package_id in resolved_copy.activated {
             log::debug!("Installing {}...", package_id);
@@ -126,10 +128,13 @@ impl InstallationContext {
                 let source_registry = resolved_copy.metadata[&package_id].source_registry.clone();
                 let source_copy = sources.clone();
                 let context = self.clone();
+                let b = bar.clone();
 
                 let handle = thread::spawn(move || {
                     let package_source = source_copy.get(&source_registry).unwrap();
                     let contents = package_source.download_package(&package_id)?;
+                    b.println(format!("{} downloaded", package_id));
+                    b.inc(1);
                     context.write_contents(&package_id, &contents, package_realm)
                 });
 
@@ -143,6 +148,7 @@ impl InstallationContext {
             handle.join().expect("Package failed to be installed.")?;
         }
 
+        bar.finish_and_clear();
         log::info!("Downloaded {} packages!", num_packages);
 
         Ok(())

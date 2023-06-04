@@ -113,7 +113,7 @@ impl PackageSourceImpl for Registry {
         let mut data = Vec::new();
         response.read_to_end(&mut data)?;
 
-        log::info!("Downloaded {}...", package_id);
+        //log::info!("Downloaded {}...", package_id);
 
         Ok(PackageContents::from_buffer(data))
     }
