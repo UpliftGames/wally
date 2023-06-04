@@ -36,7 +36,7 @@ impl Registry {
             index_url,
             auth_token: OnceCell::new(),
             index: OnceCell::new(),
-            client: ClientBuilder::new().gzip(true).build()?,
+            client: ClientBuilder::new().build()?,
         })
     }
 
@@ -112,8 +112,6 @@ impl PackageSourceProvider for Registry {
 
         let mut data = Vec::new();
         response.read_to_end(&mut data)?;
-
-        //log::info!("Downloaded {}...", package_id);
 
         Ok(PackageContents::from_buffer(data))
     }

@@ -7,9 +7,7 @@ use crate::installation::InstallationContext;
 use crate::lockfile::{LockPackage, Lockfile};
 use crate::manifest::Manifest;
 use crate::package_id::PackageId;
-use crate::package_source::{
-    PackageSource, PackageSourceId, PackageSourceMap, Registry, TestRegistry,
-};
+use crate::package_source::{PackageSource, PackageSourceMap, Registry, TestRegistry};
 use crate::resolution::resolve;
 
 use super::GlobalOptions;
