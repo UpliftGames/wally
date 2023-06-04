@@ -2,12 +2,13 @@ use std::{
     fmt::Display,
     io,
     path::{Path, PathBuf},
-    thread,
+    time::Duration,
 };
 
 use anyhow::{bail, format_err};
+use crossterm::style::{Color, SetForegroundColor};
 use fs_err as fs;
-use indicatif::ProgressBar;
+use indicatif::{ProgressBar, ProgressStyle};
 use indoc::{formatdoc, indoc};
 
 use crate::{
@@ -86,7 +87,21 @@ impl InstallationContext {
     ) -> anyhow::Result<()> {
         let mut handles = Vec::new();
         let resolved_copy = resolved.clone();
-        let bar = ProgressBar::new((resolved_copy.activated.len() - 1) as u64);
+        let bar = ProgressBar::new((resolved_copy.activated.len() - 1) as u64).with_style(
+            ProgressStyle::with_template(
+                "{spinner:.cyan.bold} {pos}/{len} [{wide_bar:.cyan/blue}]",
+            )
+            .unwrap()
+            .tick_chars("⠁⠈⠐⠠⠄⠂ ")
+            .progress_chars("#>-"),
+        );
+        bar.enable_steady_tick(Duration::from_millis(100));
+
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(50)
+            .enable_all()
+            .build()
+            .unwrap();
 
         for package_id in resolved_copy.activated {
             log::debug!("Installing {}...", package_id);
@@ -130,10 +145,15 @@ impl InstallationContext {
                 let context = self.clone();
                 let b = bar.clone();
 
-                let handle = thread::spawn(move || {
+                let handle = runtime.spawn(async move {
                     let package_source = source_copy.get(&source_registry).unwrap();
                     let contents = package_source.download_package(&package_id)?;
-                    b.println(format!("{} downloaded", package_id));
+                    b.println(format!(
+                        "{} Downloaded {}{}",
+                        SetForegroundColor(Color::DarkGreen),
+                        SetForegroundColor(Color::Reset),
+                        package_id,
+                    ));
                     b.inc(1);
                     context.write_contents(&package_id, &contents, package_realm)
                 });
@@ -145,7 +165,9 @@ impl InstallationContext {
         let num_packages = handles.len();
 
         for handle in handles {
-            handle.join().expect("Package failed to be installed.")?;
+            runtime
+                .block_on(handle)
+                .expect("Package failed to be installed.")?;
         }
 
         bar.finish_and_clear();

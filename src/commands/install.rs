@@ -1,6 +1,9 @@
 use std::collections::BTreeSet;
 use std::path::PathBuf;
+use std::time::Duration;
 
+use crossterm::style::{Color, SetForegroundColor};
+use indicatif::{ProgressBar, ProgressStyle};
 use structopt::StructOpt;
 
 use crate::installation::InstallationContext;
@@ -53,11 +56,40 @@ impl InstallSubcommand {
             }
         }
 
+        let progress = ProgressBar::new(0)
+            .with_style(
+                ProgressStyle::with_template("{spinner:.cyan}{wide_msg}")?.tick_chars("⠁⠈⠐⠠⠄⠂ "),
+            )
+            .with_message(format!(
+                "{} Resolving {}packages...",
+                SetForegroundColor(Color::DarkGreen),
+                SetForegroundColor(Color::Reset)
+            ));
+        progress.enable_steady_tick(Duration::from_millis(100));
+
         let resolved = resolve(&manifest, &try_to_use, &package_sources)?;
+
+        progress.println(format!(
+            "{}   Resolved {}{} dependencies",
+            SetForegroundColor(Color::DarkGreen),
+            SetForegroundColor(Color::Reset),
+            resolved.activated.len() - 1
+        ));
 
         let lockfile = Lockfile::from_resolve(&resolved);
         lockfile.save(&self.project_path)?;
 
+        progress.println(format!(
+            "{}  Generated {}lockfile",
+            SetForegroundColor(Color::DarkGreen),
+            SetForegroundColor(Color::Reset)
+        ));
+
+        progress.set_message(format!(
+            "{}  Cleaning {}package destination...",
+            SetForegroundColor(Color::DarkGreen),
+            SetForegroundColor(Color::Reset)
+        ));
         let root_package_id = PackageId::new(manifest.package.name, manifest.package.version);
         let installation = InstallationContext::new(
             &self.project_path,
@@ -66,6 +98,13 @@ impl InstallSubcommand {
         );
 
         installation.clean()?;
+        progress.println(format!(
+            "{}    Cleaned {}package destination",
+            SetForegroundColor(Color::DarkGreen),
+            SetForegroundColor(Color::Reset)
+        ));
+        progress.finish_and_clear();
+
         installation.install(package_sources, root_package_id, resolved)?;
 
         Ok(())

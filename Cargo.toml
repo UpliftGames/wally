@@ -55,6 +55,7 @@ whoami = "1.1.2"
 zip = "0.5.11"
 globset = "0.4.8"
 indicatif = "0.17.4"
+tokio = "1.28.2"
 
 [dev-dependencies]
 insta = { version = "1.1.0" }

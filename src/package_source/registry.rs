@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use anyhow::bail;
 use once_cell::sync::OnceCell;
-use reqwest::blocking::ClientBuilder;
 use reqwest::{blocking::Client, header::AUTHORIZATION};
 use url::Url;
 
@@ -36,7 +35,7 @@ impl Registry {
             index_url,
             auth_token: OnceCell::new(),
             index: OnceCell::new(),
-            client: ClientBuilder::new().build()?,
+            client: Client::new(),
         })
     }
 
