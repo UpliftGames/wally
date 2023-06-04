@@ -14,7 +14,7 @@ use crate::package_index::PackageIndex;
 use crate::package_req::PackageReq;
 use crate::package_source::PackageContents;
 
-use super::{PackageSourceId, PackageSourceImpl};
+use super::{PackageSourceId, PackageSourceProvider};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -64,7 +64,7 @@ impl Registry {
     }
 }
 
-impl PackageSourceImpl for Registry {
+impl PackageSourceProvider for Registry {
     fn update(&self) -> anyhow::Result<()> {
         self.index()?.update()
     }

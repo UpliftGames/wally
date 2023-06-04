@@ -85,7 +85,7 @@ impl PackageSourceMap {
     }
 }
 
-pub trait PackageSourceImpl: Sync + Send + Clone {
+pub trait PackageSourceProvider: Sync + Send + Clone {
     /// Update this package source, if it has state that needs to be updated.
     fn update(&self) -> anyhow::Result<()>;
 
@@ -108,7 +108,7 @@ pub enum PackageSource {
     TestRegistry(TestRegistry),
 }
 
-impl PackageSourceImpl for PackageSource {
+impl PackageSourceProvider for PackageSource {
     fn update(&self) -> anyhow::Result<()> {
         match self {
             PackageSource::InMemory(source) => source.update(),

@@ -9,7 +9,7 @@ use serde::Serialize;
 use crate::manifest::{Manifest, Realm};
 use crate::package_id::PackageId;
 use crate::package_req::PackageReq;
-use crate::package_source::{PackageSourceId, PackageSourceImpl, PackageSourceMap};
+use crate::package_source::{PackageSourceId, PackageSourceMap, PackageSourceProvider};
 
 /// A completely resolved graph of packages returned by `resolve`.
 ///

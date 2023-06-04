@@ -3,9 +3,8 @@
 //! resolution, installation, upgrading, etc.
 
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::sync::Arc;
 use std::sync::RwLock;
-use std::{cell::RefCell, sync::Arc};
 
 use anyhow::format_err;
 
@@ -14,7 +13,7 @@ use crate::{
     package_source::PackageSource, test_package::PackageBuilder,
 };
 
-use super::{PackageContents, PackageSourceId, PackageSourceImpl};
+use super::{PackageContents, PackageSourceId, PackageSourceProvider};
 
 /// An in-memory registry that can have packages published to it.
 ///
@@ -62,7 +61,7 @@ pub struct InMemoryRegistrySource {
     storage: Storage,
 }
 
-impl PackageSourceImpl for InMemoryRegistrySource {
+impl PackageSourceProvider for InMemoryRegistrySource {
     fn update(&self) -> anyhow::Result<()> {
         Ok(())
     }

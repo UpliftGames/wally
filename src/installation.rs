@@ -14,7 +14,7 @@ use crate::{
     manifest::Realm,
     package_contents::PackageContents,
     package_id::PackageId,
-    package_source::{PackageSourceImpl, PackageSourceMap},
+    package_source::{PackageSourceMap, PackageSourceProvider},
     resolution::Resolve,
 };
 
