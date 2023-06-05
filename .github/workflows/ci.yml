@@ -29,13 +29,13 @@ jobs:
     - name: Build
       run: |
         sudo apt-get install libssl-dev
-        cargo build --all --verbose --locked
+        cargo build --verbose --locked
 
     - name: Run tests
-      run: cargo test --all --verbose --locked
+      run: cargo test --verbose --locked
 
     - name: Rustfmt and Clippy
       run: |
-        cargo fmt --all -- --check
+        cargo fmt -- --check
         cargo clippy
       if: matrix.rust_version == 'stable'
