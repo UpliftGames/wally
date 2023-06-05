@@ -42,7 +42,7 @@ jobs:
         mkdir staging
         cp "target/release/wally.exe" staging/
         cd staging
-        zip ../release.zip *
+        7z ../release.zip *
 
     - name: Upload Archive to Release
       uses: actions/upload-release-asset@v1
@@ -51,13 +51,13 @@ jobs:
       with:
         upload_url: ${{ needs.create-release.outputs.upload_url }}
         asset_path: release.zip
-        asset_name: wally-${{ github.ref }}-win64.zip
+        asset_name: wally-${{github.ref_name}}-win64.zip
         asset_content_type: application/octet-stream
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
       with:
-        name: wally-${{ github.ref }}-win64.zip
+        name: wally-${{ github.ref_name }}-win64.zip
         path: release.zip
 
   macos:
@@ -96,13 +96,13 @@ jobs:
       with:
         upload_url: ${{ needs.create-release.outputs.upload_url }}
         asset_path: release.zip
-        asset_name: wally-${{ github.ref }}-macos.zip
+        asset_name: wally-${{ github.ref_name }}-macos.zip
         asset_content_type: application/octet-stream
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
       with:
-        name: wally-${{ github.ref }}-macos.zip
+        name: wally-${{ github.ref_name }}-macos.zip
         path: release.zip
 
   linux:
@@ -136,11 +136,11 @@ jobs:
       with:
         upload_url: ${{ needs.create-release.outputs.upload_url }}
         asset_path: release.zip
-        asset_name: wally-${{ github.ref }}-linux.zip
+        asset_name: wally-${{ github.ref_name }}-linux.zip
         asset_content_type: application/octet-stream
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
       with:
-        name: wally-${{ github.ref }}-linux.zip
+        name: wally-${{ github.ref_name }}-linux.zip
         path: release.zip
