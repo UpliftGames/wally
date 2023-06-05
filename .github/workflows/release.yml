@@ -42,7 +42,7 @@ jobs:
         mkdir staging
         cp "target/release/wally.exe" staging/
         cd staging
-        7z ../release.zip *
+        7z a ../release.zip *
 
     - name: Upload Archive to Release
       uses: actions/upload-release-asset@v1
