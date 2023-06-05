@@ -231,7 +231,9 @@ pub fn server(figment: Figment) -> rocket::Rocket<Build> {
     println!("Using storage backend: {:?}", config.storage);
     let storage_backend: Box<dyn StorageBackend> = match config.storage {
         StorageMode::Local { path } => Box::new(LocalStorage::new(path)),
-        StorageMode::Gcs { bucket } => Box::new(configure_gcs(bucket).unwrap()),
+        StorageMode::Gcs { bucket, cache_size } => {
+            Box::new(configure_gcs(bucket, cache_size).unwrap())
+        }
         #[cfg(feature = "s3-storage")]
         StorageMode::S3 { bucket } => Box::new(configure_s3(bucket).unwrap()),
     };
@@ -260,7 +262,7 @@ pub fn server(figment: Figment) -> rocket::Rocket<Build> {
         .attach(Cors)
 }
 
-fn configure_gcs(bucket: String) -> anyhow::Result<GcsStorage> {
+fn configure_gcs(bucket: String, cache_size: Option<u64>) -> anyhow::Result<GcsStorage> {
     use cloud_storage_lite::{
         token_provider::{
             oauth::{OAuthTokenProvider, ServiceAccount, SCOPE_STORAGE_FULL_CONTROL},
@@ -275,7 +277,7 @@ fn configure_gcs(bucket: String) -> anyhow::Result<GcsStorage> {
     )?);
     let client = Client::new(token_provider).into_bucket_client(bucket);
 
-    Ok(GcsStorage::new(client))
+    Ok(GcsStorage::new(client, cache_size))
 }
 
 #[cfg(feature = "s3-storage")]

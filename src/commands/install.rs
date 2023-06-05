@@ -1,15 +1,16 @@
 use std::collections::BTreeSet;
 use std::path::PathBuf;
+use std::time::Duration;
 
+use crossterm::style::{Color, SetForegroundColor};
+use indicatif::{ProgressBar, ProgressStyle};
 use structopt::StructOpt;
 
 use crate::installation::InstallationContext;
 use crate::lockfile::{LockPackage, Lockfile};
 use crate::manifest::Manifest;
 use crate::package_id::PackageId;
-use crate::package_source::{
-    PackageSource, PackageSourceId, PackageSourceMap, Registry, TestRegistry,
-};
+use crate::package_source::{PackageSource, PackageSourceMap, Registry, TestRegistry};
 use crate::resolution::resolve;
 
 use super::GlobalOptions;
@@ -29,10 +30,14 @@ impl InstallSubcommand {
         let lockfile = Lockfile::load(&self.project_path)?
             .unwrap_or_else(|| Lockfile::from_manifest(&manifest));
 
-        let default_registry: Box<dyn PackageSource> = if global.test_registry {
-            Box::new(TestRegistry::new(&manifest.package.registry))
+        let default_registry: Box<PackageSource> = if global.test_registry {
+            Box::new(PackageSource::TestRegistry(TestRegistry::new(
+                &manifest.package.registry,
+            )))
         } else {
-            Box::new(Registry::from_registry_spec(&manifest.package.registry)?)
+            Box::new(PackageSource::Registry(Registry::from_registry_spec(
+                &manifest.package.registry,
+            )?))
         };
 
         let mut package_sources = PackageSourceMap::new(default_registry);
@@ -51,11 +56,40 @@ impl InstallSubcommand {
             }
         }
 
+        let progress = ProgressBar::new(0)
+            .with_style(
+                ProgressStyle::with_template("{spinner:.cyan}{wide_msg}")?.tick_chars("⠁⠈⠐⠠⠄⠂ "),
+            )
+            .with_message(format!(
+                "{} Resolving {}packages...",
+                SetForegroundColor(Color::DarkGreen),
+                SetForegroundColor(Color::Reset)
+            ));
+        progress.enable_steady_tick(Duration::from_millis(100));
+
         let resolved = resolve(&manifest, &try_to_use, &package_sources)?;
+
+        progress.println(format!(
+            "{}   Resolved {}{} dependencies",
+            SetForegroundColor(Color::DarkGreen),
+            SetForegroundColor(Color::Reset),
+            resolved.activated.len() - 1
+        ));
 
         let lockfile = Lockfile::from_resolve(&resolved);
         lockfile.save(&self.project_path)?;
 
+        progress.println(format!(
+            "{}  Generated {}lockfile",
+            SetForegroundColor(Color::DarkGreen),
+            SetForegroundColor(Color::Reset)
+        ));
+
+        progress.set_message(format!(
+            "{}  Cleaning {}package destination...",
+            SetForegroundColor(Color::DarkGreen),
+            SetForegroundColor(Color::Reset)
+        ));
         let root_package_id = PackageId::new(manifest.package.name, manifest.package.version);
         let installation = InstallationContext::new(
             &self.project_path,
@@ -64,7 +98,14 @@ impl InstallSubcommand {
         );
 
         installation.clean()?;
-        installation.install(&package_sources, root_package_id, &resolved)?;
+        progress.println(format!(
+            "{}    Cleaned {}package destination",
+            SetForegroundColor(Color::DarkGreen),
+            SetForegroundColor(Color::Reset)
+        ));
+        progress.finish_and_clear();
+
+        installation.install(package_sources, root_package_id, resolved)?;
 
         Ok(())
     }
