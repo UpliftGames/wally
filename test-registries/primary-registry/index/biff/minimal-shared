@@ -1,0 +1,1 @@
+{"package":{"name":"biff/minimal-shared","version":"0.1.0","registry":"https://github.com/UpliftGames/wally-test-index","realm":"shared","description":null,"license":"MIT","authors":[],"include":[],"exclude":[]},"place":{"shared-packages":null,"server-packages":null},"dependencies":{},"server-dependencies":{},"dev-dependencies":{}}

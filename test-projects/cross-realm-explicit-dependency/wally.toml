@@ -1,0 +1,15 @@
+[package]
+name = "biff/cross-realm-explicit-dependency"
+version = "0.1.0"
+license = "MIT"
+realm = "shared"
+registry = "test-registries/primary-registry"
+
+[place]
+shared-packages = "game.ReplicatedStorage.Packages"
+
+[dependencies]
+Minimal = "biff/minimal-shared@0.1.0"
+
+[server-dependencies]
+sdos = "biff/server-depends-on-shared@0.1.0"

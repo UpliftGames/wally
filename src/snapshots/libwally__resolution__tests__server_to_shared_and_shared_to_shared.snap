@@ -18,13 +18,15 @@ metadata:
     source_registry: DefaultRegistry
   biff/shared@1.0.0:
     realm: shared
-    origin_realm: server
+    origin_realm: shared
     source_registry: DefaultRegistry
-shared_dependencies: {}
+shared_dependencies:
+  biff/root@1.0.0:
+    Shared: biff/shared@1.0.0
+  biff/server@1.0.0:
+    Shared: biff/shared@1.0.0
 server_dependencies:
   biff/root@1.0.0:
     Server: biff/server@1.0.0
-  biff/server@1.0.0:
-    Shared: biff/shared@1.0.0
 dev_dependencies: {}
 
