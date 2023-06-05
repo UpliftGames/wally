@@ -23,6 +23,7 @@ pub enum StorageMode {
     Local {
         path: Option<PathBuf>,
     },
+    #[serde(rename_all = "kebab-case")]
     Gcs {
         bucket: String,
         // Moka cache to keep the most popular packages in memory and accelerate response times
