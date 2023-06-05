@@ -5,7 +5,25 @@ on:
     tags: ["*"]
 
 jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          draft: true
+          prerelease: false
+
   windows:
+    needs: ["create-release"]
     runs-on: windows-latest
 
     steps:
@@ -18,13 +36,32 @@ jobs:
     - name: Build release binary
       run: cargo build --verbose --locked --release
 
+    - name: Create Release Archive
+      shell: bash
+      run: |
+        mkdir staging
+        cp "target/release/wally.exe" staging/
+        cd staging
+        zip ../release.zip *
+
+    - name: Upload Archive to Release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: release.zip
+        asset_name: wally-${{ github.ref }}-win64.zip
+        asset_content_type: application/octet-stream
+
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
       with:
-        name: wally-win64
-        path: target/release/wally.exe
+        name: wally-${{ github.ref }}-win64.zip
+        path: release.zip
 
   macos:
+    needs: ["create-release"]
     runs-on: macos-latest
 
     steps:
@@ -44,13 +81,32 @@ jobs:
       env:
         OPENSSL_STATIC: 1
 
+    - name: Create Release Archive
+      shell: bash
+      run: |
+        mkdir staging
+        cp "target/release/wally" staging/
+        cd staging
+        zip ../release.zip *
+
+    - name: Upload Archive to Release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: release.zip
+        asset_name: wally-${{ github.ref }}-macos.zip
+        asset_content_type: application/octet-stream
+
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
       with:
-        name: wally-macos
-        path: target/release/wally
+        name: wally-${{ github.ref }}-macos.zip
+        path: release.zip
 
   linux:
+    needs: ["create-release"]
     runs-on: ubuntu-latest
 
     steps:
@@ -65,8 +121,26 @@ jobs:
       env:
         OPENSSL_STATIC: 1
 
+    - name: Create Release Archive
+      shell: bash
+      run: |
+        mkdir staging
+        cp "target/release/wally" staging/
+        cd staging
+        zip ../release.zip *
+
+    - name: Upload Archive to Release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: release.zip
+        asset_name: wally-${{ github.ref }}-linux.zip
+        asset_content_type: application/octet-stream
+
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
       with:
-        name: wally-linux
-        path: target/release/wally
+        name: wally-${{ github.ref }}-linux.zip
+        path: release.zip
