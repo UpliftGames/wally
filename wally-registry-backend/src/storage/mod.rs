@@ -25,6 +25,8 @@ pub enum StorageMode {
     },
     Gcs {
         bucket: String,
+        // Moka cache to keep the most popular packages in memory and accelerate response times
+        cache_size: Option<u64>,
     },
     #[cfg(feature = "s3-storage")]
     S3 {

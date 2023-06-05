@@ -145,7 +145,7 @@ impl InstallationContext {
                 let context = self.clone();
                 let b = bar.clone();
 
-                let handle = runtime.spawn(async move {
+                let handle = runtime.spawn_blocking(move || {
                     let package_source = source_copy.get(&source_registry).unwrap();
                     let contents = package_source.download_package(&package_id)?;
                     b.println(format!(
