@@ -10,7 +10,9 @@ More info will be added here in the future. For now, if you want changes then pl
     - `wally-registry-backend/Cargo.toml`
     - `wally-registry-frontend/package.json`
     - `wally-registry-frontend/src/pages/Install.mdx`
-2. Run `cargo test` to ensure the lockfiles are updates and tests pass
+2. Run these commands to ensure the lockfiles are updates and tests pass
+    - `cargo test`
+    - `npm --prefix wally-registry-frontend i --package-lock-only`
 3. Update `CHANGELOG.md` to reflect what has been added to the new release
 4. Commit `git add . && git commit -m "Release vX.Y.Z"`
 5. Tag `git tag vX.Y.Z`

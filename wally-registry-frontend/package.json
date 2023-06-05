@@ -1,6 +1,6 @@
 {
   "name": "wally-registry-frontend",
-  "version": "1.0.0",
+  "version": "0.3.2",
   "description": "Wally registry website",
   "publish": false,
   "license": "MIT",

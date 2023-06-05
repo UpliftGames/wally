@@ -27,7 +27,7 @@ Pre-built binaries are available for Windows, macOS, and Linux from the [GitHub 
 [Foreman][foreman] is a toolchain manager developed for the Roblox community. You can use it to install Wally:
 
 ``` toml
-wally = { source = "UpliftGames/wally", version = "0.3.1" }
+wally = { source = "UpliftGames/wally", version = "0.3.2" }
 ```
 
 [foreman]: https://github.com/Roblox/foreman

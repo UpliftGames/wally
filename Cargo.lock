@@ -3602,7 +3602,7 @@ dependencies = [
 
 [[package]]
 name = "wally"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "anyhow",
  "blake3",
@@ -3638,7 +3638,7 @@ dependencies = [
 
 [[package]]
 name = "wally-registry-backend"
-version = "0.3.0"
+version = "0.3.2"
 dependencies = [
  "anyhow",
  "async-trait",
