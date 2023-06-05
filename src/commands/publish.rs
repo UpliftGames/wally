@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context};
 use structopt::StructOpt;
+use ubyte::ToByteUnit;
 use url::Url;
 
 use crate::{
@@ -47,6 +48,10 @@ impl PublishSubcommand {
 
         let api = package_index.config()?.api;
         let contents = PackageContents::pack_from_path(&self.project_path)?;
+
+        if contents.data().len() > 2.mebibytes() {
+            bail!("Package size exceeds 2MB. Reduce package size and try again.");
+        }
 
         let auth = auth_store
             .tokens

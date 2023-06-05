@@ -3426,9 +3426,9 @@ checksum = "879f6906492a7cd215bfa4cf595b600146ccfac0c79bcbd1f3000162af5e8b06"
 
 [[package]]
 name = "ubyte"
-version = "0.10.1"
+version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42756bb9e708855de2f8a98195643dff31a97f0485d90d8467b39dc24be9e8fe"
+checksum = "c81f0dae7d286ad0d9366d7679a77934cfc3cf3a8d67e82669794412b2368fe6"
 dependencies = [
  "serde",
 ]
@@ -3626,6 +3626,7 @@ dependencies = [
  "serde_json",
  "structopt",
  "tempfile",
+ "ubyte",
  "tokio",
  "toml 0.5.8",
  "toml_edit 0.2.0",
