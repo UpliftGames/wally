@@ -24,6 +24,8 @@ jobs:
     - name: Setup Rust toolchain
       run: rustup default ${{ matrix.rust_version }}
 
+    - uses: Swatinem/rust-cache@v2
+
     - name: Build
       run: |
         sudo apt-get install libssl-dev
@@ -35,5 +37,5 @@ jobs:
     - name: Rustfmt and Clippy
       run: |
         cargo fmt --all -- --check
-        cargo clippy --all
+        cargo clippy
       if: matrix.rust_version == 'stable'
