@@ -32,6 +32,7 @@ pub enum StorageMode {
     #[cfg(feature = "s3-storage")]
     S3 {
         bucket: String,
+        cache_size: Option<u64>,
     },
 }
 

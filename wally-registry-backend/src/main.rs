@@ -235,7 +235,9 @@ pub fn server(figment: Figment) -> rocket::Rocket<Build> {
             Box::new(configure_gcs(bucket, cache_size).unwrap())
         }
         #[cfg(feature = "s3-storage")]
-        StorageMode::S3 { bucket } => Box::new(configure_s3(bucket).unwrap()),
+        StorageMode::S3 { bucket, cache_size } => {
+            Box::new(configure_s3(bucket, cache_size).unwrap())
+        }
     };
 
     println!("Cloning package index repository...");
@@ -281,7 +283,7 @@ fn configure_gcs(bucket: String, cache_size: Option<u64>) -> anyhow::Result<GcsS
 }
 
 #[cfg(feature = "s3-storage")]
-fn configure_s3(bucket: String) -> anyhow::Result<S3Storage> {
+fn configure_s3(bucket: String, cache_size: Option<u64>) -> anyhow::Result<S3Storage> {
     use std::env;
 
     use rusoto_core::{credential::ChainProvider, request::HttpClient, Region};
@@ -297,7 +299,7 @@ fn configure_s3(bucket: String) -> anyhow::Result<S3Storage> {
         },
     );
 
-    Ok(S3Storage::new(client, bucket))
+    Ok(S3Storage::new(client, bucket, cache_size))
 }
 
 struct Cors;
