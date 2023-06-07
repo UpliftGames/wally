@@ -19,7 +19,7 @@ Wally has two pieces that work together: a command line tool named `wally` and a
 ## Installation
 
 ### With Aftman (preferred)
-[Aftman][aftman] is the toolchain manager we reccomend. You can use it to install Wally:
+[Aftman][aftman] is the toolchain manager we recommend. You can use it to install Wally:
 
 In your project (preferred)
 ```bash
