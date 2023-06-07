@@ -34,15 +34,12 @@ struct DeviceCodeResponse {
     device_code: String,
     user_code: String,
     verification_uri: String,
-    expires_in: u64,
     interval: u64,
 }
 
 #[derive(Deserialize)]
 struct DeviceCodeAuth {
     access_token: String,
-    token_type: String,
-    scope: String,
 }
 
 #[derive(Deserialize)]
