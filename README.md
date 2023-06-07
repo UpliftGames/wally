@@ -66,14 +66,14 @@ Parity with:
 * `cargo publish`
 * `npm update` (npm 7+, equivalent to `--depth 9999` in npm 6.x and older)
 
-### `wally publish`
+### `wally publish [--token <token>]`
 Publish the current package.
 
 Parity with:
 * `cargo publish`
 * `npm publish`
 
-### `wally login`
+### `wally login [--token <token>]`
 Log into an account to publish packages to a registry.
 
 You can also directly provide a token via `wally login --token "$WALLY_AUTH_TOKEN"`.
