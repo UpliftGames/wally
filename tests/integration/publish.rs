@@ -26,6 +26,7 @@ fn check_prompts_auth() {
         },
         subcommand: Subcommand::Publish(PublishSubcommand {
             project_path: test_projects.join("minimal"),
+            token: None,
         }),
     };
 
@@ -75,6 +76,7 @@ fn check_private_field() {
         },
         subcommand: Subcommand::Publish(PublishSubcommand {
             project_path: test_projects.join("private-package"),
+            token: None,
         }),
     };
 
@@ -85,4 +87,26 @@ fn check_private_field() {
         "Expected error message that a private package cannot be published. Instead we got: {:#}",
         error
     )
+}
+
+/// Ensure a token passed as an optional argument is correctly used in the request
+#[test]
+fn check_token_arg() {
+    let test_projects = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/test-projects",));
+
+    let args = Args {
+        global: GlobalOptions {
+            test_registry: true,
+            use_temp_index: true,
+            check_token: Some("token".to_owned()),
+            ..Default::default()
+        },
+        subcommand: Subcommand::Publish(PublishSubcommand {
+            project_path: test_projects.join("minimal"),
+            token: Some("token".to_owned()),
+        }),
+    };
+
+    args.run()
+        .expect("Publish did not use the provided token in the publish request");
 }

@@ -41,13 +41,9 @@ impl Registry {
 
     fn auth_token(&self) -> anyhow::Result<Option<Arc<str>>> {
         self.auth_token
-            .get_or_try_init(|| {
-                let store = AuthStore::load()?;
-                let token = store.tokens.get(self.api_url()?.as_str());
-                match token {
-                    Some(token) => Ok(Some(Arc::from(token.as_str()))),
-                    None => Ok(None),
-                }
+            .get_or_try_init(|| match AuthStore::get_token(self.api_url()?.as_str())? {
+                Some(token) => Ok(Some(Arc::from(token.as_str()))),
+                None => Ok(None),
             })
             .map(|token| token.clone())
     }
