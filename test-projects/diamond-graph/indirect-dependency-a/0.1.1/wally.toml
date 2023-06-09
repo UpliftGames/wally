@@ -1,0 +1,6 @@
+[package]
+name = "diamond-graph/indirect-dependency-a"
+version = "0.1.1"
+license = "MIT"
+realm = "server"
+registry = "test-registries/primary-registry"

@@ -1,0 +1,9 @@
+{
+	"name": "direct-dependency-a",
+	"tree": {
+		"Packages": {
+			"$path": "Packages"
+		},
+		"$path": "src"
+	}
+}
