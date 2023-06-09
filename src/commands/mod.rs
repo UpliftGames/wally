@@ -37,7 +37,7 @@ impl Args {
             Subcommand::Init(subcommand) => subcommand.run(),
             Subcommand::Login(subcommand) => subcommand.run(),
             Subcommand::Logout(subcommand) => subcommand.run(),
-            Subcommand::Update(subcommand) => subcommand.run(),
+            Subcommand::Update(subcommand) => subcommand.run(self.global),
             Subcommand::Search(subcommand) => subcommand.run(),
             Subcommand::Package(subcommand) => subcommand.run(),
             Subcommand::Install(subcommand) => subcommand.run(self.global),
@@ -55,7 +55,7 @@ pub struct GlobalOptions {
     pub verbosity: u8,
 
     /// Flag to indidate if we will be using a test registry. Usable only by tests.
-    #[structopt(skip)]
+    #[structopt(global = true, long = "test-registry")]
     pub test_registry: bool,
 
     /// Specify if the package index should be temporary (to prevent multiple use conflicts). Usable only by tests.
