@@ -77,7 +77,7 @@ impl UpdateSubcommand {
 
         let resolved_graph = resolution::resolve(&manifest, &try_to_use, &package_sources)?;
 
-        // Lockfile::from_resolve(&resolved_graph).save(&self.project_path)?;
+        Lockfile::from_resolve(&resolved_graph).save(&self.project_path)?;
         let dependency_changes = generate_depedency_changes(
             &lockfile
                 .packages
