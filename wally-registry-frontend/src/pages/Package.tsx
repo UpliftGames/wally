@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react"
-import { useParams, useLocation, useHistory } from "react-router"
+import { useHistory, useLocation, useParams } from "react-router"
 import styled from "styled-components"
 import { isMobile, notMobile } from "../breakpoints"
 import { Button } from "../components/Button"
@@ -78,13 +78,62 @@ const MetaItemWrapper = styled.div<StyledMetaItemProps>`
   display: inline-block;
   margin: 0.5rem 0;
   white-space: nowrap;
-  overflow: hidden;
   text-overflow: ellipsis;
 
   a:hover,
   a:focus {
     text-decoration: underline;
     color: var(--wally-red);
+  }
+`
+
+const AuthorItem = styled.p`
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`
+
+const DependencyLinkWrapper = styled.div`
+  display: block;
+  position: relative;
+  width: 100%;
+
+  &:hover {
+    > span {
+      visibility: visible;
+    }
+  }
+`
+
+const DependencyLinkItem = styled.a`
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`
+
+const DependencyLinkTooltip = styled.span`
+  visibility: hidden;
+  position: absolute;
+  z-index: 2;
+  color: white;
+  font-size: 0.8rem;
+  background-color: var(--wally-brown);
+  border-radius: 5px;
+  padding: 10px;
+  top: -45px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  &::before {
+    content: "";
+    position: absolute;
+    transform: rotate(45deg);
+    background-color: var(--wally-brown);
+    padding: 6px;
+    z-index: 1;
+    top: 77%;
+    left: 45%;
   }
 `
 
@@ -106,24 +155,20 @@ const MetaItem = ({
 }
 
 const DependencyLink = ({ packageInfo }: { packageInfo: string }) => {
-  let packageMatch = packageInfo.match(/(.+\/.+)@[^\d]+([\d\.]+)/)
+  let packageMatch = packageInfo.match(/(.+\/.+)@[^\d]+([\d.]+)/)
   if (packageMatch != null) {
     let name = packageMatch[1]
     let version = packageMatch[2]
     return (
-      <a
-        href={`/package/${name}?version=${version}`}
-        style={{ display: "block" }}
-      >
-        {name + "@" + version}
-      </a>
+      <DependencyLinkWrapper>
+        <DependencyLinkItem href={`/package/${name}?version=${version}`}>
+          {name + "@" + version}
+        </DependencyLinkItem>
+        <DependencyLinkTooltip>{name + "@" + version}</DependencyLinkTooltip>
+      </DependencyLinkWrapper>
     )
   }
-  return (
-    <a href={"/"} style={{ display: "block" }}>
-      {packageInfo}
-    </a>
-  )
+  return <DependencyLinkItem href={"/"}>{packageInfo}</DependencyLinkItem>
 }
 
 type PackageParams = {
@@ -303,7 +348,7 @@ export default function Package() {
               {packageMetadata.package.authors.length > 0 && (
                 <MetaItem title="Authors" width="full">
                   {packageMetadata.package.authors.map((author) => (
-                    <p key={author}>{author}</p>
+                    <AuthorItem key={author}>{author}</AuthorItem>
                   ))}
                 </MetaItem>
               )}
