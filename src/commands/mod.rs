@@ -61,6 +61,10 @@ pub struct GlobalOptions {
     /// Specify if the package index should be temporary (to prevent multiple use conflicts). Usable only by tests.
     #[structopt(skip)]
     pub use_temp_index: bool,
+
+    /// Specify if a specific auth token should be provided. Usable only by tests.
+    #[structopt(skip)]
+    pub check_token: Option<String>,
 }
 
 impl Default for GlobalOptions {
@@ -69,6 +73,7 @@ impl Default for GlobalOptions {
             verbosity: 0,
             test_registry: false,
             use_temp_index: false,
+            check_token: None,
         }
     }
 }
