@@ -2,17 +2,24 @@ use std::{
     fmt::Display,
     io,
     path::{Path, PathBuf},
+    time::Duration,
 };
 
 use anyhow::{bail, format_err};
+use crossterm::style::{Color, SetForegroundColor};
 use fs_err as fs;
+use indicatif::{ProgressBar, ProgressStyle};
 use indoc::{formatdoc, indoc};
 
 use crate::{
-    manifest::Realm, package_contents::PackageContents, package_id::PackageId,
-    package_source::PackageSourceMap, resolution::Resolve,
+    manifest::Realm,
+    package_contents::PackageContents,
+    package_id::PackageId,
+    package_source::{PackageSourceMap, PackageSourceProvider},
+    resolution::Resolve,
 };
 
+#[derive(Clone)]
 pub struct InstallationContext {
     shared_dir: PathBuf,
     shared_index_dir: PathBuf,
@@ -73,52 +80,98 @@ impl InstallationContext {
     /// Install all packages from the given `Resolve` into the package that this
     /// `InstallationContext` was built for.
     pub fn install(
-        &self,
-        sources: &PackageSourceMap,
+        self,
+        sources: PackageSourceMap,
         root_package_id: PackageId,
-        resolved: &Resolve,
+        resolved: Resolve,
     ) -> anyhow::Result<()> {
-        for package_id in &resolved.activated {
+        let mut handles = Vec::new();
+        let resolved_copy = resolved.clone();
+        let bar = ProgressBar::new((resolved_copy.activated.len() - 1) as u64).with_style(
+            ProgressStyle::with_template(
+                "{spinner:.cyan.bold} {pos}/{len} [{wide_bar:.cyan/blue}]",
+            )
+            .unwrap()
+            .tick_chars("⠁⠈⠐⠠⠄⠂ ")
+            .progress_chars("#>-"),
+        );
+        bar.enable_steady_tick(Duration::from_millis(100));
+
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(50)
+            .enable_all()
+            .build()
+            .unwrap();
+
+        for package_id in resolved_copy.activated {
             log::debug!("Installing {}...", package_id);
 
-            let shared_deps = resolved.shared_dependencies.get(package_id);
-            let server_deps = resolved.server_dependencies.get(package_id);
-            let dev_deps = resolved.dev_dependencies.get(package_id);
+            let shared_deps = resolved.shared_dependencies.get(&package_id);
+            let server_deps = resolved.server_dependencies.get(&package_id);
+            let dev_deps = resolved.dev_dependencies.get(&package_id);
 
             // We do not need to install the root package, but we should create
             // package links for its dependencies.
-            if package_id == &root_package_id {
+            if package_id == root_package_id {
                 if let Some(deps) = shared_deps {
-                    self.write_root_package_links(Realm::Shared, deps, Realm::Shared)?;
+                    self.write_root_package_links(Realm::Shared, deps, &resolved)?;
                 }
 
                 if let Some(deps) = server_deps {
-                    self.write_root_package_links(Realm::Server, deps, Realm::Server)?;
+                    self.write_root_package_links(Realm::Server, deps, &resolved)?;
                 }
 
                 if let Some(deps) = dev_deps {
-                    self.write_root_package_links(Realm::Dev, deps, Realm::Dev)?;
+                    self.write_root_package_links(Realm::Dev, deps, &resolved)?;
                 }
             } else {
-                let metadata = resolved.metadata.get(package_id).unwrap();
-
+                let metadata = resolved.metadata.get(&package_id).unwrap();
                 let package_realm = metadata.origin_realm;
 
                 if let Some(deps) = shared_deps {
-                    self.write_package_links(package_id, package_realm, deps, Realm::Shared)?;
+                    self.write_package_links(&package_id, package_realm, deps, &resolved)?;
                 }
 
                 if let Some(deps) = server_deps {
-                    self.write_package_links(package_id, package_realm, deps, Realm::Server)?;
+                    self.write_package_links(&package_id, package_realm, deps, &resolved)?;
                 }
 
-                let source_registry = &resolved.metadata[package_id].source_registry;
-                let package_source = sources.get(source_registry).unwrap();
-                let contents = package_source.download_package(package_id)?;
+                if let Some(deps) = dev_deps {
+                    self.write_package_links(&package_id, package_realm, deps, &resolved)?;
+                }
 
-                self.write_contents(package_id, &contents, package_realm)?;
+                let source_registry = resolved_copy.metadata[&package_id].source_registry.clone();
+                let source_copy = sources.clone();
+                let context = self.clone();
+                let b = bar.clone();
+
+                let handle = runtime.spawn_blocking(move || {
+                    let package_source = source_copy.get(&source_registry).unwrap();
+                    let contents = package_source.download_package(&package_id)?;
+                    b.println(format!(
+                        "{} Downloaded {}{}",
+                        SetForegroundColor(Color::DarkGreen),
+                        SetForegroundColor(Color::Reset),
+                        package_id,
+                    ));
+                    b.inc(1);
+                    context.write_contents(&package_id, &contents, package_realm)
+                });
+
+                handles.push(handle);
             }
         }
+
+        let num_packages = handles.len();
+
+        for handle in handles {
+            runtime
+                .block_on(handle)
+                .expect("Package failed to be installed.")?;
+        }
+
+        bar.finish_and_clear();
+        log::info!("Downloaded {} packages!", num_packages);
 
         Ok(())
     }
@@ -185,10 +238,6 @@ impl InstallationContext {
         })?;
 
         let contents = formatdoc! {r#"
-            if not game:GetService("RunService"):IsServer() then
-                error("{full_name} is a server-only package.", 2)
-            end
-
             return require({packages}._Index["{full_name}"]["{short_name}"])
             "#,
             packages = server_path,
@@ -203,7 +252,7 @@ impl InstallationContext {
         &self,
         root_realm: Realm,
         dependencies: impl IntoIterator<Item = (K, &'a PackageId)>,
-        dependencies_realm: Realm,
+        resolved: &Resolve,
     ) -> anyhow::Result<()> {
         log::debug!("Writing root package links");
 
@@ -217,6 +266,7 @@ impl InstallationContext {
         fs::create_dir_all(base_path)?;
 
         for (dep_name, dep_package_id) in dependencies {
+            let dependencies_realm = resolved.metadata.get(dep_package_id).unwrap().origin_realm;
             let path = base_path.join(format!("{}.lua", dep_name));
 
             let contents = match (root_realm, dependencies_realm) {
@@ -240,7 +290,7 @@ impl InstallationContext {
         package_id: &PackageId,
         package_realm: Realm,
         dependencies: impl IntoIterator<Item = (K, &'a PackageId)>,
-        dependencies_realm: Realm,
+        resolved: &Resolve,
     ) -> anyhow::Result<()> {
         log::debug!("Writing package links for {}", package_id);
 
@@ -256,6 +306,7 @@ impl InstallationContext {
         fs::create_dir_all(&base_path)?;
 
         for (dep_name, dep_package_id) in dependencies {
+            let dependencies_realm = resolved.metadata.get(dep_package_id).unwrap().origin_realm;
             let path = base_path.join(format!("{}.lua", dep_name));
 
             let contents = match (package_realm, dependencies_realm) {

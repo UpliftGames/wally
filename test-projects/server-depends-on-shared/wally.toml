@@ -1,0 +1,9 @@
+[package]
+name = "biff/server-depends-on-shared"
+version = "0.1.0"
+license = "MIT"
+realm = "server"
+registry = "test-registries/primary-registry"
+
+[dependencies]
+Minimal = "biff/minimal-shared@0.1.0"

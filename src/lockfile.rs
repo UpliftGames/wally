@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::path::Path;
 use std::{
     fs::read_to_string,
@@ -8,6 +9,7 @@ use fs_err::File;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
+use crate::package_id;
 use crate::{
     manifest::Manifest, package_id::PackageId, package_name::PackageName, resolution::Resolve,
 };
@@ -22,6 +24,24 @@ pub struct Lockfile {
     pub packages: Vec<LockPackage>,
 }
 
+fn grab_dependencies(
+    package_id: &PackageId,
+    dependencies: &BTreeMap<
+        package_id::PackageId,
+        BTreeMap<std::string::String, package_id::PackageId>,
+    >,
+) -> Vec<(String, PackageId)> {
+    dependencies
+        .get(package_id)
+        .map(|dependencies| {
+            dependencies
+                .iter()
+                .map(|(key, value)| (key.clone(), value.clone()))
+                .collect()
+        })
+        .unwrap_or_else(Vec::new)
+}
+
 impl Lockfile {
     pub fn from_manifest(manifest: &Manifest) -> Self {
         Self {
@@ -34,16 +54,12 @@ impl Lockfile {
         let mut packages = Vec::new();
 
         for package_id in &resolve.activated {
-            let dependencies = resolve
-                .shared_dependencies
-                .get(package_id)
-                .map(|dependencies| {
-                    dependencies
-                        .iter()
-                        .map(|(key, value)| (key.clone(), value.clone()))
-                        .collect()
-                })
-                .unwrap_or_else(Vec::new);
+            let dependencies = [
+                grab_dependencies(&package_id, &resolve.shared_dependencies),
+                grab_dependencies(&package_id, &resolve.server_dependencies),
+                grab_dependencies(&package_id, &resolve.dev_dependencies),
+            ]
+            .concat();
 
             packages.push(LockPackage::Registry(RegistryLockPackage {
                 name: package_id.name().clone(),

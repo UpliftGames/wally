@@ -1,6 +1,6 @@
 [package]
 name = "wally-registry-backend"
-version = "0.3.0"
+version = "0.3.2"
 authors = ["Lucien Greathouse <lucien@playadopt.me>"]
 edition = "2018"
 publish = false
@@ -20,13 +20,12 @@ anyhow = "1.0.38"
 async-trait = "0.1.42"
 cloud-storage-lite = "0.1.9"
 constant_time_eq = "0.1.5"
-figment = "0.10.3"
+figment = "0.10.9"
 fs-err = "2.5.0"
 futures = "0.3.13"
 git2 = "0.16.1"
 reqwest = { version = "0.11.0", features = ["blocking", "json"] }
-rocket = { git = "https://github.com/SergioBenitez/Rocket", rev = "2893ce754d6535e0a752586e60d7e292343016c0" }
-rocket_contrib = { git = "https://github.com/SergioBenitez/Rocket", rev = "2893ce754d6535e0a752586e60d7e292343016c0" }
+rocket = { git = "https://github.com/SergioBenitez/Rocket", rev = "91f6288ea4aeb3d5a502b2f18b2b9677a85463ea", features = ["json"] }
 rusoto_core = { version = "0.48.0", optional = true }
 rusoto_s3 = { version = "0.48.0", optional = true }
 semver = "0.11.0"
@@ -37,6 +36,7 @@ tokio = "1.1.1"
 url = { version = "2.2.1", features = ["serde"] }
 walkdir = "2.3.1"
 zip = "0.5.11"
+moka = "0.11.1"
 
 [dev-dependencies]
 tempfile = "3.1.0"

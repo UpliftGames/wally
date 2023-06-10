@@ -9,13 +9,13 @@ use serde::Serialize;
 use crate::manifest::{Manifest, Realm};
 use crate::package_id::PackageId;
 use crate::package_req::PackageReq;
-use crate::package_source::{PackageSourceId, PackageSourceMap};
+use crate::package_source::{PackageSourceId, PackageSourceMap, PackageSourceProvider};
 
 /// A completely resolved graph of packages returned by `resolve`.
 ///
 /// State here is stored in multiple maps, all keyed by PackageId, to facilitate
 /// concurrent mutable access to unrelated information about different packages.
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default, Serialize, Clone)]
 pub struct Resolve {
     /// Set of all packages that have been chosen to be part of the package
     /// graph.
@@ -49,7 +49,10 @@ impl Resolve {
 }
 
 /// A single node in the package resolution graph.
-#[derive(Debug, Serialize)]
+/// Origin realm is the "most restrictive" realm the package can still be dependended
+/// upon. It is where the package gets placed during install.
+/// See [ origin_realm clarification ]. In the resolve function for more info.
+#[derive(Debug, Serialize, Clone)]
 pub struct ResolvePackageMetadata {
     pub realm: Realm,
     pub origin_realm: Realm,
@@ -127,31 +130,35 @@ pub fn resolve(
         // our constraints.
         for package_id in &matching_activated {
             if dependency_request.package_req.matches_id(package_id) {
-                resolve.activate(
-                    dependency_request.request_source.clone(),
-                    dependency_request.package_alias.clone(),
-                    dependency_request.request_realm,
-                    package_id.clone(),
-                );
-
                 let metadata = resolve
                     .metadata
                     .get_mut(package_id)
                     .expect("activated package was missing metadata");
 
-                // We want to set the origin to the least restrictive origin possible.
+                // [ origin_realm clarification ]
+                // We want to set the origin to the most restrictive origin possible.
                 // For example we want to keep packages in the dev realm unless a dependency
                 // with a shared/server origin requires it. This way server/shared dependencies
                 // which only originate from dev dependencies get put into the dev folder even
-                // if they usually belong to another realm.
-                metadata.origin_realm =
-                    match (metadata.origin_realm, dependency_request.origin_realm) {
-                        (_, Realm::Shared) => Realm::Shared,
-                        (Realm::Shared, _) => Realm::Shared,
-                        (_, Realm::Server) => Realm::Server,
-                        (Realm::Server, _) => Realm::Server,
-                        (Realm::Dev, Realm::Dev) => Realm::Dev,
-                    };
+                // if they usually belong to another realm. Likewise we want to keep shared
+                // dependencies in the server realm unless they are explicitly required as a
+                // shared dependency.
+                let realm_match = match (metadata.origin_realm, dependency_request.origin_realm) {
+                    (_, Realm::Shared) => Realm::Shared,
+                    (Realm::Shared, _) => Realm::Shared,
+                    (_, Realm::Server) => Realm::Server,
+                    (Realm::Server, _) => Realm::Server,
+                    (Realm::Dev, Realm::Dev) => Realm::Dev,
+                };
+
+                metadata.origin_realm = realm_match;
+
+                resolve.activate(
+                    dependency_request.request_source.clone(),
+                    dependency_request.package_alias.clone(),
+                    realm_match,
+                    package_id.clone(),
+                );
 
                 continue 'outer;
             }
@@ -228,7 +235,7 @@ pub fn resolve(
             resolve.activate(
                 dependency_request.request_source.clone(),
                 dependency_request.package_alias.to_owned(),
-                dependency_request.request_realm,
+                dependency_request.origin_realm,
                 candidate_id.clone(),
             );
 
@@ -383,9 +390,33 @@ mod tests {
     fn server_to_shared() -> anyhow::Result<()> {
         let registry = InMemoryRegistry::new();
         registry.publish(PackageBuilder::new("biff/shared@1.0.0"));
+        registry.publish(
+            PackageBuilder::new("biff/server@1.0.0")
+                .with_realm(Realm::Server)
+                .with_dep("Shared", "biff/shared@1.0.0"),
+        );
 
         let root =
-            PackageBuilder::new("biff/root@1.0.0").with_server_dep("Shared", "biff/shared@1.0.0");
+            PackageBuilder::new("biff/root@1.0.0").with_server_dep("Server", "biff/server@1.0.0");
+
+        test_project(registry, root)
+    }
+
+    /// but... if that shared dependency is required by another shared dependency,
+    /// (while not being also server-only) it's not server-only anymore.
+    #[test]
+    fn server_to_shared_and_shared_to_shared() -> anyhow::Result<()> {
+        let registry = InMemoryRegistry::new();
+        registry.publish(PackageBuilder::new("biff/shared@1.0.0"));
+        registry.publish(
+            PackageBuilder::new("biff/server@1.0.0")
+                .with_realm(Realm::Server)
+                .with_dep("Shared", "biff/shared@1.0.0"),
+        );
+
+        let root = PackageBuilder::new("biff/root@1.0.0")
+            .with_server_dep("Server", "biff/server@1.0.0")
+            .with_dep("Shared", "biff/shared@1.0.0");
 
         test_project(registry, root)
     }
