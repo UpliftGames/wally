@@ -187,8 +187,8 @@ fn generate_depedency_changes(
 }
 
 fn render_update_difference(dependency_changes: &Vec<DependencyChange>) {
-    for dependecy_change in dependency_changes.iter() {
-        match dependecy_change {
+    for dependency_change in dependency_changes.iter() {
+        match dependency_change {
             DependencyChange::Added(package_id) => {
                 println!("Added {} v{}", package_id.name(), package_id.version());
             }
