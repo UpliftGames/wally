@@ -55,7 +55,7 @@ pub struct GlobalOptions {
     pub verbosity: u8,
 
     /// Flag to indidate if we will be using a test registry. Usable only by tests.
-    #[structopt(global = true, long = "test-registry")]
+    #[structopt(skip)]
     pub test_registry: bool,
 
     /// Specify if the package index should be temporary (to prevent multiple use conflicts). Usable only by tests.
