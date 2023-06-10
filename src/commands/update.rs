@@ -129,6 +129,7 @@ enum DependencyChange {
     Added(PackageId),
     Removed(PackageId),
     Updated { from: PackageId, to: PackageId },
+    Downgrade { from: PackageId, to: PackageId },
 }
 
 fn generate_depedency_changes(
@@ -161,10 +162,18 @@ fn generate_depedency_changes(
                 // We know for certain that there is only one item in the iterator.
                 let package_added = matching_packages_added.last().unwrap();
                 let package_removed = matching_packages_removed.last().unwrap();
-                depedency_changes.push(DependencyChange::Updated {
-                    from: package_added.clone(),
-                    to: package_removed.clone(),
-                });
+
+                if package_added.gt(&package_removed) {
+                    depedency_changes.push(DependencyChange::Updated {
+                        from: package_removed.clone(),
+                        to: package_added.clone(),
+                    });
+                } else {
+                    depedency_changes.push(DependencyChange::Downgrade {
+                        from: package_added.clone(),
+                        to: package_removed.clone(),
+                    });
+                }
             }
             (0, 1) => {
                 // We know for certain that there is only one item in the iterator.
@@ -210,6 +219,12 @@ fn render_update_difference(dependency_changes: &Vec<DependencyChange>) {
                     to.version()
                 );
             }
+            DependencyChange::Downgrade { from, to } => println!(
+                "Downgraded {} from v{} to v{}",
+                from.name(),
+                from.version(),
+                to.version()
+            ),
         }
     }
 }
