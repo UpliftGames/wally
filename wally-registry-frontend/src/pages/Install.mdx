@@ -1,23 +1,37 @@
 # Installation
 
-## From GitHub
+## With Aftman (preferred)
+[Aftman][aftman] is the toolchain manager we recommend. You can use it to install Wally:
 
+In your project (preferred)
+```bash
+aftman init
+aftman add UpliftGames/wally
+aftman install
+```
+
+Or install wally globally
+```bash
+aftman add --global UpliftGames/wally
+aftman install
+```
+
+[aftman]: https://github.com/LPGhatguy/aftman
+
+## Homebrew
+[Homebrew][homebrew] is also a convenient way to install wally! (only for MacOS/Linux)
+```bash
+brew install wally
+```
+
+[homebrew]: https://brew.sh/
+
+## From GitHub
 Pre-built binaries are available for Windows, macOS, and Linux from the [GitHub Releases Page for Wally][releases].
 
 [releases]: https://github.com/UpliftGames/wally/releases
 
-## With Foreman
-
-[Foreman][foreman] is a toolchain manager developed for the Roblox community. You can use it to install Wally:
-
-```toml
-wally = { source = "UpliftGames/wally", version = "0.3.1" }
-```
-
-[foreman]: https://github.com/Roblox/foreman
-
 ## From Source
-
 It's straightforward to compile Wally from source. Wally requires Rust 1.51.0 or newer.
 
 Clone the repository and use:

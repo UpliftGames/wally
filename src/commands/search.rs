@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use anyhow::bail;
 use crossterm::style::Color;
 use crossterm::style::SetForegroundColor;
-use crossterm::style::Stylize;
 use reqwest::{blocking::Client, header::AUTHORIZATION};
 use serde::Deserialize;
 use structopt::StructOpt;

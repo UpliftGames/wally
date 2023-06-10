@@ -2,7 +2,7 @@ use std::io::Read;
 use std::sync::Arc;
 
 use anyhow::bail;
-use once_cell::unsync::OnceCell;
+use once_cell::sync::OnceCell;
 use reqwest::{blocking::Client, header::AUTHORIZATION};
 use url::Url;
 
@@ -11,16 +11,17 @@ use crate::manifest::Manifest;
 use crate::package_id::PackageId;
 use crate::package_index::PackageIndex;
 use crate::package_req::PackageReq;
-use crate::package_source::{PackageContents, PackageSource};
+use crate::package_source::PackageContents;
 
-use super::PackageSourceId;
+use super::{PackageSourceId, PackageSourceProvider};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+#[derive(Clone)]
 pub struct Registry {
     index_url: Url,
     auth_token: OnceCell<Option<Arc<str>>>,
-    index: OnceCell<PackageIndex>,
+    index: OnceCell<Arc<PackageIndex>>,
     client: Client,
 }
 
@@ -40,20 +41,16 @@ impl Registry {
 
     fn auth_token(&self) -> anyhow::Result<Option<Arc<str>>> {
         self.auth_token
-            .get_or_try_init(|| {
-                let store = AuthStore::load()?;
-                let token = store.tokens.get(self.api_url()?.as_str());
-                match token {
-                    Some(token) => Ok(Some(Arc::from(token.as_str()))),
-                    None => Ok(None),
-                }
+            .get_or_try_init(|| match AuthStore::get_token(self.api_url()?.as_str())? {
+                Some(token) => Ok(Some(Arc::from(token.as_str()))),
+                None => Ok(None),
             })
             .map(|token| token.clone())
     }
 
-    fn index(&self) -> anyhow::Result<&PackageIndex> {
+    fn index(&self) -> anyhow::Result<&Arc<PackageIndex>> {
         self.index
-            .get_or_try_init(|| PackageIndex::new(&self.index_url, None))
+            .get_or_try_init(|| Ok(Arc::new(PackageIndex::new(&self.index_url, None)?)))
     }
 
     fn api_url(&self) -> anyhow::Result<Url> {
@@ -62,7 +59,7 @@ impl Registry {
     }
 }
 
-impl PackageSource for Registry {
+impl PackageSourceProvider for Registry {
     fn update(&self) -> anyhow::Result<()> {
         self.index()?.update()
     }
@@ -82,8 +79,6 @@ impl PackageSource for Registry {
     }
 
     fn download_package(&self, package_id: &PackageId) -> anyhow::Result<PackageContents> {
-        log::info!("Downloading {}...", package_id);
-
         let path = format!(
             "/v1/package-contents/{}/{}/{}",
             package_id.name().scope(),

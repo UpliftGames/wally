@@ -1,0 +1,6 @@
+{
+	"name": "minimal-shared",
+	"tree": {
+		"$path": "src"
+	}
+}

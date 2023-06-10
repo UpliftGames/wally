@@ -21,7 +21,7 @@ pub struct LoginSubcommand {
     /// Path to a project to decide how to login
     #[structopt(long = "project-path", default_value = ".")]
     pub project_path: PathBuf,
-    /// GitHub auth token to set directly
+    /// Auth token to set directly
     #[structopt(long = "token")]
     pub token: Option<String>,
     /// URL of the remote index to add an auth token for
@@ -34,15 +34,12 @@ struct DeviceCodeResponse {
     device_code: String,
     user_code: String,
     verification_uri: String,
-    expires_in: u64,
     interval: u64,
 }
 
 #[derive(Deserialize)]
 struct DeviceCodeAuth {
     access_token: String,
-    token_type: String,
-    scope: String,
 }
 
 #[derive(Deserialize)]

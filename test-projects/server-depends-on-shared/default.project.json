@@ -1,0 +1,6 @@
+{
+	"name": "server-depends-on-shared",
+	"tree": {
+		"$path": "src"
+	}
+}
