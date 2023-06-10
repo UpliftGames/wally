@@ -7,20 +7,23 @@ use crate::manifest::Manifest;
 use crate::package_id::PackageId;
 use crate::package_name::PackageName;
 use crate::package_req::PackageReq;
-use crate::package_source::{PackageSource, PackageSourceMap, Registry, TestRegistry};
+use crate::package_source::{
+    PackageSource, PackageSourceMap, PackageSourceProvider, Registry, TestRegistry,
+};
 use crate::{resolution, GlobalOptions};
+use semver::VersionReq;
 use structopt::StructOpt;
 
 /// Update all of the dependencies of this project.
 #[derive(Debug, StructOpt)]
 pub struct UpdateSubcommand {
-    /// An optional list of dependencies to update.
-    /// They must be valid package name with an optional version requirement.
-    pub target_packages: Vec<TargetPackage>,
-
     /// Path to the project to publish.
     #[structopt(long = "project-path", default_value = ".")]
     pub project_path: PathBuf,
+
+    /// An optional list of dependencies to update.
+    /// They must be valid package name with an optional version requirement.
+    pub package_specs: Vec<PackageSpec>,
 }
 
 impl UpdateSubcommand {
@@ -49,12 +52,13 @@ impl UpdateSubcommand {
 
         // If the user didn't specify any targets, then update all of the packages.
         // Otherwise, find the target packages to update.
-        let try_to_use = if self.target_packages.is_empty() {
+        let try_to_use = if self.package_specs.is_empty() {
             BTreeSet::new()
         } else {
             lockfile
                 .packages
                 .iter()
+                // Convert each LockPackage into a PackageId
                 .map(|lock_package| match lock_package {
                     LockPackage::Registry(lock_package) => {
                         PackageId::new(lock_package.name.clone(), lock_package.version.clone())
@@ -62,16 +66,7 @@ impl UpdateSubcommand {
                     LockPackage::Git(_) => todo!(),
                 })
                 // We update the target packages by removing the package from the list of packages to try to keep.
-                .filter(|package_id| {
-                    !self.target_packages
-                        .iter()
-                        .any(|target_package| match target_package {
-                            TargetPackage::Named(named_target) => package_id.name() == named_target,
-                            TargetPackage::Required(required_target) => {
-                                required_target.matches(package_id.name(), package_id.version())
-                            }
-                        })
-                })
+                .filter(|package_id| self.given_package_id_satisifies_targets(package_id))
                 .collect()
         };
 
@@ -95,22 +90,34 @@ impl UpdateSubcommand {
         render_update_difference(&dependency_changes);
         Ok(())
     }
+
+    fn given_package_id_satisifies_targets(&self, package_id: &PackageId) -> bool {
+        !self
+            .package_specs
+            .iter()
+            .any(|target_package| match target_package {
+                PackageSpec::Named(named_target) => package_id.name() == named_target,
+                PackageSpec::Required(required_target) => {
+                    required_target.matches(package_id.name(), package_id.version())
+                }
+            })
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub enum TargetPackage {
+pub enum PackageSpec {
     Named(PackageName),
     Required(PackageReq),
 }
 
-impl FromStr for TargetPackage {
+impl FromStr for PackageSpec {
     type Err = anyhow::Error;
 
     fn from_str(value: &str) -> anyhow::Result<Self> {
         if let Ok(package_req) = value.parse() {
-            Ok(TargetPackage::Required(package_req))
+            Ok(PackageSpec::Required(package_req))
         } else if let Ok(package_name) = value.parse() {
-            Ok(TargetPackage::Named(package_name))
+            Ok(PackageSpec::Named(package_name))
         } else {
             // TODO: Give better error message here, I guess.
             anyhow::bail!("Was unable to parse into a package requirement or a package named.")
