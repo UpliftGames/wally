@@ -1,0 +1,15 @@
+[package]
+name = "biff/dev-dependency-also-required-as-non-dev"
+version = "0.1.0"
+license = "MIT"
+realm = "server"
+registry = "test-registries/primary-registry"
+
+[place]
+server-packages = "game.ServerScriptStorage.Packages"
+
+[server-dependencies]
+Transitive = "biff/transitive-dependency@0.1.0"
+
+[dev-dependencies]
+Minimal = "biff/minimal@0.1.0"

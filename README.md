@@ -18,19 +18,36 @@ Wally has two pieces that work together: a command line tool named `wally` and a
 
 ## Installation
 
+### With Aftman (preferred)
+[Aftman][aftman] is the toolchain manager we recommend. You can use it to install Wally:
+
+In your project (preferred)
+```bash
+aftman init
+aftman add UpliftGames/wally
+aftman install
+```
+
+Or install wally globally
+```bash
+aftman add --global UpliftGames/wally
+aftman install
+```
+
+[aftman]: https://github.com/LPGhatguy/aftman
+
+### Homebrew
+[Homebrew][homebrew] is also a convenient way to install wally! (only for MacOS/Linux)
+```bash
+brew install wally
+```
+
+[homebrew]: https://brew.sh/
+
 ### From GitHub
 Pre-built binaries are available for Windows, macOS, and Linux from the [GitHub Releases Page for Wally][releases].
 
 [releases]: https://github.com/UpliftGames/wally/releases
-
-### With Foreman
-[Foreman][foreman] is a toolchain manager developed for the Roblox community. You can use it to install Wally:
-
-``` toml
-wally = { source = "UpliftGames/wally", version = "0.3.1" }
-```
-
-[foreman]: https://github.com/Roblox/foreman
 
 ### From Source
 It's straightforward to compile Wally from source. Wally requires Rust 1.51.0 or newer.
@@ -63,17 +80,17 @@ Parity with:
 Update packages recursively. By default, will update all packages. If any package names are given (in the form `scope/name` or `scope/name@version-req`), just those packages will be updated instead.
 
 Parity with:
-* `cargo publish`
+* `cargo update`
 * `npm update` (npm 7+, equivalent to `--depth 9999` in npm 6.x and older)
 
-### `wally publish`
+### `wally publish [--token <token>]`
 Publish the current package.
 
 Parity with:
 * `cargo publish`
 * `npm publish`
 
-### `wally login`
+### `wally login [--token <token>]`
 Log into an account to publish packages to a registry.
 
 You can also directly provide a token via `wally login --token "$WALLY_AUTH_TOKEN"`.
@@ -124,7 +141,7 @@ Here is an example package manifest, annotated with comments:
 ```toml
 [package]
 # Package names are always "SCOPE/NAME"
-# They can inclde lowercase letters, numbers, and dashes.
+# They can include lowercase letters, numbers, and dashes.
 name = "lpghatguy/asink"
 
 # Descriptions are free-form. These will be used as part of package listings
@@ -187,7 +204,7 @@ TestEZ = "roblox/testez@0.4.1"
 ## Lockfile Format
 The lockfile contains the exact versions of each dependency that a project depends on. They're a critical feature that ensures that everyone who works on a game is getting the exact same version of every package.
 
-Lockfiles are written in [TOML][toml] and stored in a file named `wally.lock`. They're human readable, but are only written by tools. We've optimized the lockfile format for reading as well as diffing so that they're as easy to review as possible.
+Lockfiles are written in [TOML][toml] and stored in a file named `wally.lock`. They're human-readable, but are only written by tools. We've optimized the lockfile format for reading as well as diffing so that they're as easy to review as possible.
 
 ```toml
 [[package]]

@@ -1,0 +1,6 @@
+[package]
+name = "biff/minimal-shared"
+version = "0.1.0"
+license = "MIT"
+realm = "shared"
+registry = "test-registries/primary-registry"

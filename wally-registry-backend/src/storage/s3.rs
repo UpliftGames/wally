@@ -3,22 +3,28 @@ use std::io::Cursor;
 use async_trait::async_trait;
 use futures::TryStreamExt;
 use libwally::package_id::PackageId;
-use tokio::sync::Mutex;
+use moka::sync::Cache;
 
 use rusoto_s3::{GetObjectRequest, PutObjectRequest, S3Client, S3};
 
 use super::{StorageBackend, StorageOutput};
 
 pub struct S3Storage {
-    client: Mutex<S3Client>,
+    client: S3Client,
     bucket: String,
+    cache: Option<Cache<PackageId, Vec<u8>>>,
 }
 
 impl S3Storage {
-    pub fn new(client: S3Client, bucket: String) -> Self {
+    pub fn new(client: S3Client, bucket: String, cache_size: Option<u64>) -> Self {
+        if let Some(cache_size) = cache_size {
+            println!("Using storage moka caching (size: {cache_size})");
+        }
+
         Self {
-            client: Mutex::new(client),
+            client,
             bucket,
+            cache: cache_size.map(Cache::new),
         }
     }
 }
@@ -26,10 +32,16 @@ impl S3Storage {
 #[async_trait]
 impl StorageBackend for S3Storage {
     async fn read(&self, key: &PackageId) -> anyhow::Result<StorageOutput> {
-        let name = key.to_string();
-        let client = self.client.lock().await;
+        if let Some(cache) = &self.cache {
+            if cache.contains_key(key) {
+                return Ok(Box::new(Cursor::new(cache.get(key).unwrap())));
+            }
+        }
 
-        let result = client
+        let name = key.to_string();
+
+        let result = self
+            .client
             .get_object(GetObjectRequest {
                 bucket: self.bucket.to_owned(),
                 key: name.to_owned(),
@@ -39,15 +51,19 @@ impl StorageBackend for S3Storage {
 
         let stream = result.body.unwrap();
         let data = stream.map_ok(|chunk| chunk.to_vec()).try_concat().await?;
+
+        if let Some(cache) = &self.cache {
+            cache.insert(key.clone(), data.clone());
+        }
+
         Ok(Box::new(Cursor::new(data)))
     }
 
     async fn write(&self, id: &PackageId, contents: &[u8]) -> anyhow::Result<()> {
         let name = id.to_string();
-        let client = self.client.lock().await;
         let contents = contents.to_vec();
 
-        client
+        self.client
             .put_object(PutObjectRequest {
                 bucket: self.bucket.to_owned(),
                 key: name.to_owned(),

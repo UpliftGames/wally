@@ -8,10 +8,11 @@ use crate::manifest::Manifest;
 use crate::package_id::PackageId;
 use crate::package_index::PackageIndexConfig;
 use crate::package_req::PackageReq;
-use crate::package_source::{PackageContents, PackageSource};
+use crate::package_source::PackageContents;
 
-use super::PackageSourceId;
+use super::{PackageSourceId, PackageSourceProvider};
 
+#[derive(Clone)]
 pub struct TestRegistry {
     path: PathBuf,
 }
@@ -22,7 +23,7 @@ impl TestRegistry {
     }
 }
 
-impl PackageSource for TestRegistry {
+impl PackageSourceProvider for TestRegistry {
     fn update(&self) -> anyhow::Result<()> {
         Ok(())
     }

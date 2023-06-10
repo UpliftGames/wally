@@ -37,6 +37,14 @@ impl AuthStore {
         Ok(auth)
     }
 
+    /// Simplifies the usecase of AuthStore::load()?.tokens.get(key)
+    /// If multiple tokens are needed you should use AuthStore::load()?.tokens instead
+    pub fn get_token(key: &str) -> anyhow::Result<Option<String>> {
+        // As this auth store will only live as long as this function we can just remove the value
+        // to give ownership to whatever needs it
+        Ok(Self::load()?.tokens.remove(key))
+    }
+
     pub fn set_token(key: &str, token: Option<&str>) -> anyhow::Result<()> {
         let path = file_path()?;
         let contents = Self::contents(&path)?;
