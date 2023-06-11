@@ -56,15 +56,7 @@ impl UpdateSubcommand {
             BTreeSet::new()
         } else {
             lockfile
-                .packages
-                .iter()
-                // Convert each LockPackage into a PackageId
-                .map(|lock_package| match lock_package {
-                    LockPackage::Registry(lock_package) => {
-                        PackageId::new(lock_package.name.clone(), lock_package.version.clone())
-                    }
-                    LockPackage::Git(_) => todo!(),
-                })
+                .as_ids()
                 // We update the target packages by removing the package from the list of packages to try to keep.
                 .filter(|package_id| self.given_package_id_satisifies_targets(package_id))
                 .collect()
@@ -73,19 +65,9 @@ impl UpdateSubcommand {
         let resolved_graph = resolution::resolve(&manifest, &try_to_use, &package_sources)?;
 
         Lockfile::from_resolve(&resolved_graph).save(&self.project_path)?;
-        let dependency_changes = generate_depedency_changes(
-            &lockfile
-                .packages
-                .iter()
-                .map(|lock_package| match lock_package {
-                    LockPackage::Registry(lock_package) => {
-                        PackageId::new(lock_package.name.clone(), lock_package.version.clone())
-                    }
-                    LockPackage::Git(_) => todo!(),
-                })
-                .collect(),
-            &resolved_graph.activated,
-        );
+
+        let dependency_changes =
+            generate_depedency_changes(&lockfile.as_ids().collect(), &resolved_graph.activated);
 
         render_update_difference(&dependency_changes);
         Ok(())

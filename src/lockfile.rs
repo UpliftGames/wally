@@ -102,6 +102,15 @@ impl Lockfile {
 
         Ok(())
     }
+
+    pub fn as_ids(&self) -> impl Iterator<Item = PackageId> + '_ {
+        self.packages.iter().map(|lock_package| match lock_package {
+            LockPackage::Registry(lock_package) => {
+                PackageId::new(lock_package.name.clone(), lock_package.version.clone())
+            }
+            LockPackage::Git(_) => todo!(),
+        })
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
