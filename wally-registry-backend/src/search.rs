@@ -1,13 +1,15 @@
+use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
 use libwally::package_index::PackageIndex;
 use libwally::package_name::PackageName;
 use tantivy::collector::TopDocs;
+use tantivy::fastfield::FastFieldReader;
 use tantivy::query::QueryParser;
 
 use serde::{Deserialize, Serialize};
 use tantivy::tokenizer::{LowerCaser, NgramTokenizer, TextAnalyzer};
-use tantivy::{schema::*, IndexReader, ReloadPolicy};
+use tantivy::{schema::*, DocId, IndexReader, ReloadPolicy, Score, SegmentReader};
 use tantivy::{Index, IndexWriter};
 use walkdir::{DirEntry, WalkDir};
 
@@ -36,11 +38,12 @@ impl SearchBackend {
         schema_builder.add_text_field("name", text_options.clone());
         schema_builder.add_text_field("versions", TEXT | STORED);
         schema_builder.add_text_field("description", text_options);
+        schema_builder.add_u64_field("dependent_count", STORED | INDEXED | FAST);
 
         let schema = schema_builder.build();
         let index = Index::create_in_ram(schema.clone());
 
-        let analyzer = TextAnalyzer::from(NgramTokenizer::all_ngrams(2, 10)).filter(LowerCaser);
+        let analyzer = TextAnalyzer::from(NgramTokenizer::all_ngrams(1, 15)).filter(LowerCaser);
         index.tokenizers().register("ngram", analyzer);
 
         let writer = index.writer(50_000_000)?;
@@ -53,11 +56,13 @@ impl SearchBackend {
         let scope = schema.get_field("scope").unwrap();
         let name = schema.get_field("name").unwrap();
         let description = schema.get_field("description").unwrap();
+        let dependent_count = schema.get_field("dependent_count").unwrap();
 
         let mut query_parser = QueryParser::for_index(&index, vec![scope, name, description]);
         query_parser.set_conjunction_by_default();
         query_parser.set_field_boost(scope, 3.0);
         query_parser.set_field_boost(name, 5.0);
+        query_parser.set_field_boost(dependent_count, 2.0);
 
         let mut backend = Self {
             schema,
@@ -75,6 +80,10 @@ impl SearchBackend {
         let name = self.schema.get_field("name").unwrap();
         let versions = self.schema.get_field("versions").unwrap();
         let description = self.schema.get_field("description").unwrap();
+        let dependent_count = self.schema.get_field("dependent_count").unwrap();
+
+        let mut dependency_graph = HashMap::<PackageName, HashSet<PackageName>>::new();
+        let mut package_to_doc_map = HashMap::<PackageName, Document>::new();
 
         println!("Crawling index...");
         let now = Instant::now();
@@ -106,7 +115,7 @@ impl SearchBackend {
 
             let mut doc = Document::default();
 
-            for manifest in &(*metadata).versions {
+            for manifest in &metadata.versions {
                 doc.add_text(versions, manifest.package.version.to_string());
 
                 if !manifest.package.version.is_prerelease() {
@@ -117,11 +126,37 @@ impl SearchBackend {
                         doc.add_text(description, description_text);
                     }
 
+                    let package = &manifest.package.name;
+                    package_to_doc_map.insert(package.clone(), doc);
+
+                    dependency_graph
+                        .entry(package.clone())
+                        .or_insert_with(HashSet::new);
+
+                    manifest
+                        .dependencies
+                        .values()
+                        .chain(manifest.server_dependencies.values())
+                        .chain(manifest.dev_dependencies.values())
+                        .for_each(|req| {
+                            let dependency = req.name().clone();
+                            dependency_graph
+                                .entry(dependency)
+                                .or_insert_with(HashSet::new)
+                                .insert(package.clone());
+                        });
+
                     break;
                 }
             }
+        }
 
-            self.writer.add_document(doc);
+        for (package, doc) in package_to_doc_map.iter_mut() {
+            let dependents = dependency_graph.get(package).unwrap();
+
+            doc.add_u64(dependent_count, dependents.len() as u64);
+
+            self.writer.add_document(doc.to_owned());
         }
 
         self.writer.commit()?;
@@ -132,10 +167,27 @@ impl SearchBackend {
 
     pub fn search(&self, query_input: &str) -> tantivy::Result<Vec<DocResult>> {
         let searcher = self.reader.searcher();
+        let dependent_count = self.schema.get_field("dependent_count").unwrap();
         let query = self
             .query_parser
-            .parse_query(&query_input.replace("/", " "))?;
-        let top_docs = searcher.search(&query, &TopDocs::with_limit(DOC_LIMIT))?;
+            .parse_query(&query_input.replace('/', " "))?;
+
+        let collector =
+            TopDocs::with_limit(DOC_LIMIT).tweak_score(move |segment_reader: &SegmentReader| {
+                let popularity_reader = segment_reader.fast_fields().u64(dependent_count).unwrap();
+
+                move |doc: DocId, original_score: Score| {
+                    let popularity: u64 = popularity_reader.get(doc);
+                    let popularity_boost_score = ((2u64 + popularity) as Score).log2();
+
+                    // Attempt to boost by popularity but still allow text matches to have significant weight
+                    // Ideally this will boost popular packages above those with no use but still keep
+                    // popular packages in an inuitive and expected order
+                    popularity_boost_score * original_score + 40.0 * (popularity_boost_score - 1.0)
+                }
+            });
+
+        let top_docs = searcher.search(&query, &collector)?;
 
         let mut docs = Vec::with_capacity(DOC_LIMIT);
 
@@ -149,6 +201,7 @@ impl SearchBackend {
                 name: retrieved_doc.name[0].clone(),
                 versions: retrieved_doc.versions,
                 description: retrieved_doc.description.map(|d| d[0].clone()),
+                dependent_count: retrieved_doc.dependent_count[0],
             });
         }
 
@@ -170,6 +223,7 @@ struct NativeDocResult {
     name: Vec<String>,
     versions: Vec<String>,
     description: Option<Vec<String>>,
+    dependent_count: Vec<u64>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -178,4 +232,5 @@ pub struct DocResult {
     name: String,
     versions: Vec<String>,
     description: Option<String>,
+    dependent_count: u64,
 }
