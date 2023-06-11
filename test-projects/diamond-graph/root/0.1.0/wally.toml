@@ -6,5 +6,5 @@ realm = "server"
 registry = "test-registries/primary-registry"
 
 [server-dependencies]
-A = "diamond-graph/direct-dependency-a@0.1.0"
+A = "diamond-graph/direct-dependency-a@=0.1.0"
 B = "diamond-graph/direct-dependency-b@0.1.0"

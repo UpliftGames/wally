@@ -16,7 +16,7 @@ pub use manifest_to_json::ManifestToJsonSubcommand;
 pub use package::PackageSubcommand;
 pub use publish::PublishSubcommand;
 pub use search::SearchSubcommand;
-pub use update::UpdateSubcommand;
+pub use update::{PackageSpec, UpdateSubcommand};
 
 use structopt::StructOpt;
 
