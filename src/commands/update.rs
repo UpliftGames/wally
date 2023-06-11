@@ -8,9 +8,7 @@ use crate::manifest::Manifest;
 use crate::package_id::PackageId;
 use crate::package_name::PackageName;
 use crate::package_req::PackageReq;
-use crate::package_source::{
-    PackageSource, PackageSourceMap, Registry, TestRegistry,
-};
+use crate::package_source::{PackageSource, PackageSourceMap, Registry, TestRegistry};
 use crate::{resolution, GlobalOptions};
 use structopt::StructOpt;
 
@@ -70,7 +68,7 @@ impl UpdateSubcommand {
 
         render_update_difference(&dependency_changes);
 
-        let root_package_id = manifest.package_id().clone();
+        let root_package_id = manifest.package_id();
         let installation_context = InstallationContext::new(
             &self.project_path,
             manifest.place.shared_packages,
@@ -87,8 +85,7 @@ impl UpdateSubcommand {
     }
 
     fn given_package_id_satisifies_targets(&self, package_id: &PackageId) -> bool {
-        self
-            .package_specs
+        self.package_specs
             .iter()
             .any(|target_package| match target_package {
                 PackageSpec::Named(named_target) => package_id.name() == named_target,
@@ -131,15 +128,15 @@ fn generate_depedency_changes(
     old_dependencies: &BTreeSet<PackageId>,
     new_dependencies: &BTreeSet<PackageId>,
 ) -> Vec<DependencyChange> {
-    let added_packages = new_dependencies.difference(&old_dependencies);
-    let removed_packages = old_dependencies.difference(&new_dependencies);
+    let added_packages = new_dependencies.difference(old_dependencies);
+    let removed_packages = old_dependencies.difference(new_dependencies);
     let changed_dependencies: BTreeSet<&PackageName> = added_packages
         .clone()
         .chain(removed_packages.clone())
         .map(|package| package.name())
         .collect();
 
-    let mut depedency_changes = Vec::new();
+    let mut dependency = Vec::new();
 
     for dependency_name in changed_dependencies {
         let matching_packages_removed = removed_packages
@@ -158,13 +155,13 @@ fn generate_depedency_changes(
                 let package_added = matching_packages_added.last().unwrap();
                 let package_removed = matching_packages_removed.last().unwrap();
 
-                if package_added.gt(&package_removed) {
-                    depedency_changes.push(DependencyChange::Updated {
+                if package_added.gt(package_removed) {
+                    dependency.push(DependencyChange::Updated {
                         from: package_removed.clone(),
                         to: package_added.clone(),
                     });
                 } else {
-                    depedency_changes.push(DependencyChange::Downgrade {
+                    dependency.push(DependencyChange::Downgrade {
                         from: package_added.clone(),
                         to: package_removed.clone(),
                     });
@@ -173,32 +170,26 @@ fn generate_depedency_changes(
             (0, 1) => {
                 // We know for certain that there is only one item in the iterator.
                 let package_removed = matching_packages_removed.last().unwrap();
-                depedency_changes.push(DependencyChange::Removed(package_removed.clone()));
+                dependency.push(DependencyChange::Removed(package_removed.clone()));
             }
             (1, 0) => {
                 // We know for certain that there is only one item in the iterator.
                 let package_added = matching_packages_added.last().unwrap();
-                depedency_changes.push(DependencyChange::Added(package_added.clone()));
+                dependency.push(DependencyChange::Added(package_added.clone()));
             }
             (0, 0) => panic!("Impossible for the package name {} to not be removed or added if found in earlier.", dependency_name),
             (_, _) => {
-                let mut found_changes = matching_packages_added
-                    .map(|package| DependencyChange::Added(package.clone()))
-                    .chain(
-                        matching_packages_removed
-                            .map(|package| DependencyChange::Removed(package.clone())),
-                    )
-                    .collect();
-                depedency_changes.append(&mut found_changes)
+                dependency.extend(matching_packages_added.map(|package| DependencyChange::Added(package.clone())));
+                dependency.extend(matching_packages_removed.map(|package| DependencyChange::Removed(package.clone())));
             }
         }
     }
 
-    depedency_changes
+    dependency
 }
 
-fn render_update_difference(dependency_changes: &Vec<DependencyChange>) {
-    for dependency_change in dependency_changes.iter() {
+fn render_update_difference(dependency_changes: &[DependencyChange]) {
+    for dependency_change in dependency_changes {
         match dependency_change {
             DependencyChange::Added(package_id) => {
                 println!("Added {} v{}", package_id.name(), package_id.version());
