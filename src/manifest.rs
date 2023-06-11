@@ -126,6 +126,18 @@ pub struct Package {
     /// Example: true
     #[serde(default)]
     pub private: bool,
+
+    /// URL of the package homepage.
+    ///
+    /// Example: "https://github.com/sleitnick/knit"
+    #[serde(default)]
+    pub homepage: Option<String>,
+
+    /// URL of the package source repository.
+    ///
+    /// Example: "https://github.com/Sleitnick/Knit.git"
+    #[serde(default)]
+    pub repository: Option<String>,
 }
 
 // Metadata we require when this manifest will be used to generate package folders

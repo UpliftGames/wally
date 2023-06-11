@@ -247,7 +247,7 @@ export default function Package() {
   const packageMetadata = packageHistory?.find(
     (item: WallyPackageMetadata) => item.package.version === packageVersion
   )
-
+    console.log(packageMetadata)
   if (packageMetadata == undefined) {
     return (
       <>
@@ -344,6 +344,22 @@ export default function Package() {
                   </a>
                 </MetaItem>
               )} */}
+
+              {packageMetadata?.package.homepage && (
+                <MetaItem title="Homepage" width="full">
+                  <a href={packageMetadata?.package.homepage}>
+                    {packageMetadata?.package.homepage.replace("https://", "")}
+                  </a>
+                </MetaItem>
+              )}
+
+              {packageMetadata?.package.repository && (
+                <MetaItem title="Repository" width="full">
+                  <a href={packageMetadata?.package.repository.replace("https://", "")}>
+                    {packageMetadata?.package.repository}
+                  </a>
+                </MetaItem>
+              )}
 
               {packageMetadata.package.authors.length > 0 && (
                 <MetaItem title="Authors" width="full">

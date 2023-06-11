@@ -39,6 +39,8 @@ impl PackageBuilder {
                 include: Vec::new(),
                 exclude: Vec::new(),
                 private: false,
+                homepage: None,
+                repository: None,
             },
             place: Default::default(),
             dependencies: Default::default(),
