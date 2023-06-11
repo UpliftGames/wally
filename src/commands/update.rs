@@ -56,7 +56,7 @@ impl UpdateSubcommand {
             lockfile
                 .as_ids()
                 // We update the target packages by removing the package from the list of packages to try to keep.
-                .filter(|package_id| self.given_package_id_satisifies_targets(package_id))
+                .filter(|package_id| !self.given_package_id_satisifies_targets(package_id))
                 .collect()
         };
 
@@ -87,7 +87,7 @@ impl UpdateSubcommand {
     }
 
     fn given_package_id_satisifies_targets(&self, package_id: &PackageId) -> bool {
-        !self
+        self
             .package_specs
             .iter()
             .any(|target_package| match target_package {
