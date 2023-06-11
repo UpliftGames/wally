@@ -205,7 +205,7 @@ export default function Package() {
       ? packageData.versions.filter(
           (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
         )
-      : packageData
+      : packageData.versions
 
     setPackageHistory(filteredPackageData)
 
