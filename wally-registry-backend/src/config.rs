@@ -2,7 +2,7 @@ use semver::Version;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::{auth::AuthMode, storage::StorageMode};
+use crate::{analytics::AnalyticsMode, auth::AuthMode, storage::StorageMode};
 
 #[derive(Deserialize, Serialize)]
 pub struct Config {
@@ -22,4 +22,7 @@ pub struct Config {
 
     /// The minimum wally cli version required to publish to the registry
     pub minimum_wally_version: Option<Version>,
+
+    /// What analytics backend should be used, currently the only option is InfluxDB
+    pub analytics: Option<AnalyticsMode>,
 }

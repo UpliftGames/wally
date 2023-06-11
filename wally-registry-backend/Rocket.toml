@@ -28,5 +28,7 @@ index_url = "https://github.com/UpliftGames/wally-test-index"
 # Here's the production config:
 # index_url = "https://github.com/UpliftGames/wally-index"
 
+analytics = { type = "postgres-mode" }
+
 [release]
 log_level = "normal"

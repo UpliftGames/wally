@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate rocket;
 
+mod analytics;
 mod auth;
 mod config;
 mod error;
@@ -19,12 +20,14 @@ use figment::{
     providers::{Env, Format, Toml},
     Figment,
 };
+use futures::FutureExt;
 use libwally::{
     manifest::{Manifest, MANIFEST_FILE_NAME},
     package_id::PackageId,
     package_index::PackageIndex,
     package_name::PackageName,
 };
+use rand::Rng;
 use rocket::fairing::{Fairing, Info, Kind};
 use rocket::http::Header;
 use rocket::request::{FromRequest, Outcome};
@@ -40,9 +43,12 @@ use rocket::{
 use rocket::{Build, Request, Response};
 use semver::Version;
 use serde_json::json;
+use sqlx::postgres::PgPoolOptions;
 use storage::StorageMode;
+use url::Url;
 use zip::ZipArchive;
 
+use crate::analytics::{AnalyticsBackend, AnalyticsMode};
 use crate::auth::{ReadAccess, WriteAccess};
 use crate::config::Config;
 use crate::error::{ApiErrorContext, ApiErrorStatus, Error};
@@ -52,8 +58,23 @@ use crate::storage::{GcsStorage, LocalStorage, StorageBackend, StorageOutput};
 #[cfg(feature = "s3-storage")]
 use crate::storage::S3Storage;
 
+use crate::analytics::PostgresAnalytics;
+
 #[get("/")]
-fn root() -> content::RawJson<serde_json::Value> {
+async fn root(
+    analytics_backend: &State<Option<Box<dyn AnalyticsBackend>>>,
+) -> content::RawJson<serde_json::Value> {
+    let num = rand::thread_rng().gen_range(0..10);
+    analytics_backend
+        .as_ref()
+        .expect("No analytics!")
+        .record_download(PackageId::new(
+            PackageName::new("hello", "world").unwrap(),
+            Version::new(1, num, 0),
+        ))
+        .await
+        .unwrap();
+
     content::RawJson(json!({
         "message": "Wally Registry is up and running!",
     }))
@@ -240,6 +261,13 @@ pub fn server(figment: Figment) -> rocket::Rocket<Build> {
         }
     };
 
+    println!("Using analytics backend: {:?}", config.analytics);
+    let analytics_backend: Option<Box<dyn AnalyticsBackend>> = match config.analytics {
+        #[cfg(feature = "influx")]
+        Some(AnalyticsMode::PostgresMode {}) => Some(Box::new(configure_postgres())),
+        None => None,
+    };
+
     println!("Cloning package index repository...");
     let package_index = PackageIndex::new_temp(&config.index_url, config.github_token).unwrap();
 
@@ -259,6 +287,7 @@ pub fn server(figment: Figment) -> rocket::Rocket<Build> {
         )
         .manage(storage_backend)
         .manage(package_index)
+        .manage(analytics_backend)
         .manage(RwLock::new(search_backend))
         .attach(AdHoc::config::<Config>())
         .attach(Cors)
@@ -300,6 +329,27 @@ fn configure_s3(bucket: String, cache_size: Option<u64>) -> anyhow::Result<S3Sto
     );
 
     Ok(S3Storage::new(client, bucket, cache_size))
+}
+
+#[cfg(feature = "influx")]
+fn configure_postgres() -> PostgresAnalytics {
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+
+    rt.block_on(async {
+        let pool = PgPoolOptions::new()
+            .max_connections(5)
+            .connect("postgres://jonny@localhost/postgres")
+            .await
+            .unwrap();
+
+        let analytics_backend = PostgresAnalytics::new(pool);
+
+        analytics_backend.ensure_initialised().await.unwrap();
+        analytics_backend
+    })
 }
 
 struct Cors;

@@ -30,7 +30,6 @@ pub enum StorageMode {
         cache_size: Option<u64>,
     },
     #[cfg(feature = "s3-storage")]
-    #[cfg(feature = "s3-storage")]
     #[serde(rename_all = "kebab-case")]
     S3 {
         bucket: String,
