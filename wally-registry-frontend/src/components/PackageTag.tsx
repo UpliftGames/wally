@@ -154,7 +154,8 @@ export default function PackageBlip({
   width = "narrow",
   hidden = false,
   children,
-  title,
+  scope,
+  name,
   version,
   uniqueId,
   className,
@@ -165,8 +166,8 @@ export default function PackageBlip({
   width?: WidthVariation
   hidden?: boolean
   children?: React.ReactNode
-  title?: string
-  author?: string
+  scope?: string
+  name?: string
   version?: string
   uniqueId?: string
   className?: string
@@ -185,8 +186,8 @@ export default function PackageBlip({
     >
       <RowWrapper $inset={inset ?? false}>
         <TopRow>
-          <TitleRoot>{title?.split("/")[0]}/</TitleRoot>
-          <Title>{title?.split("/")[1]}</Title>
+          <TitleRoot>{scope}/</TitleRoot>
+          <Title>{name}</Title>
           <TitleVersion>{version}</TitleVersion>
         </TopRow>
 

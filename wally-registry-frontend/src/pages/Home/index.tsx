@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useEffect, useState } from "react"
 import styled from "styled-components"
 import { ButtonLink } from "../../components/Button"
 import CallToActionContainer from "../../components/CallToActionContainer"
@@ -6,6 +6,7 @@ import ContentSection from "../../components/ContentSection"
 import PackageTag from "../../components/PackageTag"
 import { Code, Heading, ResponsiveParagraph } from "../../components/Typography"
 import mockPopularPackages from "../../mocks/popularPackages.mock"
+import { getWallyPackages, SearchResult } from "../../services/wally.api"
 
 const Flex = styled.div`
   display: flex;
@@ -16,21 +17,45 @@ const Flex = styled.div`
 `
 
 const PopularPackages = () => {
-  const popularPackagesList = [...mockPopularPackages].map(
+  const [count, setPackageCount] = useState(10);
+  const [popularPackages, setPopularPackages] = useState<SearchResult[]>()
+  const [isLoaded, setIsLoaded] = useState(false)
+
+  const loadPopularPackages = async () => {
+    const results = await getWallyPackages("*")
+    setPopularPackages(results)
+    setIsLoaded(true)
+  }
+
+  useEffect(() => {
+    loadPopularPackages()
+  }, [count])
+
+  if (!isLoaded || popularPackages == undefined) {
+    return (
+      <>
+        <ContentSection>
+          <div>Loading popular packages...</div>
+        </ContentSection>
+      </>
+    )
+  }
+
+  const popularPackagesList = popularPackages.slice(0, count).map(
     (popPackage, index) => (
       <PackageTag
         size="small"
         key={index}
-        uniqueId={popPackage.package.name
+        uniqueId={popPackage.name
           .substr(0, 15)
           .toLowerCase()
           .replace(/[^a-z]/gi, "")}
-        title={popPackage.package.name}
-        author={popPackage.package.authors.join(" ")}
-        version={popPackage.package.version}
-        linkTo={popPackage.package.name}
+        scope={popPackage.scope}
+        name={popPackage.name}
+        version={popPackage.versions[0]}
+        linkTo={`${popPackage.scope}/${popPackage.name}`}
       >
-        <p>{popPackage.package.description}&nbsp;</p>
+        <p>{popPackage.description}&nbsp;</p>
       </PackageTag>
     )
   )
@@ -51,12 +76,6 @@ export default function Home() {
           Wally is a package manager for Roblox inspired by Cargo (Rust) and npm
           (JavaScript). It brings the familiar, community-oriented world of
           sharing code from other communities into the Roblox ecosystem.
-        </ResponsiveParagraph>
-        <ResponsiveParagraph>
-          Wally has two pieces that work together: a command line tool named{" "}
-          <Code>wally</Code> and a registry server that hosts packages. Most
-          users will only interact with the command line tool, but both are
-          available in this repository.
         </ResponsiveParagraph>
 
         <CallToActionContainer>
