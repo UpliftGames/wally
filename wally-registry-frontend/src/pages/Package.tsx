@@ -1,13 +1,17 @@
-import React, { useEffect, useState } from "react"
-import { useHistory, useLocation, useParams } from "react-router"
+import React, { useEffect, useState, createRef } from "react"
+import { useParams, useLocation, useHistory } from "react-router"
 import styled from "styled-components"
 import { isMobile, notMobile } from "../breakpoints"
+import iconDownload from "../assets/icon-download.svg"
 import { Button } from "../components/Button"
 import ContentSection from "../components/ContentSection"
 import CopyCode from "../components/CopyCode"
 import NotFoundMessage from "../components/NotFoundMessage"
 import { Heading, Paragraph } from "../components/Typography"
-import { getWallyPackageMetadata } from "../services/wally.api"
+import {
+  getWallyPackageMetadata,
+  buildWallyPackageDownloadLink,
+} from "../services/wally.api"
 import { WallyPackageMetadata } from "../types/wally"
 import capitalize from "../utils/capitalize"
 
@@ -171,6 +175,50 @@ const DependencyLink = ({ packageInfo }: { packageInfo: string }) => {
   return <DependencyLinkItem href={"/"}>{packageInfo}</DependencyLinkItem>
 }
 
+const DownloadLink = ({
+  url,
+  filename,
+  children,
+}: {
+  url: string
+  filename: string
+  children: React.ReactNode
+}) => {
+  const link = createRef<HTMLAnchorElement>()
+
+  const handleAction = async () => {
+    if (link.current === null) {
+      return
+    }
+    if (link.current.href) {
+      // Already has the download blob
+      return
+    }
+
+    const result = await fetch(url, {
+      headers: {
+        "wally-version": "0.3.2",
+      },
+    })
+
+    const blob = await result.blob()
+    const href = window.URL.createObjectURL(blob)
+
+    link.current.download = filename
+    link.current.href = href
+
+    link.current.click()
+  }
+
+  return (
+    <>
+      <a role="button" ref={link} onClick={handleAction}>
+        {children}
+      </a>
+    </>
+  )
+}
+
 type PackageParams = {
   packageScope: string
   packageName: string
@@ -284,7 +332,8 @@ export default function Package() {
             <Heading>{packageName}</Heading>
 
             <Paragraph>
-              {packageMetadata.package.description ?? `${capitalize(packageName)} has no provided description.`}
+              {packageMetadata.package.description ??
+                `${capitalize(packageName)} has no provided description.`}
             </Paragraph>
           </WideColumn>
 
@@ -332,6 +381,29 @@ export default function Package() {
               </MetaItem>
             )}
 
+            <MetaItem title="Download" width="half">
+              <DownloadLink
+                url={buildWallyPackageDownloadLink(
+                  packageScope,
+                  packageName,
+                  packageMetadata.package.version
+                )}
+                filename={
+                  packageScope +
+                  "/" +
+                  packageName +
+                  "@" +
+                  packageMetadata.package.version
+                }
+              >
+                <img
+                  src={iconDownload}
+                  alt="Download"
+                  style={{ fill: "var(--wally-mauve)", height: "1rem" }}
+                />
+              </DownloadLink>
+            </MetaItem>
+
             <MetaItem title="Realm" width="half">
               {capitalize(packageMetadata.package.realm)}
             </MetaItem>
@@ -345,52 +417,43 @@ export default function Package() {
                 </MetaItem>
               )} */}
 
-              {packageMetadata.package.authors.length > 0 && (
-                <MetaItem title="Authors" width="full">
-                  {packageMetadata.package.authors.map((author) => (
-                    <AuthorItem key={author}>{author}</AuthorItem>
-                  ))}
-                </MetaItem>
-              )}
+            {packageMetadata.package.authors.length > 0 && (
+              <MetaItem title="Authors" width="full">
+                {packageMetadata.package.authors.map((author) => (
+                  <AuthorItem key={author}>{author}</AuthorItem>
+                ))}
+              </MetaItem>
+            )}
 
             {Object.keys(packageMetadata.dependencies).length > 0 && (
-                <MetaItem title="Dependencies" width="full">
-                  {Object.values(packageMetadata.dependencies).map(
-                    (dependency) => (
-                      <DependencyLink
-                        key={dependency}
-                        packageInfo={dependency}
-                      />
-                    )
-                  )}
-                </MetaItem>
-              )}
+              <MetaItem title="Dependencies" width="full">
+                {Object.values(packageMetadata.dependencies).map(
+                  (dependency) => (
+                    <DependencyLink key={dependency} packageInfo={dependency} />
+                  )
+                )}
+              </MetaItem>
+            )}
 
             {Object.keys(packageMetadata["server-dependencies"]).length > 0 && (
-                <MetaItem title="Server Dependencies" width="full">
-                  {Object.values(packageMetadata["server-dependencies"]).map(
-                    (dependency) => (
-                      <DependencyLink
-                        key={dependency}
-                        packageInfo={dependency}
-                      />
-                    )
-                  )}
-                </MetaItem>
-              )}
+              <MetaItem title="Server Dependencies" width="full">
+                {Object.values(packageMetadata["server-dependencies"]).map(
+                  (dependency) => (
+                    <DependencyLink key={dependency} packageInfo={dependency} />
+                  )
+                )}
+              </MetaItem>
+            )}
 
             {Object.keys(packageMetadata["dev-dependencies"]).length > 0 && (
-                <MetaItem title="Dev Dependencies" width="full">
-                  {Object.values(packageMetadata["dev-dependencies"]).map(
-                    (dependency) => (
-                      <DependencyLink
-                        key={dependency}
-                        packageInfo={dependency}
-                      />
-                    )
-                  )}
-                </MetaItem>
-              )}
+              <MetaItem title="Dev Dependencies" width="full">
+                {Object.values(packageMetadata["dev-dependencies"]).map(
+                  (dependency) => (
+                    <DependencyLink key={dependency} packageInfo={dependency} />
+                  )
+                )}
+              </MetaItem>
+            )}
           </NarrowColumn>
         </FlexColumns>
       </ContentSection>
