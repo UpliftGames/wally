@@ -1,3 +1,4 @@
+import Semver from "semver"
 import React, { useEffect, useState } from "react"
 import { useHistory, useLocation, useParams } from "react-router"
 import styled from "styled-components"
@@ -155,20 +156,82 @@ const MetaItem = ({
 }
 
 const DependencyLink = ({ packageInfo }: { packageInfo: string }) => {
-  let packageMatch = packageInfo.match(/(.+\/.+)@[^\d]+([\d.]+)/)
-  if (packageMatch != null) {
-    let name = packageMatch[1]
-    let version = packageMatch[2]
+  const packageMatch = packageInfo.match(/(.+)\/(.+)@/)
+  if (packageMatch == null) {
+    // This is some unknown dependency format
+    return <DependencyLinkItem href={"/"}>{packageInfo}</DependencyLinkItem>
+  }
+  const packageScope = packageMatch[1]
+  const packageName = packageMatch[2]
+
+  const rangeMatch = packageInfo.match(/@(.+)$/)
+  if (rangeMatch == null) {
+    // This is an unknown version, fallback to default link
     return (
       <DependencyLinkWrapper>
-        <DependencyLinkItem href={`/package/${name}?version=${version}`}>
-          {name + "@" + version}
+        <DependencyLinkItem href={`/package/${packageScope}/${packageName}`}>
+          {packageInfo}
         </DependencyLinkItem>
-        <DependencyLinkTooltip>{name + "@" + version}</DependencyLinkTooltip>
+        <DependencyLinkTooltip>{packageInfo}</DependencyLinkTooltip>
       </DependencyLinkWrapper>
     )
   }
-  return <DependencyLinkItem href={"/"}>{packageInfo}</DependencyLinkItem>
+
+  // Semver ranges use spaces, not commas
+  const range = Semver.validRange(rangeMatch[1].split(", ").join(" "))
+  if (range == null) {
+    // This is an invalid range, fallback to default link
+    return (
+      <DependencyLinkWrapper>
+        <DependencyLinkItem href={`/package/${packageScope}/${packageName}`}>
+          {`${packageScope}/${packageName}@${rangeMatch[1]}`}
+        </DependencyLinkItem>
+        <DependencyLinkTooltip>{packageInfo}</DependencyLinkTooltip>
+      </DependencyLinkWrapper>
+    )
+  }
+
+  // Now we have the range of versions this package depends on,
+  // so let's find the best version that matches this range
+  const [dependencyVersion, setDependencyVersion] = useState<string>()
+
+  const loadVersion = async () => {
+    const dependencyData = await getWallyPackageMetadata(
+      packageScope,
+      packageName
+    )
+
+    if (dependencyData != undefined) {
+      const dependencyVersions = dependencyData.versions.map(
+        (pack: WallyPackageMetadata) => pack.package.version
+      )
+      const validVersion =
+        Semver.maxSatisfying(dependencyVersions, range) ||
+        Semver.minSatisfying(dependencyVersions, range)
+      if (validVersion != null) {
+        setDependencyVersion(validVersion.toString())
+      }
+    }
+  }
+
+  useEffect(() => {
+    loadVersion()
+  }, [packageScope, packageName])
+
+  return (
+    <DependencyLinkWrapper>
+      <DependencyLinkItem
+        href={`/package/${packageScope}/${packageName}${
+          dependencyVersion ? `?version=${dependencyVersion}` : ""
+        }`}
+      >
+        {`${packageScope}/${packageName}@${
+          dependencyVersion ? dependencyVersion : Semver.minVersion(range)?.raw
+        }`}
+      </DependencyLinkItem>
+      <DependencyLinkTooltip>{packageInfo}</DependencyLinkTooltip>
+    </DependencyLinkWrapper>
+  )
 }
 
 type PackageParams = {
@@ -284,7 +347,8 @@ export default function Package() {
             <Heading>{packageName}</Heading>
 
             <Paragraph>
-              {packageMetadata.package.description ?? `${capitalize(packageName)} has no provided description.`}
+              {packageMetadata.package.description ??
+                `${capitalize(packageName)} has no provided description.`}
             </Paragraph>
           </WideColumn>
 
@@ -345,52 +409,43 @@ export default function Package() {
                 </MetaItem>
               )} */}
 
-              {packageMetadata.package.authors.length > 0 && (
-                <MetaItem title="Authors" width="full">
-                  {packageMetadata.package.authors.map((author) => (
-                    <AuthorItem key={author}>{author}</AuthorItem>
-                  ))}
-                </MetaItem>
-              )}
+            {packageMetadata.package.authors.length > 0 && (
+              <MetaItem title="Authors" width="full">
+                {packageMetadata.package.authors.map((author) => (
+                  <AuthorItem key={author}>{author}</AuthorItem>
+                ))}
+              </MetaItem>
+            )}
 
             {Object.keys(packageMetadata.dependencies).length > 0 && (
-                <MetaItem title="Dependencies" width="full">
-                  {Object.values(packageMetadata.dependencies).map(
-                    (dependency) => (
-                      <DependencyLink
-                        key={dependency}
-                        packageInfo={dependency}
-                      />
-                    )
-                  )}
-                </MetaItem>
-              )}
+              <MetaItem title="Dependencies" width="full">
+                {Object.values(packageMetadata.dependencies).map(
+                  (dependency) => (
+                    <DependencyLink key={dependency} packageInfo={dependency} />
+                  )
+                )}
+              </MetaItem>
+            )}
 
             {Object.keys(packageMetadata["server-dependencies"]).length > 0 && (
-                <MetaItem title="Server Dependencies" width="full">
-                  {Object.values(packageMetadata["server-dependencies"]).map(
-                    (dependency) => (
-                      <DependencyLink
-                        key={dependency}
-                        packageInfo={dependency}
-                      />
-                    )
-                  )}
-                </MetaItem>
-              )}
+              <MetaItem title="Server Dependencies" width="full">
+                {Object.values(packageMetadata["server-dependencies"]).map(
+                  (dependency) => (
+                    <DependencyLink key={dependency} packageInfo={dependency} />
+                  )
+                )}
+              </MetaItem>
+            )}
 
             {Object.keys(packageMetadata["dev-dependencies"]).length > 0 && (
-                <MetaItem title="Dev Dependencies" width="full">
-                  {Object.values(packageMetadata["dev-dependencies"]).map(
-                    (dependency) => (
-                      <DependencyLink
-                        key={dependency}
-                        packageInfo={dependency}
-                      />
-                    )
-                  )}
-                </MetaItem>
-              )}
+              <MetaItem title="Dev Dependencies" width="full">
+                {Object.values(packageMetadata["dev-dependencies"]).map(
+                  (dependency) => (
+                    <DependencyLink key={dependency} packageInfo={dependency} />
+                  )
+                )}
+              </MetaItem>
+            )}
           </NarrowColumn>
         </FlexColumns>
       </ContentSection>
