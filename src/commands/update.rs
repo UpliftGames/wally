@@ -2,16 +2,16 @@ use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use crate::lockfile::{LockPackage, Lockfile};
+use crate::installation::InstallationContext;
+use crate::lockfile::Lockfile;
 use crate::manifest::Manifest;
 use crate::package_id::PackageId;
 use crate::package_name::PackageName;
 use crate::package_req::PackageReq;
 use crate::package_source::{
-    PackageSource, PackageSourceMap, PackageSourceProvider, Registry, TestRegistry,
+    PackageSource, PackageSourceMap, Registry, TestRegistry,
 };
 use crate::{resolution, GlobalOptions};
-use semver::VersionReq;
 use structopt::StructOpt;
 
 /// Update all of the dependencies of this project.
