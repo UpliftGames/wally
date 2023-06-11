@@ -199,7 +199,7 @@ const DownloadLink = ({
 
     const result = await fetch(url, {
       headers: {
-        "wally-version": "0.3.1",
+        "wally-version": "0.3.2",
       },
     })
 
