@@ -342,29 +342,6 @@ export default function Package() {
           <NarrowColumn>
             <MetaHeader>Metadata</MetaHeader>
 
-            <MetaItem title="Download" width="half">
-              <DownloadLink
-                url={buildWallyPackageDownloadLink(
-                  packageScope,
-                  packageName,
-                  packageMetadata.package.version
-                )}
-                filename={
-                  packageScope +
-                  "/" +
-                  packageName +
-                  "@" +
-                  packageMetadata.package.version
-                }
-              >
-                <img
-                  src={iconDownload}
-                  alt="Download"
-                  style={{ fill: "var(--wally-mauve)", height: "1rem" }}
-                />
-              </DownloadLink>
-            </MetaItem>
-
             <MetaItem title="Install" width="full">
               <CopyCode
                 packageName={packageMetadata.package.name}
@@ -405,6 +382,29 @@ export default function Package() {
                 </a>
               </MetaItem>
             )}
+
+            <MetaItem title="Download" width="half">
+              <DownloadLink
+                url={buildWallyPackageDownloadLink(
+                  packageScope,
+                  packageName,
+                  packageMetadata.package.version
+                )}
+                filename={
+                  packageScope +
+                  "/" +
+                  packageName +
+                  "@" +
+                  packageMetadata.package.version
+                }
+              >
+                <img
+                  src={iconDownload}
+                  alt="Download"
+                  style={{ fill: "var(--wally-mauve)", height: "1rem" }}
+                />
+              </DownloadLink>
+            </MetaItem>
 
             <MetaItem title="Realm" width="half">
               {capitalize(packageMetadata.package.realm)}
