@@ -64,12 +64,27 @@ impl UpdateSubcommand {
 
         let resolved_graph = resolution::resolve(&manifest, &try_to_use, &package_sources)?;
 
+        // TODO: prompt users to commit the changes.
         Lockfile::from_resolve(&resolved_graph).save(&self.project_path)?;
 
         let dependency_changes =
             generate_depedency_changes(&lockfile.as_ids().collect(), &resolved_graph.activated);
 
         render_update_difference(&dependency_changes);
+
+        let root_package_id = manifest.package_id().clone();
+        let installation_context = InstallationContext::new(
+            &self.project_path,
+            manifest.place.shared_packages,
+            manifest.place.server_packages,
+        );
+
+        println!("Cleaning directory...");
+        installation_context.clean()?;
+
+        println!("Installing new packages...");
+        installation_context.install(package_sources, root_package_id, resolved_graph)?;
+
         Ok(())
     }
 
