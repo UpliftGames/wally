@@ -29,12 +29,10 @@ pub struct UpdateSubcommand {
 impl UpdateSubcommand {
     pub fn run(self, global: GlobalOptions) -> anyhow::Result<()> {
         let manifest = Manifest::load(&self.project_path)?;
-        
+
         let lockfile = match Lockfile::load(&self.project_path)? {
             Some(lockfile) => lockfile,
-            None => {
-                anyhow::bail!("Missing lockfile!")
-            }
+            None => Lockfile::from_manifest(&manifest),
         };
 
         let default_registry: Box<PackageSource> = if global.test_registry {
