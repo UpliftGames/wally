@@ -1,11 +1,37 @@
 # Wally Changelog
 
 ## Unreleased Changes
+
+## 0.3.2 (2023-06-05)
+* Added private field to package manifest ([#9])([#76])
+* Improved lockfile generation **lockfiles will change** ([#130])
+* Improved package installation to download packages in parallel ([#133])
 * Support for directly providing token to `wally login` ([#105][#105])
-* Added private field to package manifest ([#9])
+* Fixed dev dependency resolution ([#75])
+* Fixed multi-realm dependency resolution ([#80])
+* Fixed dev dependency link generation ([#131])
+* Reclaiming of scopes is now disallowed ([#102])
+* Improved manifest generation on `wally init` ([#84])
+* Added S3 storage backend option ([#90])
+* Frontend improvements ([#109])([#110])([#112])
+* Publishing packages >2MB now bails at the cli ([#121])
+* Other small misc changes related to repo upkeep
 
 [#9]: https://github.com/UpliftGames/wally/issues/9
 [#105]: https://github.com/UpliftGames/wally/issues/105
+[#75]: https://github.com/UpliftGames/wally/pull/75
+[#80]: https://github.com/UpliftGames/wally/pull/80
+[#131]: https://github.com/UpliftGames/wally/pull/131
+[#102]: https://github.com/UpliftGames/wally/pull/102
+[#76]: https://github.com/UpliftGames/wally/pull/76
+[#84]: https://github.com/UpliftGames/wally/pull/84
+[#90]: https://github.com/UpliftGames/wally/pull/90
+[#109]: https://github.com/UpliftGames/wally/pull/109
+[#110]: https://github.com/UpliftGames/wally/pull/110
+[#112]: https://github.com/UpliftGames/wally/pull/112
+[#130]: https://github.com/UpliftGames/wally/pull/130
+[#133]: https://github.com/UpliftGames/wally/pull/133
+[#121]: https://github.com/UpliftGames/wally/pull/121
 
 ## 0.3.1 (2021-11-12)
 * Support for dev dependencies ([#63][63])

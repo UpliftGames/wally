@@ -2,9 +2,9 @@
 //! memory. It's useful for creating exact conditions for test cases for
 //! resolution, installation, upgrading, etc.
 
-use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::sync::Arc;
+use std::sync::RwLock;
 
 use anyhow::format_err;
 
@@ -13,7 +13,7 @@ use crate::{
     package_source::PackageSource, test_package::PackageBuilder,
 };
 
-use super::{PackageContents, PackageSourceId};
+use super::{PackageContents, PackageSourceId, PackageSourceProvider};
 
 /// An in-memory registry that can have packages published to it.
 ///
@@ -32,7 +32,7 @@ impl InMemoryRegistry {
 
     /// Publish a new package to the registry.
     pub fn publish(&self, builder: PackageBuilder) {
-        let mut storage = self.storage.contents.borrow_mut();
+        let mut storage = self.storage.contents.write().unwrap();
         let (manifest, contents) = builder.package();
 
         let scope = storage
@@ -47,26 +47,27 @@ impl InMemoryRegistry {
     }
 
     /// Returns a handle to an object that can be used as a `PackageSource`.
-    pub fn source(&self) -> InMemoryRegistrySource {
-        InMemoryRegistrySource {
+    pub fn source(&self) -> PackageSource {
+        PackageSource::InMemory(InMemoryRegistrySource {
             storage: self.storage.clone(),
-        }
+        })
     }
 }
 
 /// Returned by `InMemoryRegistry::source` and can be passed to package
 /// resolution code in order to tell it to use this package registry.
+#[derive(Clone)]
 pub struct InMemoryRegistrySource {
     storage: Storage,
 }
 
-impl PackageSource for InMemoryRegistrySource {
+impl PackageSourceProvider for InMemoryRegistrySource {
     fn update(&self) -> anyhow::Result<()> {
         Ok(())
     }
 
     fn query(&self, package_req: &PackageReq) -> anyhow::Result<Vec<Manifest>> {
-        let storage = self.storage.contents.borrow();
+        let storage = self.storage.contents.read().unwrap();
         let scope = match storage.get(package_req.name().scope()) {
             Some(scope) => scope,
             None => return Ok(Vec::new()),
@@ -92,7 +93,7 @@ impl PackageSource for InMemoryRegistrySource {
     }
 
     fn download_package(&self, package_id: &PackageId) -> anyhow::Result<PackageContents> {
-        let storage = self.storage.contents.borrow();
+        let storage = self.storage.contents.read().unwrap();
         let scope = storage
             .get(package_id.name().scope())
             .ok_or_else(|| format_err!("Package {} does not exist", package_id))?;
@@ -121,5 +122,5 @@ struct PackageEntry {
 
 #[derive(Clone, Default)]
 struct Storage {
-    contents: Rc<RefCell<HashMap<String, HashMap<String, Vec<PackageEntry>>>>>,
+    contents: Arc<RwLock<HashMap<String, HashMap<String, Vec<PackageEntry>>>>>,
 }

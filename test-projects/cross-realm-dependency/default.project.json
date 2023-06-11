@@ -1,0 +1,6 @@
+{
+	"name": "cross-realm-dependency",
+	"tree": {
+		"$path": "src"
+	}
+}

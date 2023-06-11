@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context};
 use structopt::StructOpt;
+use ubyte::ToByteUnit;
 use url::Url;
 
 use crate::{
@@ -17,6 +18,10 @@ pub struct PublishSubcommand {
     /// Path to the project to publish.
     #[structopt(long = "project-path", default_value = ".")]
     pub project_path: PathBuf,
+
+    /// Auth token to use
+    #[structopt(long = "token")]
+    pub token: Option<String>,
 }
 
 impl PublishSubcommand {
@@ -26,8 +31,6 @@ impl PublishSubcommand {
         if manifest.package.private {
             bail!("Cannot publish private package.");
         }
-
-        let auth_store = AuthStore::load()?;
 
         let index_url = if global.test_registry {
             let index_path = Path::new(&manifest.package.registry)
@@ -48,16 +51,27 @@ impl PublishSubcommand {
         let api = package_index.config()?.api;
         let contents = PackageContents::pack_from_path(&self.project_path)?;
 
-        let auth = auth_store
-            .tokens
-            .get(api.as_str())
-            .with_context(|| "Authentication is required to publish, use `wally login`")?;
+        if contents.data().len() > 2.mebibytes() {
+            bail!("Package size exceeds 2MB. Reduce package size and try again.");
+        }
+
+        let auth = match self.token {
+            Some(token) => token,
+            None => AuthStore::get_token(api.as_str())?
+                .with_context(|| "Authentication is required to publish, use `wally login`")?,
+        };
 
         println!(
             "Publishing {} to {}",
             manifest.package_id(),
             package_index.url()
         );
+
+        // Used by integration tests to ensure token handling is correct
+        if let Some(token) = global.check_token {
+            assert!(token.eq(&auth));
+            return Ok(());
+        }
 
         let client = reqwest::blocking::Client::new();
         let response = client
