@@ -8,14 +8,22 @@ const wallyApiMetadataUrl = `${wallyApiBaseUrl}/package-metadata`
 // API/v1/package-contents/<scope>/<name>/<version>`
 const wallyApiContentsUrl = `${wallyApiBaseUrl}/package-contents`
 
+export type SearchResult = {
+  scope: string,
+  name: string,
+  description: string,
+  versions: string[],
+  dependent_count: number,
+}
+
 /**
  * Fetches a list of packages from Wally. The search string is matched against the package scope, name, and description of all available packages
  * A specific field can be matched against by prefixing the searchQuery with the name of that field. Ex: "description: ui"
  * @param {string} searchQuery - The search query as a series of characters
  * @returns {WallyPackageBrief[]} The list of Wally shorthand descriptions that match the searchQuery
  */
-export async function getWallyPackages(searchQuery: string | null) {
-  if (searchQuery && searchQuery.length > 1) {
+export async function getWallyPackages(searchQuery: string | null): Promise<SearchResult[]> {
+  if (searchQuery && searchQuery.length > 0) {
     return fetch(
       `${wallyApiSearchUrl}?${new URLSearchParams({
         query: searchQuery,
@@ -28,7 +36,7 @@ export async function getWallyPackages(searchQuery: string | null) {
         return response.json()
       })
       .then((data) => data)
-      .catch((error) => {})
+      .catch((error) => { })
   } else {
     return []
   }
@@ -52,7 +60,7 @@ export async function getWallyPackageMetadata(
       return response.json()
     })
     .then((data) => data)
-    .catch((error) => {})
+    .catch((error) => { })
 }
 
 /**
