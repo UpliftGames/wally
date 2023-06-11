@@ -187,8 +187,6 @@ const DownloadLink = ({
   const link = createRef<HTMLAnchorElement>()
 
   const handleAction = async () => {
-    console.log(`Attempting to download ${url}`)
-
     if (link.current === null) {
       return
     }
