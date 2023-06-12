@@ -262,7 +262,8 @@ pub fn server(figment: Figment) -> rocket::Rocket<Build> {
                 package_contents,
                 publish,
                 package_info,
-                package_search
+                package_search,
+                cors_options,
             ],
         )
         .manage(storage_backend)
@@ -326,6 +327,11 @@ impl Fairing for Cors {
         response.set_header(Header::new("Access-Control-Allow-Methods", "GET"));
         response.set_header(Header::new("Access-Control-Allow-Headers", "*"));
     }
+}
+
+#[options("/<_..>")]
+fn cors_options() -> Result<(), Error> {
+    Ok(())
 }
 
 struct WallyVersion;

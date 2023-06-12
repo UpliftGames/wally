@@ -5,6 +5,8 @@ const wallyApiBaseUrl = `${process.env.WALLY_API_URL}/v1`
 const wallyApiSearchUrl = `${wallyApiBaseUrl}/package-search`
 // API/v1/package-metadata/<scope>/<name>
 const wallyApiMetadataUrl = `${wallyApiBaseUrl}/package-metadata`
+// API/v1/package-contents/<scope>/<name>/<version>`
+const wallyApiContentsUrl = `${wallyApiBaseUrl}/package-contents`
 
 /**
  * Fetches a list of packages from Wally. The search string is matched against the package scope, name, and description of all available packages
@@ -51,4 +53,19 @@ export async function getWallyPackageMetadata(
     })
     .then((data) => data)
     .catch((error) => {})
+}
+
+/**
+ * Fetches a single package from Wally with all it's corresponding meta information
+ * @param {string} packageScope - The owning author or organization of the package
+ * @param {string} packageName - The name of the package
+ * @param {string} packageVersion - The semver version string of the desired package
+ * @returns {string} The link to the package ZIP
+ */
+export function buildWallyPackageDownloadLink(
+  packageScope: string,
+  packageName: string,
+  packageVersion: string
+) {
+  return `${wallyApiContentsUrl}/${packageScope}/${packageName}/${packageVersion}`
 }

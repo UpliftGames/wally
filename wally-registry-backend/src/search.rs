@@ -142,8 +142,10 @@ impl SearchBackend {
         for (_score, doc_address) in top_docs {
             let retrieved_doc = searcher.doc(doc_address)?;
             let retrieved_doc = self.schema.to_json(&retrieved_doc);
-            let retrieved_doc: NativeDocResult = serde_json::from_str(&retrieved_doc)?;
-
+            let retrieved_doc: NativeDocResult = match serde_json::from_str(&retrieved_doc) {
+                Ok(doc) => doc,
+                Err(_) => continue,
+            };
             docs.push(DocResult {
                 scope: retrieved_doc.scope[0].clone(),
                 name: retrieved_doc.name[0].clone(),
