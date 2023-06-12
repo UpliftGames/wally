@@ -58,6 +58,8 @@ fn update_all_dependencies() {
 
     let project = TempProject::new(&source_project).unwrap();
 
+    run_update(&project).unwrap();
+
     let lockfile = fs::read_to_string(project.path().join("wally.lock")).unwrap();
     assert_snapshot!(lockfile);
 }
