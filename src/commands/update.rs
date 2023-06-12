@@ -57,8 +57,12 @@ impl UpdateSubcommand {
         } else {
             let progress = ProgressBar::new(lockfile.packages.len().try_into().unwrap())
                 .with_style(
-                    ProgressStyle::with_template("{spinner:.cyan}{wide_msg}")?
-                        .tick_chars("⠁⠈⠐⠠⠄⠂ "),
+                    ProgressStyle::with_template(
+                        "{spinner:.cyan.bold} {pos}/{len} [{wide_bar:.cyan/blue}]",
+                    )
+                    .unwrap()
+                    .tick_chars("⠁⠈⠐⠠⠄⠂ ")
+                    .progress_chars("#>-"),
                 )
                 .with_message(format!(
                     "{} Selecting {}packages ...",
@@ -66,13 +70,10 @@ impl UpdateSubcommand {
                     SetForegroundColor(Color::Reset)
                 ));
 
-            progress.enable_steady_tick(Duration::from_millis(100));
-
-            let try_to_use = lockfile
+            let try_to_use: BTreeSet<PackageId> = lockfile
                 .as_ids()
                 // We update the target packages by removing the package from the list of packages to try to keep.
                 .filter(|package_id| {
-                    progress.tick();
                     if self.given_package_id_satisifies_targets(package_id) {
                         progress.println(format!(
                             "{}   Selected {}{}",
@@ -82,12 +83,20 @@ impl UpdateSubcommand {
                         ));
                         false
                     } else {
+                        progress.tick();
                         true
                     }
                 })
                 .collect();
 
             progress.finish_and_clear();
+
+            println!(
+                "{}   Selected {}{} dependencies to try update",
+                SetForegroundColor(Color::DarkGreen),
+                SetForegroundColor(Color::Reset),
+                lockfile.packages.len() - try_to_use.len(),
+            );
 
             try_to_use
         };
@@ -111,10 +120,12 @@ impl UpdateSubcommand {
             resolved_graph.activated.len() - 1
         ));
 
-        let dependency_changes =
-            generate_depedency_changes(&lockfile.as_ids().collect(), &resolved_graph.activated);
-
-        render_update_difference(&dependency_changes);
+        progress.enable_steady_tick(Duration::from_millis(100));
+        progress.suspend(|| {
+            let dependency_changes =
+                generate_depedency_changes(&lockfile.as_ids().collect(), &resolved_graph.activated);
+                render_update_difference(&dependency_changes);
+        });
 
         Lockfile::from_resolve(&resolved_graph).save(&self.project_path)?;
 
@@ -266,7 +277,7 @@ fn generate_depedency_changes(
 fn render_update_difference(dependency_changes: &[DependencyChange]) {
     if dependency_changes.is_empty() {
         return println!(
-            "{}No Dependency changes{}",
+            "{} No Dependency changes{}",
             SetForegroundColor(Color::DarkGreen),
             SetForegroundColor(Color::Reset)
         );
