@@ -288,6 +288,7 @@ pub fn server(figment: Figment) -> rocket::Rocket<Build> {
                 publish,
                 package_info,
                 package_search,
+                package_analytics,
                 cors_options,
             ],
         )
