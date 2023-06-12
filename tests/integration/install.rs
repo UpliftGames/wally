@@ -1,6 +1,6 @@
-use std::path::Path;
 use super::temp_project::TempProject;
 use libwally::{Args, GlobalOptions, InstallSubcommand, Subcommand};
+use std::path::Path;
 
 #[test]
 fn minimal() {
@@ -63,4 +63,3 @@ fn run_test(name: &str) -> TempProject {
     assert_dir_snapshot!(project.path());
     project
 }
-
