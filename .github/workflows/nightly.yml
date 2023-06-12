@@ -32,6 +32,7 @@ jobs:
 
   build:
     uses: ./.github/workflows/build.yml
+    needs: fetch_tag
     with:
       upload_url: https://uploads.github.com/repos/UpliftGames/wally/releases/108261310/assets{?name,label}
-      release_ref: ${{ steps.previoustag.outputs.tag }}-nightly
+      release_ref: ${{ needs.fetch_tag.outputs.previous_tag }}-nightly
