@@ -7,6 +7,8 @@ const wallyApiSearchUrl = `${wallyApiBaseUrl}/package-search`
 const wallyApiMetadataUrl = `${wallyApiBaseUrl}/package-metadata`
 // API/v1/package-contents/<scope>/<name>/<version>`
 const wallyApiContentsUrl = `${wallyApiBaseUrl}/package-contents`
+// API/v1/package-analytics/<scope>/<name>
+const wallyApiAnalyticsUrl = `${wallyApiBaseUrl}/package-analytics`
 
 export type SearchResult = {
   scope: string,
@@ -77,3 +79,19 @@ export function buildWallyPackageDownloadLink(
 ) {
   return `${wallyApiContentsUrl}/${packageScope}/${packageName}/${packageVersion}`
 }
+
+export async function getWallyPackageAnalytics(
+  packageScope: string,
+  packageName: string
+) {
+  return fetch(`${wallyApiAnalyticsUrl}/${packageScope}/${packageName}`)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("HTTP status " + response.status)
+      }
+      return response.json()
+    })
+    .then((data) => data)
+    .catch((error) => { })
+}
+

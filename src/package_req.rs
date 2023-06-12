@@ -16,7 +16,7 @@ use crate::package_name::PackageName;
 /// * `roblox/roact@1.4.2`
 /// * `lpghatguy/asink@0.2.0-alpha.3`
 /// * `foo/bar@1`
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PackageReq {
     name: PackageName,
     version_req: VersionReq,

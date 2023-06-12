@@ -25,3 +25,6 @@ export interface WallyPackageMetadata {
   "server-dependencies": { [index: string]: string }
   "dev-dependencies": { [index: string]: string }
 }
+export interface WallyPackageAnalytics {
+  dependents: string[][]
+}
