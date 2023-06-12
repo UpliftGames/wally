@@ -1,6 +1,8 @@
 use std::collections::BTreeSet;
+use std::convert::TryInto;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::time::Duration;
 
 use crate::installation::InstallationContext;
 use crate::lockfile::Lockfile;
@@ -10,6 +12,8 @@ use crate::package_name::PackageName;
 use crate::package_req::PackageReq;
 use crate::package_source::{PackageSource, PackageSourceMap, Registry, TestRegistry};
 use crate::{resolution, GlobalOptions};
+use crossterm::style::{Attribute, Color, SetAttribute, SetForegroundColor};
+use indicatif::{ProgressBar, ProgressStyle};
 use structopt::StructOpt;
 
 /// Update all of the dependencies of this project.
@@ -51,22 +55,74 @@ impl UpdateSubcommand {
         let try_to_use = if self.package_specs.is_empty() {
             BTreeSet::new()
         } else {
-            lockfile
+            let progress = ProgressBar::new(lockfile.packages.len().try_into().unwrap())
+                .with_style(
+                    ProgressStyle::with_template("{spinner:.cyan}{wide_msg}")?
+                        .tick_chars("⠁⠈⠐⠠⠄⠂ "),
+                )
+                .with_message(format!(
+                    "{} Selecting {}packages ...",
+                    SetForegroundColor(Color::DarkGreen),
+                    SetForegroundColor(Color::Reset)
+                ));
+
+            progress.enable_steady_tick(Duration::from_millis(100));
+
+            let try_to_use = lockfile
                 .as_ids()
                 // We update the target packages by removing the package from the list of packages to try to keep.
-                .filter(|package_id| !self.given_package_id_satisifies_targets(package_id))
-                .collect()
+                .filter(|package_id| {
+                    progress.tick();
+                    if self.given_package_id_satisifies_targets(package_id) {
+                        progress.println(format!(
+                            "{}   Selected {}{}",
+                            SetForegroundColor(Color::DarkGreen),
+                            SetForegroundColor(Color::Reset),
+                            &package_id
+                        ));
+                        false
+                    } else {
+                        true
+                    }
+                })
+                .collect();
+
+            progress.finish_and_clear();
+
+            try_to_use
         };
+
+        let progress = ProgressBar::new(0)
+            .with_style(
+                ProgressStyle::with_template("{spinner:.cyan}{wide_msg}")?.tick_chars("⠁⠈⠐⠠⠄⠂ "),
+            )
+            .with_message(format!(
+                "{} Resolving {}new dependencies...",
+                SetForegroundColor(Color::DarkGreen),
+                SetForegroundColor(Color::Reset)
+            ));
 
         let resolved_graph = resolution::resolve(&manifest, &try_to_use, &package_sources)?;
 
-        // TODO: prompt users to commit the changes.
-        Lockfile::from_resolve(&resolved_graph).save(&self.project_path)?;
+        progress.println(format!(
+            "{}   Resolved {}{} total dependencies",
+            SetForegroundColor(Color::DarkGreen),
+            SetForegroundColor(Color::Reset),
+            resolved_graph.activated.len() - 1
+        ));
 
         let dependency_changes =
             generate_depedency_changes(&lockfile.as_ids().collect(), &resolved_graph.activated);
 
         render_update_difference(&dependency_changes);
+
+        Lockfile::from_resolve(&resolved_graph).save(&self.project_path)?;
+
+        progress.println(format!(
+            "{}    Updated {}lockfile",
+            SetForegroundColor(Color::DarkGreen),
+            SetForegroundColor(Color::Reset)
+        ));
 
         let root_package_id = manifest.package_id();
         let installation_context = InstallationContext::new(
@@ -75,10 +131,27 @@ impl UpdateSubcommand {
             manifest.place.server_packages,
         );
 
-        println!("Cleaning directory...");
+        progress.set_message(format!(
+            "{}  Cleaning {}package destination...",
+            SetForegroundColor(Color::DarkGreen),
+            SetForegroundColor(Color::Reset)
+        ));
+
         installation_context.clean()?;
 
-        println!("Installing new packages...");
+        progress.println(format!(
+            "{}    Cleaned {}package destination",
+            SetForegroundColor(Color::DarkGreen),
+            SetForegroundColor(Color::Reset)
+        ));
+
+        progress.finish_with_message(format!(
+            "{}{}  Starting installation {}",
+            SetAttribute(Attribute::Bold),
+            SetForegroundColor(Color::DarkGreen),
+            SetForegroundColor(Color::Reset)
+        ));
+
         installation_context.install(package_sources, root_package_id, resolved_graph)?;
 
         Ok(())
@@ -111,8 +184,10 @@ impl FromStr for PackageSpec {
         } else if let Ok(package_name) = value.parse() {
             Ok(PackageSpec::Named(package_name))
         } else {
-            // TODO: Give better error message here, I guess.
-            anyhow::bail!("Was unable to parse into a package requirement or a package named.")
+            anyhow::bail!(
+                "Was unable to parse {} into a package requirement or a package name!",
+                value
+            )
         }
     }
 }
@@ -189,24 +264,54 @@ fn generate_depedency_changes(
 }
 
 fn render_update_difference(dependency_changes: &[DependencyChange]) {
+    if dependency_changes.is_empty() {
+        return println!(
+            "{}No Dependency changes{}",
+            SetForegroundColor(Color::DarkGreen),
+            SetForegroundColor(Color::Reset)
+        );
+    }
+
+    println!(
+        "{} Dependency changes{}",
+        SetForegroundColor(Color::DarkGreen),
+        SetForegroundColor(Color::Reset)
+    );
+
     for dependency_change in dependency_changes {
         match dependency_change {
             DependencyChange::Added(package_id) => {
-                println!("Added {} v{}", package_id.name(), package_id.version());
+                println!(
+                    "{}      Added {}{} v{}",
+                    SetForegroundColor(Color::DarkGreen),
+                    SetForegroundColor(Color::Reset),
+                    package_id.name(),
+                    package_id.version()
+                );
             }
             DependencyChange::Removed(package_id) => {
-                println!("Removed {} v{}", package_id.name(), package_id.version());
+                println!(
+                    "{}    Removed {}{} v{}",
+                    SetForegroundColor(Color::DarkRed),
+                    SetForegroundColor(Color::Reset),
+                    package_id.name(),
+                    package_id.version()
+                );
             }
             DependencyChange::Updated { from, to } => {
                 println!(
-                    "Updated {} from v{} to v{}",
+                    "{}    Updated {}{} from v{} to v{}",
+                    SetForegroundColor(Color::DarkCyan),
+                    SetForegroundColor(Color::Reset),
                     from.name(),
                     from.version(),
                     to.version()
                 );
             }
             DependencyChange::Downgrade { from, to } => println!(
-                "Downgraded {} from v{} to v{}",
+                "{} Downgraded {}{} from v{} to v{}",
+                SetForegroundColor(Color::DarkYellow),
+                SetForegroundColor(Color::Reset),
                 from.name(),
                 from.version(),
                 to.version()
