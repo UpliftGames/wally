@@ -1,0 +1,22 @@
+name: Nightly
+
+on:
+  push:
+    tags: ["*"]
+
+jobs:
+  - name: 'Get Previous tag'
+    id: previoustag
+    uses: "WyriHaximus/github-action-get-previous-tag@v1"
+
+  build-release:
+    name: Build release
+    uses: ./.github/workflows/build.yml
+    with:
+      release_ref: ${{ steps.previoustag.outputs.tag }}-nightly
+
+  - uses: pyTooling/Actions/releaser@r0
+    with:
+      token: ${{ secrets.GITHUB_TOKEN }}
+      files: wally*.zip
+      tag: nightly

@@ -1,0 +1,79 @@
+on:
+  workflow_call:
+    inputs:
+      release_ref:
+        required: true
+        type: string
+
+jobs:
+  windows:
+      runs-on: windows-latest
+
+      steps:
+      - uses: actions/checkout@v1
+        with:
+          submodules: true
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build release binary
+        run: cargo build --verbose --locked --release
+
+      - name: Create Release Archive
+        shell: bash
+        run: |
+          mkdir staging
+          cp "target/release/wally.exe" staging/
+          cd staging
+          7z a ../wally-${{ inputs.release_ref }}-win64.zip *
+
+  macos:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        submodules: true
+
+    - name: Install Rust
+      run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+    - uses: Swatinem/rust-cache@v2
+
+    - name: Build release binary
+      run: |
+        source $HOME/.cargo/env
+        cargo build --verbose --locked --release
+      env:
+        OPENSSL_STATIC: 1
+
+    - name: Create Release Archive
+      shell: bash
+      run: |
+        mkdir staging
+        cp "target/release/wally" staging/
+        cd staging
+        zip ../wally-${{ inputs.release_ref }}-macos.zip *
+
+  linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        submodules: true
+
+    - uses: Swatinem/rust-cache@v2
+
+    - name: Build
+      run: cargo build --locked --verbose --release
+      env:
+        OPENSSL_STATIC: 1
+
+    - name: Create Release Archive
+      shell: bash
+      run: |
+        mkdir staging
+        cp "target/release/wally" staging/
+        cd staging
+        zip ../wally-${{ inputs.release_ref }}-linux.zip *
