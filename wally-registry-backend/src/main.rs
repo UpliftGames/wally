@@ -15,6 +15,7 @@ use std::io::{Cursor, Read, Seek};
 use std::sync::RwLock;
 
 use anyhow::{format_err, Context};
+use auth::WritePermission;
 use figment::{
     providers::{Env, Format, Toml},
     Figment,
@@ -155,7 +156,9 @@ async fn publish(
     let manifest = get_manifest(&mut archive).status(Status::BadRequest)?;
     let package_id = manifest.package_id();
 
-    if !authorization.can_write_package(&package_id, &index)? {
+    let write_permission = authorization.can_write_package(&package_id, &index)?;
+
+    if write_permission.is_none() {
         return Err(format_err!(
             "you do not have permission to write in scope {}",
             package_id.name().scope()
@@ -165,12 +168,17 @@ async fn publish(
 
     // If a user can write but isn't in the scope owner file then we should add them!
     if let WriteAccess::Github(github_info) = authorization {
-        let user_id = github_info.id();
+        let user_id = github_info.user.id();
         let scope = package_id.name().scope();
 
-        if !index.is_scope_owner(scope, user_id)? {
-            index.add_scope_owner(scope, user_id)?;
-        }
+        match write_permission.unwrap() {
+            WritePermission::Default => {
+                if !index.is_scope_owner(scope, user_id)? {
+                    index.add_scope_owner(scope, user_id)?;
+                }
+            }
+            _ => {}
+        };
     }
 
     let package_metadata = index.get_package_metadata(manifest.package_id().name());

@@ -23,10 +23,28 @@ pub enum AuthMode {
     Unauthenticated,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct GithubInfo {
     login: String,
     id: u64,
+    organizations_url: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct GithubOrgInfoOrganization {
+    login: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct GithubOrgInfo {
+    organization: GithubOrgInfoOrganization,
+    user: GithubInfo,
+}
+
+#[derive(Debug)]
+pub struct GithubWriteAccessInfo {
+    pub user: GithubInfo,
+    pub organizations: Vec<String>,
 }
 
 impl GithubInfo {
@@ -80,26 +98,68 @@ async fn verify_github_token(request: &Request<'_>) -> Outcome<WriteAccess, Erro
     };
 
     let client = Client::new();
-    let response = client
-        .get("https://api.github.com/user")
+
+    let org_response = client
+        .get("https://api.github.com/user/memberships/orgs")
         .header("accept", "application/json")
         .header("user-agent", "wally")
-        .bearer_auth(token)
+        .bearer_auth(&token)
         .send()
         .await;
 
-    let github_info = match response {
+    let github_org_info = match org_response {
         Err(err) => {
             return format_err!(err).status(Status::InternalServerError).into();
         }
-        Ok(response) => response.json::<GithubInfo>().await,
+        Ok(response) => response.json::<Vec<GithubOrgInfo>>().await,
     };
 
-    match github_info {
+    match github_org_info {
+        Ok(github_org_info) => {
+            match github_org_info.get(0) {
+                Some(org) => {
+                    return Outcome::Success(WriteAccess::Github(GithubWriteAccessInfo {
+                        user: org.user.clone(),
+                        organizations: github_org_info
+                            .iter()
+                            .map(|x| x.organization.login.to_lowercase())
+                            .collect::<Vec<_>>(),
+                    }));
+                }
+                None => {
+                    // The user is in no orgs we can see so we cannot get their userinfo from that.
+                    let response = client
+                        .get("https://api.github.com/user")
+                        .header("accept", "application/json")
+                        .header("user-agent", "wally")
+                        .bearer_auth(&token)
+                        .send()
+                        .await;
+
+                    let github_info = match response {
+                        Err(err) => {
+                            return format_err!(err).status(Status::InternalServerError).into();
+                        }
+                        Ok(response) => response.json::<GithubInfo>().await,
+                    };
+
+                    match github_info {
+                        Err(err) => format_err!("Github auth failed: {}", err)
+                            .status(Status::Unauthorized)
+                            .into(),
+                        Ok(github_info) => {
+                            return Outcome::Success(WriteAccess::Github(GithubWriteAccessInfo {
+                                user: github_info,
+                                organizations: vec![],
+                            }));
+                        }
+                    }
+                }
+            }
+        }
         Err(err) => format_err!("Github auth failed: {}", err)
             .status(Status::Unauthorized)
             .into(),
-        Ok(github_info) => Outcome::Success(WriteAccess::Github(github_info)),
     }
 }
 
@@ -132,7 +192,12 @@ impl<'r> FromRequest<'r> for ReadAccess {
 
 pub enum WriteAccess {
     ApiKey,
-    Github(GithubInfo),
+    Github(GithubWriteAccessInfo),
+}
+
+pub enum WritePermission {
+    Default,
+    Org,
 }
 
 impl WriteAccess {
@@ -140,24 +205,31 @@ impl WriteAccess {
         &self,
         package_id: &PackageId,
         index: &PackageIndex,
-    ) -> anyhow::Result<bool> {
+    ) -> anyhow::Result<Option<WritePermission>> {
         let scope = package_id.name().scope();
 
-        let has_permission = match self {
-            WriteAccess::ApiKey => true,
+        let write_permission = match self {
+            WriteAccess::ApiKey => Some(WritePermission::Default),
             WriteAccess::Github(github_info) => {
-                match index.is_scope_owner(scope, github_info.id())? {
-                    true => true,
-                    // Only grant write access if the username matches the scope AND the scope has no existing owners
+                match index.is_scope_owner(scope, github_info.user.id())? {
+                    true => Some(WritePermission::Default),
+                    // Only grant write access if the username matches the scope AND the scope has no existing owners or they are a member of the org
                     false => {
-                        github_info.login().to_lowercase() == scope
+                        if github_info.user.login().to_lowercase() == scope
                             && index.get_scope_owners(scope)?.is_empty()
+                        {
+                            Some(WritePermission::Default)
+                        } else if github_info.organizations.contains(&scope.to_string()) {
+                            Some(WritePermission::Org)
+                        } else {
+                            None
+                        }
                     }
                 }
             }
         };
 
-        Ok(has_permission)
+        Ok(write_permission)
     }
 }
 
