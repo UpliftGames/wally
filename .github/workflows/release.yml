@@ -2,17 +2,17 @@ name: Release
 
 on:
   push:
-    tags: ["*"]
+    tags: ["v*"]
 
 jobs:
   create-release:
+    if: endsWith(github.ref, 'main')
     name: Create Release
     runs-on: ubuntu-latest
     outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      upload_url: ${{ steps.create-release.outputs.upload_url }}
     steps:
       - name: Create Release
-        id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -23,42 +23,8 @@ jobs:
           prerelease: false
 
   build-release:
-    name: Build release
-    id: build
     uses: ./.github/workflows/build.yml
-    needs: ["create-release"]
+    needs: create-release
     with:
+      upload_url: ${{ needs.create-release.outputs.upload_url }}
       release_ref: ${{ github.ref_name }}
-
-  - name: Upload wind64 build
-    uses: actions/upload-release-asset@v1
-    needs: ["build"]
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    with:
-      upload_url: ${{ needs.create-release.outputs.upload_url }}
-      asset_path: wally-${{github.ref_name}}-win64.zip
-      asset_name: wally-${{github.ref_name}}-win64.zip
-      asset_content_type: application/octet-stream
-
-  - name: Upload macos build
-    uses: actions/upload-release-asset@v1
-    needs: ["build"]
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    with:
-      upload_url: ${{ needs.create-release.outputs.upload_url }}
-      asset_path: wally-${{github.ref_name}}-macos.zip
-      asset_name: wally-${{github.ref_name}}-macos.zip
-      asset_content_type: application/octet-stream
-
-  - name: Upload linux build
-    uses: actions/upload-release-asset@v1
-    needs: ["build"]
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    with:
-      upload_url: ${{ needs.create-release.outputs.upload_url }}
-      asset_path: wally-${{github.ref_name}}-linux.zip
-      asset_name: wally-${{github.ref_name}}-linux.zip
-      asset_content_type: application/octet-stream
