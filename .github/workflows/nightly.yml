@@ -16,7 +16,7 @@ jobs:
     name: Build nightly release
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
         with:
           submodules: true
 
@@ -24,7 +24,6 @@ jobs:
         id: previoustag
         uses: "WyriHaximus/github-action-get-previous-tag@v1"
         
-
       - name: Build release
         uses: ./.github/workflows/build.yml
         with:
