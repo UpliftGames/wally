@@ -1,66 +1,22 @@
-use crate::{temp_project::TempProject, util::read_path};
+use crate::temp_project::TempProject;
 use fs_err as fs;
 use insta::assert_snapshot;
 use libwally::{
-    lockfile::Lockfile,
-    manifest::{Manifest, Package},
-    package_id::PackageId,
-    package_name::PackageName,
-    package_req::PackageReq,
-    Args, GlobalOptions, InstallSubcommand, PackageSpec, Subcommand, UpdateSubcommand,
+    package_name::PackageName, package_req::PackageReq, Args, GlobalOptions, InstallSubcommand,
+    PackageSpec, Subcommand, UpdateSubcommand,
 };
-use semver::Version;
-use std::{
-    convert::{TryFrom, TryInto},
-    path::Path,
-    str::FromStr,
-};
-
-#[test]
-fn test_test() {
-    let source_project = Path::new(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/test-projects/diamond-graph/root/0.1.0"
-    ));
-
-    let project = TempProject::new(&source_project).unwrap();
-    run_download(&project);
-
-    let args = Args {
-        global: GlobalOptions {
-            test_registry: true,
-            ..Default::default()
-        },
-        subcommand: Subcommand::Update(UpdateSubcommand {
-            project_path: project.path().to_owned(),
-            package_specs: Vec::new(),
-        }),
-    };
-
-    args.run().unwrap();
-}
+use std::{path::Path, str::FromStr};
 
 #[test]
 fn generate_new_lockfile_if_missing() {
     let source_project = Path::new(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/test-projects/diamond-graph/root/0.1.0"
+        "/test-projects/diamond-graph/root/fresh"
     ));
 
     let project = TempProject::new(&source_project).unwrap();
 
-    let args = Args {
-        global: GlobalOptions {
-            test_registry: true,
-            ..Default::default()
-        },
-        subcommand: Subcommand::Update(UpdateSubcommand {
-            project_path: project.path().to_owned(),
-            package_specs: Vec::new(),
-        }),
-    };
-
-    let result = args.run();
+    let result = run_update(&project);
 
     assert!(result.is_ok(), "It should of ran without any errors.");
 
@@ -73,160 +29,113 @@ fn generate_new_lockfile_if_missing() {
 }
 
 #[test]
-fn do_nothing() {
+fn install_new_packages_after_updating() {
     let source_project = Path::new(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/test-projects/diamond-graph/root/0.1.0"
+        "/test-projects/diamond-graph/root/fresh"
     ));
 
     let project = TempProject::new(&source_project).unwrap();
 
-    run_download(&project);
+    let result = run_update(&project);
 
-    Args {
-        global: GlobalOptions {
-            test_registry: true,
-            ..Default::default()
-        },
-        subcommand: Subcommand::Update(UpdateSubcommand {
-            project_path: project.path().to_owned(),
-            package_specs: Vec::new(),
-        }),
-    }
-    .run()
-    .unwrap();
-
-    let first_snapshot = read_path(project.path()).unwrap();
-
-    run_update(&project);
-
-    let second_snapshot = read_path(project.path()).unwrap();
+    assert!(result.is_ok(), "It should of ran without any errors.");
 
     assert!(
-        first_snapshot == second_snapshot,
-        "Update is idiompotent assuming the same state."
-    );
+        fs::metadata(project.path().join("ServerPackages"))
+            .unwrap()
+            .is_dir(),
+        "ServerPackages was made and has its dependencies."
+    )
 }
 
 #[test]
 fn update_all_dependencies() {
     let source_project = Path::new(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/test-projects/diamond-graph/root/0.1.0"
+        "/test-projects/diamond-graph/root/dated"
     ));
 
     let project = TempProject::new(&source_project).unwrap();
 
-    let mut manifest = Manifest::load(project.path()).unwrap();
-
-    run_download(&project);
-
-    let first_lockfile = fs::read_to_string(project.path().join("wally.lock")).unwrap();
-    assert_snapshot!(first_lockfile);
-
-    manifest.server_dependencies.insert(
-        "A".into(),
-        PackageReq::from_str("diamond-graph/direct-dependency-a@0.1.0".into()).unwrap(),
-    );
-
-    Args {
-        global: GlobalOptions {
-            test_registry: true,
-            ..Default::default()
-        },
-        subcommand: Subcommand::Update(UpdateSubcommand {
-            project_path: project.path().to_owned(),
-            package_specs: Vec::new(),
-        }),
-    }
-    .run()
-    .unwrap();
-
-    let second_lockfile = fs::read_to_string(project.path().join("wally.lock")).unwrap();
-    assert_snapshot!(second_lockfile);
+    let lockfile = fs::read_to_string(project.path().join("wally.lock")).unwrap();
+    assert_snapshot!(lockfile);
 }
 
 #[test]
-fn updated_named_dependency() {
-    let source_project = Path::new(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/test-projects/diamond-graph/root/0.1.0"
-    ));
-
-    let project = TempProject::new(&source_project).unwrap();
-
-    let mut manifest = Manifest::load(project.path()).unwrap();
-
-    run_download(&project);
-
-    let first_lockfile = fs::read_to_string(project.path().join("wally.lock")).unwrap();
-    assert_snapshot!(first_lockfile);
-
-    manifest.server_dependencies.insert(
-        "A".into(),
-        PackageReq::from_str("diamond-graph/direct-dependency-a@0.1.0".into()).unwrap(),
-    );
-
-    Args {
-        global: GlobalOptions {
-            test_registry: true,
-            ..Default::default()
-        },
-        subcommand: Subcommand::Update(UpdateSubcommand {
-            project_path: project.path().to_owned(),
-            package_specs: vec![PackageSpec::Named(
-                PackageName::new("diamond-graph", "direct-dependency-a").unwrap(),
-            )],
-        }),
-    }
-    .run()
-    .unwrap();
-
-    let second_lockfile = fs::read_to_string(project.path().join("wally.lock")).unwrap();
-    assert_snapshot!(second_lockfile);
-}
-
-#[test]
+/// It should update both indirect-dependency-a v0.1.0 and 0.2.0 to v0.1.1 and 0.2.1 respectively
 fn update_named_dependency() {
     let source_project = Path::new(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/test-projects/diamond-graph/root/0.1.0"
+        "/test-projects/diamond-graph/root/dated"
     ));
 
     let project = TempProject::new(&source_project).unwrap();
 
-    let mut manifest = Manifest::load(project.path()).unwrap();
+    run_update_with_specs(
+        &project,
+        vec![PackageSpec::Named(
+            PackageName::new("diamond-graph", "indirect-dependency-a").unwrap(),
+        )],
+    )
+    .unwrap();
 
-    run_download(&project);
+    let lockfile_contents = fs::read_to_string(project.path().join("wally.lock")).unwrap();
+    assert_snapshot!(lockfile_contents);
+}
 
-    let first_lockfile = fs::read_to_string(project.path().join("wally.lock")).unwrap();
-    assert_snapshot!(first_lockfile);
+#[test]
+/// It should only update @0.1.0 instead of the @0.2.0 version.
+fn update_required_dependency() {
+    let source_project = Path::new(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/test-projects/diamond-graph/root/dated"
+    ));
 
-    manifest.server_dependencies.insert(
-        "A".into(),
-        PackageReq::from_str("diamond-graph/direct-dependency-a@0.1.0".into()).unwrap(),
-    );
+    let project = TempProject::new(&source_project).unwrap();
 
     run_update_with_specs(
         &project,
         vec![PackageSpec::Required(
-            PackageReq::from_str("diamond-graph/direct-dependency-a@0.1.0".into()).unwrap(),
+            PackageReq::from_str("diamond-graph/indirect-dependency-a@0.1.0".into()).unwrap(),
         )],
-    );
+    )
+    .unwrap();
 
-    let second_lockfile = fs::read_to_string(project.path().join("wally.lock")).unwrap();
-    assert_snapshot!(second_lockfile);
+    let lockfile_content = fs::read_to_string(project.path().join("wally.lock")).unwrap();
+    assert_snapshot!(lockfile_content);
 }
 
-fn update_list_of_specs() {}
+#[test]
+/// It should update everything that can be updated, in a round-about way.
+fn update_list_of_specs() {
+    let source_project = Path::new(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/test-projects/diamond-graph/root/dated"
+    ));
 
-fn update_should_download_new_dependences() {}
+    let project = TempProject::new(&source_project).unwrap();
 
-fn run_update(project: &TempProject) {
+    run_update_with_specs(
+        &project,
+        vec![
+            PackageSpec::Required(
+                PackageReq::from_str("diamond-graph/direct-dependency-a@0.1.0".into()).unwrap(),
+            ),
+            PackageSpec::Named(PackageName::new("diamond-graph", "indirect-dependency-a").unwrap()),
+        ],
+    )
+    .unwrap();
+
+    let lockfile_content = fs::read_to_string(project.path().join("wally.lock")).unwrap();
+    assert_snapshot!(lockfile_content);
+}
+
+fn run_update(project: &TempProject) -> anyhow::Result<()> {
     run_update_with_specs(project, Vec::new())
 }
 
-fn run_update_with_specs(project: &TempProject, specs: Vec<PackageSpec>) {
+fn run_update_with_specs(project: &TempProject, specs: Vec<PackageSpec>) -> anyhow::Result<()> {
     Args {
         global: GlobalOptions {
             test_registry: true,
@@ -238,19 +147,4 @@ fn run_update_with_specs(project: &TempProject, specs: Vec<PackageSpec>) {
         }),
     }
     .run()
-    .unwrap();
-}
-
-fn run_download(project: &TempProject) {
-    Args {
-        global: GlobalOptions {
-            test_registry: true,
-            ..Default::default()
-        },
-        subcommand: Subcommand::Install(InstallSubcommand {
-            project_path: project.path().to_owned(),
-        }),
-    }
-    .run()
-    .unwrap();
 }

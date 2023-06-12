@@ -1,0 +1,9 @@
+{
+	"name": "root",
+	"tree": {
+		"Packages": {
+			"$path": "Packages"
+		},
+		"$path": "src"
+	}
+}

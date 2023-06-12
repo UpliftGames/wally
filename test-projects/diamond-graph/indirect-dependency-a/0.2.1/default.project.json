@@ -1,0 +1,6 @@
+{
+	"name": "indirect-dependency-a",
+	"tree": {
+		"$path": "src"
+	}
+}
