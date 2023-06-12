@@ -9,16 +9,21 @@ on:
 
 jobs:
   build:
+    if: |
+      github.event_name == 'push' ||
+      contains(github.event.issue.labels.*.name, 'built-as-nightly')
     runs-on: ubuntu-latest
     name: Build nightly release
 
     steps:
+      - uses: actions/checkout@v1
+        with:
+          submodules: true
+
       - name: 'Get Previous tag'
         id: previoustag
         uses: "WyriHaximus/github-action-get-previous-tag@v1"
-        if: |
-          github.event_name == 'push' ||
-          contains(github.event.issue.labels.*.name, 'built-as-nightly')
+        
 
       - name: Build release
         uses: ./.github/workflows/build.yml
