@@ -10,6 +10,7 @@ mod storage;
 #[cfg(test)]
 mod tests;
 
+use std::collections::HashSet;
 use std::convert::TryInto;
 use std::io::{Cursor, Read, Seek};
 use std::sync::RwLock;
@@ -38,7 +39,8 @@ use rocket::{
     State,
 };
 use rocket::{Build, Request, Response};
-use semver::Version;
+use semver::{Version, VersionReq};
+use serde::Serialize;
 use serde_json::json;
 use storage::StorageMode;
 use zip::ZipArchive;
@@ -102,6 +104,37 @@ async fn package_info(
     let metadata = &*index.get_package_metadata(&package_name)?;
 
     Ok(Json(serde_json::to_value(metadata)?))
+}
+
+// TODO! Move this to a proper home in some analytics module
+#[derive(Serialize)]
+struct AnalyticsMetadata {
+    dependents: Vec<(PackageName, VersionReq)>,
+}
+
+#[get("/v1/package-analytics/<scope>/<name>")]
+async fn package_analytics(
+    _read: Result<ReadAccess, Error>,
+    search_backend: &State<RwLock<SearchBackend>>,
+    scope: String,
+    name: String,
+) -> Result<Json<serde_json::Value>, Error> {
+    _read?;
+
+    let package_name = PackageName::new(scope, name)
+        .context("error parsing package name")
+        .status(Status::BadRequest)?;
+
+    if let Ok(search_backend) = search_backend.read() {
+        Ok(Json(serde_json::to_value(AnalyticsMetadata {
+            dependents: search_backend.get_dependents(&package_name),
+        })?))
+    } else {
+        Err(
+            format_err!("Unexpected error fetching analytics metadata. Try again later.")
+                .status(Status::InternalServerError),
+        )
+    }
 }
 
 #[get("/v1/package-search?<query>")]
@@ -254,7 +287,8 @@ pub fn server(figment: Figment) -> rocket::Rocket<Build> {
                 package_contents,
                 publish,
                 package_info,
-                package_search
+                package_search,
+                package_analytics,
             ],
         )
         .manage(storage_backend)

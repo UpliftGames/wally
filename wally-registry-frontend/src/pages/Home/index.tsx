@@ -5,7 +5,6 @@ import CallToActionContainer from "../../components/CallToActionContainer"
 import ContentSection from "../../components/ContentSection"
 import PackageTag from "../../components/PackageTag"
 import { Code, Heading, ResponsiveParagraph } from "../../components/Typography"
-import mockPopularPackages from "../../mocks/popularPackages.mock"
 import { getWallyPackages, SearchResult } from "../../services/wally.api"
 
 const Flex = styled.div`

@@ -28,7 +28,7 @@ reqwest = { version = "0.11.0", features = ["blocking", "json"] }
 rocket = { git = "https://github.com/SergioBenitez/Rocket", rev = "91f6288ea4aeb3d5a502b2f18b2b9677a85463ea", features = ["json"] }
 rusoto_core = { version = "0.48.0", optional = true }
 rusoto_s3 = { version = "0.48.0", optional = true }
-semver = "0.11.0"
+semver = "1.0.17"
 serde = { version = "1.0.120", features = ["derive"] }
 serde_json = "1.0.61"
 tantivy = "0.16.1"

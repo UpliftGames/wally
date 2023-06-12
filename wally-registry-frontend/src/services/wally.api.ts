@@ -5,6 +5,8 @@ const wallyApiBaseUrl = `${process.env.WALLY_API_URL}/v1`
 const wallyApiSearchUrl = `${wallyApiBaseUrl}/package-search`
 // API/v1/package-metadata/<scope>/<name>
 const wallyApiMetadataUrl = `${wallyApiBaseUrl}/package-metadata`
+// API/v1/package-analytics/<scope>/<name>
+const wallyApiAnalyticsUrl = `${wallyApiBaseUrl}/package-analytics`
 
 export type SearchResult = {
   scope: string,
@@ -51,6 +53,21 @@ export async function getWallyPackageMetadata(
   packageName: string
 ) {
   return fetch(`${wallyApiMetadataUrl}/${packageScope}/${packageName}`)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("HTTP status " + response.status)
+      }
+      return response.json()
+    })
+    .then((data) => data)
+    .catch((error) => { })
+}
+
+export async function getWallyPackageAnalytics(
+  packageScope: string,
+  packageName: string
+) {
+  return fetch(`${wallyApiAnalyticsUrl}/${packageScope}/${packageName}`)
     .then((response) => {
       if (!response.ok) {
         throw new Error("HTTP status " + response.status)

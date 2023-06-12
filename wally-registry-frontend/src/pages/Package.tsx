@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unescaped-entities */
 import React, { useEffect, useState } from "react"
 import { useHistory, useLocation, useParams } from "react-router"
 import styled from "styled-components"
@@ -7,9 +8,16 @@ import ContentSection from "../components/ContentSection"
 import CopyCode from "../components/CopyCode"
 import NotFoundMessage from "../components/NotFoundMessage"
 import { Heading, Paragraph } from "../components/Typography"
-import { getWallyPackageMetadata } from "../services/wally.api"
-import { WallyPackageMetadata } from "../types/wally"
+import { getWallyPackageMetadata, getWallyPackageAnalytics } from "../services/wally.api"
+import { WallyPackageMetadata, WallyPackageAnalytics } from "../types/wally"
 import capitalize from "../utils/capitalize"
+import {
+  Accordion,
+  AccordionItem,
+  AccordionItemHeading,
+  AccordionItemButton,
+  AccordionItemPanel,
+} from 'react-accessible-accordion';
 
 // A custom hook that builds on useLocation to parse
 // the query string for you.
@@ -94,7 +102,8 @@ const AuthorItem = styled.p`
 `
 
 const DependencyLinkWrapper = styled.div`
-  display: block;
+  display: flex;
+  flex-wrap: wrap;
   position: relative;
   width: 100%;
 
@@ -110,6 +119,20 @@ const DependencyLinkItem = styled.a`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+`
+
+const DependencyVersionReq = styled.a`
+  display: flex;
+  margin-left: auto;
+  text-align: right;
+  flext-wrap: wrap;
+  opacity: 0.6;
+`
+
+const DependencyLinkSpan = styled.span`
+  width:100%;
+  height:1em;
+  display:inline-block;
 `
 
 const DependencyLinkTooltip = styled.span`
@@ -136,6 +159,65 @@ const DependencyLinkTooltip = styled.span`
     left: 45%;
   }
 `
+
+const AccordionCSS = `.accordion {
+}
+
+.accordion__item + .accordion__item {
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.accordion__button {
+  font-weight: bold;
+  display: block;
+  font-size: 1.1rem;
+  margin: 0.5rem 0;
+  display: block;
+  background-color: #f4f4f4;
+  color: #444;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  border: none;
+}
+
+.accordion__button:hover {
+  background-color: #ddd;
+}
+
+.accordion__button:after {
+  display: inline-block;
+  content: '';
+  height: 10px;
+  width: 10px;
+  margin-left: 12px;
+  border-bottom: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+  transform: rotate(-45deg);
+}
+
+.accordion__button[aria-expanded='true']::after,
+.accordion__button[aria-selected='true']::after {
+  transform:  translate(0, -4px) rotate(45deg);
+}
+
+[hidden] {
+  display: none;
+}
+
+.accordion__panel {
+  animation: fadein 0.15s ease-in;
+}
+
+@keyframes fadein {
+  0% {
+      opacity: 0;
+  }
+
+  100% {
+      opacity: 1;
+  }
+}`
 
 const MetaItem = ({
   title,
@@ -171,6 +253,23 @@ const DependencyLink = ({ packageInfo }: { packageInfo: string }) => {
   return <DependencyLinkItem href={"/"}>{packageInfo}</DependencyLinkItem>
 }
 
+const LatestDependencyLink = ({ packageInfo, versionReq }: { packageInfo: string, versionReq: string }) => {
+  let packageMatch = packageInfo.match(/(.+\/.+)/)
+  if (packageMatch != null) {
+    let name = packageMatch[1]
+    return (
+      <DependencyLinkWrapper>
+        <DependencyLinkItem href={`/package/${name}`}>
+          {name}
+        </DependencyLinkItem>
+        <DependencyVersionReq>{versionReq}</DependencyVersionReq>
+        <DependencyLinkTooltip>{name}</DependencyLinkTooltip>
+      </DependencyLinkWrapper>
+    )
+  }
+  return <DependencyLinkItem href={"/"}>{packageInfo}</DependencyLinkItem>
+}
+
 type PackageParams = {
   packageScope: string
   packageName: string
@@ -182,6 +281,7 @@ export default function Package() {
 
   const { packageScope, packageName } = useParams<PackageParams>()
   const [packageHistory, setPackageHistory] = useState<[WallyPackageMetadata]>()
+  const [packageAnalytics, setPackageAnalytics] = useState<WallyPackageAnalytics>()
   const [packageVersion, setPackageVersion] = useState<string>()
   const [isLoaded, setIsLoaded] = useState(false)
   const [isError, setIsError] = useState(false)
@@ -193,18 +293,25 @@ export default function Package() {
 
   const loadPackageData = async (packageScope: string, packageName: string) => {
     const packageData = await getWallyPackageMetadata(packageScope, packageName)
+    const packageAnalytics = await getWallyPackageAnalytics(packageScope, packageName)
+
     if (packageData == undefined) {
       setIsError(true)
       setIsLoaded(true)
       return
     }
 
+    // If analytics fails we should just quietly hide them rather than abort the whole page
+    if (packageAnalytics != undefined) {
+      setPackageAnalytics(packageAnalytics)
+    }
+
     const filteredPackageData = packageData.versions.some(
       (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
     )
       ? packageData.versions.filter(
-          (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
-        )
+        (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
+      )
       : packageData
 
     setPackageHistory(filteredPackageData)
@@ -345,52 +452,78 @@ export default function Package() {
                 </MetaItem>
               )} */}
 
-              {packageMetadata.package.authors.length > 0 && (
-                <MetaItem title="Authors" width="full">
-                  {packageMetadata.package.authors.map((author) => (
-                    <AuthorItem key={author}>{author}</AuthorItem>
-                  ))}
-                </MetaItem>
-              )}
+            {packageMetadata.package.authors.length > 0 && (
+              <MetaItem title="Authors" width="full">
+                {packageMetadata.package.authors.map((author) => (
+                  <AuthorItem key={author}>{author}</AuthorItem>
+                ))}
+              </MetaItem>
+            )}
 
             {Object.keys(packageMetadata.dependencies).length > 0 && (
-                <MetaItem title="Dependencies" width="full">
-                  {Object.values(packageMetadata.dependencies).map(
-                    (dependency) => (
-                      <DependencyLink
-                        key={dependency}
-                        packageInfo={dependency}
-                      />
-                    )
-                  )}
-                </MetaItem>
-              )}
+              <MetaItem title="Dependencies" width="full">
+                {Object.values(packageMetadata.dependencies).map(
+                  (dependency) => (
+                    <DependencyLink
+                      key={dependency}
+                      packageInfo={dependency}
+                    />
+                  )
+                )}
+              </MetaItem>
+            )}
 
             {Object.keys(packageMetadata["server-dependencies"]).length > 0 && (
-                <MetaItem title="Server Dependencies" width="full">
-                  {Object.values(packageMetadata["server-dependencies"]).map(
-                    (dependency) => (
-                      <DependencyLink
-                        key={dependency}
-                        packageInfo={dependency}
-                      />
-                    )
-                  )}
-                </MetaItem>
-              )}
+              <MetaItem title="Server Dependencies" width="full">
+                {Object.values(packageMetadata["server-dependencies"]).map(
+                  (dependency) => (
+                    <DependencyLink
+                      key={dependency}
+                      packageInfo={dependency}
+                    />
+                  )
+                )}
+              </MetaItem>
+            )}
 
             {Object.keys(packageMetadata["dev-dependencies"]).length > 0 && (
-                <MetaItem title="Dev Dependencies" width="full">
-                  {Object.values(packageMetadata["dev-dependencies"]).map(
-                    (dependency) => (
-                      <DependencyLink
-                        key={dependency}
-                        packageInfo={dependency}
-                      />
-                    )
-                  )}
-                </MetaItem>
-              )}
+              <MetaItem title="Dev Dependencies" width="full">
+                {Object.values(packageMetadata["dev-dependencies"]).map(
+                  (dependency) => (
+                    <DependencyLink
+                      key={dependency}
+                      packageInfo={dependency}
+                    />
+                  )
+                )}
+              </MetaItem>
+            )}
+
+            {packageAnalytics != undefined && (
+              <Accordion allowZeroExpanded>
+                <style>
+                  {AccordionCSS}
+                </style>
+                <AccordionItem>
+                  <AccordionItemHeading>
+                    <AccordionItemButton>
+                      {`${packageAnalytics.dependents.length} Dependents`}
+                    </AccordionItemButton>
+                  </AccordionItemHeading>
+                  <AccordionItemPanel>
+                    {Object.values(packageAnalytics.dependents).map(
+                      (dependency) => (
+                        <LatestDependencyLink
+                          key={dependency[0]}
+                          packageInfo={dependency[0]}
+                          versionReq={dependency[1]}
+                        />
+                      )
+                    )}
+                  </AccordionItemPanel>
+                </AccordionItem>
+              </Accordion>
+            )}
           </NarrowColumn>
         </FlexColumns>
       </ContentSection>

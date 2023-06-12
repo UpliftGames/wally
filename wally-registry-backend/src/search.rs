@@ -3,6 +3,7 @@ use std::time::Instant;
 
 use libwally::package_index::PackageIndex;
 use libwally::package_name::PackageName;
+use semver::{Comparator, Op, VersionReq};
 use tantivy::collector::TopDocs;
 use tantivy::fastfield::FastFieldReader;
 use tantivy::query::QueryParser;
@@ -20,6 +21,8 @@ pub struct SearchBackend {
     writer: IndexWriter,
     reader: IndexReader,
     query_parser: QueryParser,
+    dependency_graph: HashMap<PackageName, HashSet<(PackageName, VersionReq)>>,
+    dependent_counts: HashMap<PackageName, u64>,
 }
 
 impl SearchBackend {
@@ -69,6 +72,8 @@ impl SearchBackend {
             writer,
             reader,
             query_parser,
+            dependency_graph: HashMap::new(),
+            dependent_counts: HashMap::new(),
         };
 
         backend.crawl_packages(package_index)?;
@@ -82,7 +87,8 @@ impl SearchBackend {
         let description = self.schema.get_field("description").unwrap();
         let dependent_count = self.schema.get_field("dependent_count").unwrap();
 
-        let mut dependency_graph = HashMap::<PackageName, HashSet<PackageName>>::new();
+        let mut dependency_graph =
+            HashMap::<PackageName, HashSet<(PackageName, VersionReq)>>::new();
         let mut package_to_doc_map = HashMap::<PackageName, Document>::new();
 
         println!("Crawling index...");
@@ -118,7 +124,7 @@ impl SearchBackend {
             for manifest in &metadata.versions {
                 doc.add_text(versions, manifest.package.version.to_string());
 
-                if !manifest.package.version.is_prerelease() {
+                if manifest.package.version.pre.is_empty() {
                     doc.add_text(scope, manifest.package.name.scope());
                     doc.add_text(name, manifest.package.name.name());
 
@@ -143,7 +149,10 @@ impl SearchBackend {
                             dependency_graph
                                 .entry(dependency)
                                 .or_insert_with(HashSet::new)
-                                .insert(package.clone());
+                                .insert((
+                                    package.clone(),
+                                    condense_version_req(req.version_req().clone()),
+                                ));
                         });
 
                     break;
@@ -155,9 +164,13 @@ impl SearchBackend {
             let dependents = dependency_graph.get(package).unwrap();
 
             doc.add_u64(dependent_count, dependents.len() as u64);
+            self.dependent_counts
+                .insert(package.clone(), dependents.len() as u64);
 
             self.writer.add_document(doc.to_owned());
         }
+
+        self.dependency_graph = dependency_graph;
 
         self.writer.commit()?;
         println!("Finished crawling in {}ms", now.elapsed().as_millis());
@@ -206,6 +219,58 @@ impl SearchBackend {
         }
 
         Ok(docs)
+    }
+
+    pub fn get_dependents(&self, package: &PackageName) -> Vec<(PackageName, VersionReq)> {
+        if let Some(dependents) = self.dependency_graph.get(package) {
+            let mut dependent_vec: Vec<_> = dependents.iter().cloned().collect();
+
+            dependent_vec.sort_by(|(a, _), (b, _)| {
+                let count_a = self.dependent_counts.get(a).ok_or(0);
+                let count_b = self.dependent_counts.get(b).ok_or(0);
+
+                count_b.cmp(&count_a)
+            });
+
+            dependent_vec
+        } else {
+            Vec::new()
+        }
+    }
+}
+
+/// Older versions of semver serialised every VersionReq as a two comparator combo, this
+/// attempts to convert it back to the more condensed version as it is more readable.
+///
+/// For example "^1.1.0" gets turned into "">=1.1.0, <2.0.0" by older versions of semver
+/// this function will convert it back to ^1.1.0
+fn condense_version_req(req: VersionReq) -> VersionReq {
+    if req.comparators.len() != 2 {
+        return req;
+    }
+
+    let comparator_a = &req.comparators[0];
+    let comparator_b = &req.comparators[1];
+
+    if comparator_a.op != Op::GreaterEq || comparator_b.op != Op::Less {
+        return req;
+    }
+
+    if (comparator_a.major > 0 && comparator_b.major == comparator_a.major + 1)
+        || (comparator_a.major == 0
+            && comparator_b.minor.unwrap_or(0) == comparator_a.minor.unwrap_or(0) + 1)
+    {
+        VersionReq {
+            comparators: Vec::from([Comparator {
+                op: Op::Caret,
+                major: comparator_a.major,
+                minor: comparator_a.minor,
+                patch: comparator_a.patch,
+                pre: comparator_a.pre.clone(),
+            }]),
+        }
+    } else {
+        req
     }
 }
 
