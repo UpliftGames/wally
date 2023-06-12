@@ -8,12 +8,14 @@ on:
     types: [labeled]
 
 jobs:
-  build:
+  fetch_tag:
     if: |
       github.event_name == 'push' ||
       contains(github.event.pull_request.labels.*.name, 'built-as-nightly')
     runs-on: ubuntu-latest
     name: Build nightly release
+    outputs:
+      previous_tag: ${{ steps.previoustag.outputs.tag }}
 
     steps:
       - uses: actions/checkout@v2
@@ -24,8 +26,12 @@ jobs:
         id: previoustag
         uses: "WyriHaximus/github-action-get-previous-tag@v1"
         
-      - name: Build release
-        uses: ./.github/workflows/build.yml
-        with:
-          upload_url: https://uploads.github.com/repos/UpliftGames/wally/releases/108261310/assets{?name,label}
-          release_ref: ${{ steps.previoustag.outputs.tag }}-nightly
+      - name: Output tag
+        shell: bash
+        run: echo "tag=${{ steps.previoustag.outputs.tag }}" >> "$GITHUB_OUTPUT"
+
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      upload_url: https://uploads.github.com/repos/UpliftGames/wally/releases/108261310/assets{?name,label}
+      release_ref: ${{ steps.previoustag.outputs.tag }}-nightly
