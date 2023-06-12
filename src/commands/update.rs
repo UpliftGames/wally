@@ -124,7 +124,7 @@ impl UpdateSubcommand {
         progress.suspend(|| {
             let dependency_changes =
                 generate_depedency_changes(&lockfile.as_ids().collect(), &resolved_graph.activated);
-                render_update_difference(&dependency_changes);
+            render_update_difference(&dependency_changes);
         });
 
         Lockfile::from_resolve(&resolved_graph).save(&self.project_path)?;
