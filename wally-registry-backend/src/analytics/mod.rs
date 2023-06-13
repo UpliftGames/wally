@@ -20,6 +20,7 @@ pub enum AnalyticsMode {
 
 #[derive(Clone)]
 pub enum AnalyticsBackend {
+    #[cfg(feature = "postgres-analytics")]
     Postgres(PostgresAnalytics),
 }
 
@@ -33,12 +34,14 @@ pub trait AnalyticsBackendProvider: Send + Sync + Clone + 'static {
 impl AnalyticsBackendProvider for AnalyticsBackend {
     async fn record_download(self, package_id: PackageId) -> anyhow::Result<()> {
         match self {
+            #[cfg(feature = "postgres-analytics")]
             AnalyticsBackend::Postgres(backend) => backend.record_download(package_id).await,
         }
     }
 
     async fn ensure_initialized(&self) -> anyhow::Result<()> {
-        match self {
+        match *self {
+            #[cfg(feature = "postgres-analytics")]
             AnalyticsBackend::Postgres(backend) => backend.ensure_initialized().await,
         }
     }
