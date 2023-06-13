@@ -1,15 +1,13 @@
 use super::AnalyticsBackend;
-use chrono::{DateTime, Utc};
 use sqlx::{Pool, Postgres};
-#[cfg(feature = "influx")]
-
 pub struct PostgresAnalytics {
     pool: Pool<Postgres>,
+    table_name: String,
 }
 
 impl PostgresAnalytics {
-    pub fn new(pool: Pool<Postgres>) -> Self {
-        Self { pool }
+    pub fn new(pool: Pool<Postgres>, table_name: String) -> Self {
+        Self { pool, table_name }
     }
 }
 
@@ -19,38 +17,32 @@ impl AnalyticsBackend for PostgresAnalytics {
         &self,
         package_id: libwally::package_id::PackageId,
     ) -> anyhow::Result<()> {
-        println!("{}", Utc::now().format("%+").to_string());
-
-        sqlx::query("INSERT INTO test_table VALUES (NOW(), $2, $3, $4);")
-            .bind(Utc::now())
-            .bind(package_id.name().scope())
-            .bind(package_id.name().name())
-            .bind(package_id.version().to_string())
-            .fetch_all(&self.pool)
-            .await?;
+        sqlx::query(&format!(
+            "INSERT INTO {} VALUES (NOW(), $1, $2, $3);",
+            self.table_name
+        ))
+        .bind(package_id.name().scope())
+        .bind(package_id.name().name())
+        .bind(package_id.version().to_string())
+        .fetch_all(&self.pool)
+        .await?;
 
         Ok(())
     }
 
-    async fn ensure_initialised(&self) -> anyhow::Result<()> {
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS test_table (
+    async fn ensure_initialized(&self) -> anyhow::Result<()> {
+        sqlx::query(&format!(
+            "CREATE TABLE IF NOT EXISTS {} (
             time TIMESTAMP NOT NULL,
             package_scope VARCHAR ( 50 ) NOT NULL,
             package_name VARCHAR ( 50 ) NOT NULL,
             package_version VARCHAR ( 50 ) NOT NULL
          );",
-        )
+            self.table_name
+        ))
         .execute(&self.pool)
         .await?;
 
         Ok(())
     }
-}
-
-struct DownloadRecord {
-    time: DateTime<Utc>,
-    package_scope: String,
-    package_name: String,
-    package_version: String,
 }

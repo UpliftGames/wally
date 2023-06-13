@@ -28,7 +28,10 @@ index_url = "https://github.com/UpliftGames/wally-test-index"
 # Here's the production config:
 # index_url = "https://github.com/UpliftGames/wally-index"
 
-analytics = { type = "postgres-mode" }
+# With the postgres-analytics feature enabled we can enable analytics with:
+# analytics = { type = "postgres", database-url = "...", downloads-table-name = "package_downloads" }
+# 
+# By default there are no package analytics
 
 [release]
 log_level = "normal"

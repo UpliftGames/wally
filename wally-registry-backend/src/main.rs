@@ -20,7 +20,6 @@ use figment::{
     providers::{Env, Format, Toml},
     Figment,
 };
-use futures::FutureExt;
 use libwally::{
     manifest::{Manifest, MANIFEST_FILE_NAME},
     package_id::PackageId,
@@ -43,12 +42,11 @@ use rocket::{
 use rocket::{Build, Request, Response};
 use semver::Version;
 use serde_json::json;
-use sqlx::postgres::PgPoolOptions;
+
 use storage::StorageMode;
-use url::Url;
 use zip::ZipArchive;
 
-use crate::analytics::{AnalyticsBackend, AnalyticsMode};
+use crate::analytics::AnalyticsBackend;
 use crate::auth::{ReadAccess, WriteAccess};
 use crate::config::Config;
 use crate::error::{ApiErrorContext, ApiErrorStatus, Error};
@@ -58,7 +56,10 @@ use crate::storage::{GcsStorage, LocalStorage, StorageBackend, StorageOutput};
 #[cfg(feature = "s3-storage")]
 use crate::storage::S3Storage;
 
-use crate::analytics::PostgresAnalytics;
+#[cfg(feature = "postgres-analytics")]
+use crate::analytics::{AnalyticsMode, PostgresAnalytics};
+#[cfg(feature = "postgres-analytics")]
+use sqlx::postgres::PgPoolOptions;
 
 #[get("/")]
 async fn root(
@@ -263,8 +264,19 @@ pub fn server(figment: Figment) -> rocket::Rocket<Build> {
 
     println!("Using analytics backend: {:?}", config.analytics);
     let analytics_backend: Option<Box<dyn AnalyticsBackend>> = match config.analytics {
-        #[cfg(feature = "influx")]
-        Some(AnalyticsMode::PostgresMode {}) => Some(Box::new(configure_postgres())),
+        #[cfg(feature = "postgres-analytics")]
+        Some(AnalyticsMode::Postgres {
+            database_url,
+            downloads_table_name,
+        }) => Some(Box::new(
+            configure_postgres(&database_url, downloads_table_name)
+                .expect("Failed to initialize postgres backend"),
+        )),
+        Some(_) => panic!(
+            "Attempted to use an analytics backend 
+        but the required backend isn't enabled in features. 
+        Try adding the 'postgres-analytics' feature."
+        ),
         None => None,
     };
 
@@ -331,24 +343,23 @@ fn configure_s3(bucket: String, cache_size: Option<u64>) -> anyhow::Result<S3Sto
     Ok(S3Storage::new(client, bucket, cache_size))
 }
 
-#[cfg(feature = "influx")]
-fn configure_postgres() -> PostgresAnalytics {
+#[cfg(feature = "postgres-analytics")]
+fn configure_postgres(url: &str, table_name: String) -> anyhow::Result<PostgresAnalytics> {
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
-        .build()
-        .unwrap();
+        .build()?;
 
     rt.block_on(async {
-        let pool = PgPoolOptions::new()
-            .max_connections(5)
-            .connect("postgres://jonny@localhost/postgres")
-            .await
-            .unwrap();
+        let pool = PgPoolOptions::new().max_connections(5).connect(url).await?;
 
-        let analytics_backend = PostgresAnalytics::new(pool);
+        let analytics_backend = PostgresAnalytics::new(pool, table_name);
 
-        analytics_backend.ensure_initialised().await.unwrap();
         analytics_backend
+            .ensure_initialized()
+            .await
+            .context("Failed to initialise analytics backend")?;
+
+        Ok(analytics_backend)
     })
 }
 

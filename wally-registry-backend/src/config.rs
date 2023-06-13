@@ -23,6 +23,6 @@ pub struct Config {
     /// The minimum wally cli version required to publish to the registry
     pub minimum_wally_version: Option<Version>,
 
-    /// What analytics backend should be used, currently the only option is InfluxDB
+    /// What analytics backend should be used, currently the only option is Postgres
     pub analytics: Option<AnalyticsMode>,
 }
