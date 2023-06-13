@@ -125,15 +125,6 @@ const DependencyVersionReq = styled.span`
   opacity: 0.6;
 `
 
-const DependencyLinkTooltip = styled(Tooltip)`
-  color: white;
-  font-size: 0.8rem;
-  background-color: var(--wally-brown);
-  border-radius: 5px;
-  padding: 10px;
-  opacity: 1;
-`
-
 const DependentsAccordionButton = styled(AccordionItemButton)`
   font-weight: bold;
   display: block;
@@ -183,6 +174,15 @@ const DependentsAccordionItemPanel = styled(AccordionItemPanel)`
   animation: ${panelFadeInKeyframes} 0.15s ease-in;
 `
 
+const tooltipCSS = {
+  color: "white",
+  fontSize: "0.8rem",
+  backgroundColor: "var(--wally-brown)",
+  borderRadius: "5px",
+  padding: "10px",
+  opacity: "1"
+}
+
 const MetaItem = ({
   title,
   width,
@@ -210,11 +210,12 @@ const DependencyLink = ({ packageInfo }: { packageInfo: string }) => {
         <DependencyLinkItem id={name + "@" + version} href={`/package/${name}?version=${version}`}>
           {name + "@" + version}
           </DependencyLinkItem>
-          <DependencyLinkTooltip
+          <Tooltip
             place="top"
             float={true}
             anchorId={name + "@" + version}
             content={name + "@" + version}
+            style={tooltipCSS}
           />
       </DependencyLinkWrapper>
     )
@@ -231,11 +232,12 @@ const LatestDependencyLink = ({ packageInfo, versionReq }: { packageInfo: string
         <DependencyLinkItem id={name} href={`/package/${name}`}>
           {name}
         </DependencyLinkItem>
-        <DependencyLinkTooltip
+        <Tooltip
             place="top"
             float={true}
             anchorId={name}
             content={name}
+            style={tooltipCSS}
           />
         <DependencyVersionReq>{versionReq}</DependencyVersionReq>
       </DependencyLinkWrapper>
