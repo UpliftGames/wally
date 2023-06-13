@@ -91,21 +91,19 @@ async fn package_contents(
 
     let analytics_request = analytics
         .as_ref()
-        .expect("Failed to use analytics backend!")
-        .clone()
-        .record_download(package_id.clone());
+        .map(|backend| backend.clone().record_download(package_id.clone()));
 
     match storage.read(&package_id).await.map(ReaderStream::one) {
+        Err(e) => Err(e).status(Status::NotFound),
         Ok(stream) => {
-            tokio::spawn(async move {
-                analytics_request
-                    .await
-                    .expect("Failed to record package download!");
-            });
+            if let Some(request) = analytics_request {
+                tokio::spawn(async move {
+                    request.await.expect("Failed to record package download!");
+                });
+            }
 
             Ok((ContentType::GZIP, stream))
         }
-        Err(e) => Err(e).status(Status::NotFound),
     }
 }
 
