@@ -36,7 +36,7 @@ pub struct GithubOrgInfoOrganization {
 
 #[derive(Deserialize, Debug)]
 pub struct GithubOrgInfo {
-    organization: GithubOrgInfoOrganization
+    organization: GithubOrgInfoOrganization,
 }
 
 #[derive(Debug)]
@@ -120,13 +120,13 @@ async fn verify_github_token(request: &Request<'_>) -> Outcome<WriteAccess, Erro
         Ok(github_info) => {
             return Outcome::Success(WriteAccess::Github(GithubWriteAccessInfo {
                 user: github_info,
-                token: token
+                token: token,
             }));
         }
     }
 }
 
-pub async fn get_github_orgs(token: String) ->  Result<Vec<String>, Error> {
+pub async fn get_github_orgs(token: String) -> Result<Vec<String>, Error> {
     let client = Client::new();
 
     let org_response = client
@@ -145,17 +145,14 @@ pub async fn get_github_orgs(token: String) ->  Result<Vec<String>, Error> {
     };
 
     match github_org_info {
-        Ok(github_org_info) => {
-            match github_org_info.get(0) {
-                Some(_) => Ok(github_org_info
+        Ok(github_org_info) => match github_org_info.get(0) {
+            Some(_) => Ok(github_org_info
                 .iter()
                 .map(|x| x.organization.login.to_lowercase())
                 .collect::<Vec<_>>()),
-                None => Ok(vec![])
-            }
-        }
-        Err(err) => Err(format_err!("Github auth failed: {}", err)
-            .status(Status::Unauthorized)),
+            None => Ok(vec![]),
+        },
+        Err(err) => Err(format_err!("Github auth failed: {}", err).status(Status::Unauthorized)),
     }
 }
 
@@ -231,7 +228,6 @@ impl WriteAccess {
                                     .into())
                                 },
                             }
-                            
                         }
                     }
                 }
