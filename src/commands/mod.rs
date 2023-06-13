@@ -16,7 +16,7 @@ pub use manifest_to_json::ManifestToJsonSubcommand;
 pub use package::PackageSubcommand;
 pub use publish::PublishSubcommand;
 pub use search::SearchSubcommand;
-pub use update::UpdateSubcommand;
+pub use update::{PackageSpec, UpdateSubcommand};
 
 use structopt::StructOpt;
 
@@ -37,7 +37,7 @@ impl Args {
             Subcommand::Init(subcommand) => subcommand.run(),
             Subcommand::Login(subcommand) => subcommand.run(),
             Subcommand::Logout(subcommand) => subcommand.run(),
-            Subcommand::Update(subcommand) => subcommand.run(),
+            Subcommand::Update(subcommand) => subcommand.run(self.global),
             Subcommand::Search(subcommand) => subcommand.run(),
             Subcommand::Package(subcommand) => subcommand.run(),
             Subcommand::Install(subcommand) => subcommand.run(self.global),
