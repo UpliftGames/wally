@@ -53,43 +53,19 @@ impl UpdateSubcommand {
         // If the user didn't specify any targets, then update all of the packages.
         // Otherwise, find the target packages to update.
         let try_to_use = if self.package_specs.is_empty() {
+            println!(
+                "{}   Selected {} all dependencies to try update",
+                SetForegroundColor(Color::DarkGreen),
+                SetForegroundColor(Color::Reset)
+            );
+
             BTreeSet::new()
         } else {
-            let progress = ProgressBar::new(lockfile.packages.len().try_into().unwrap())
-                .with_style(
-                    ProgressStyle::with_template(
-                        "{spinner:.cyan.bold} {pos}/{len} [{wide_bar:.cyan/blue}]",
-                    )
-                    .unwrap()
-                    .tick_chars("⠁⠈⠐⠠⠄⠂ ")
-                    .progress_chars("#>-"),
-                )
-                .with_message(format!(
-                    "{} Selecting {}packages ...",
-                    SetForegroundColor(Color::DarkGreen),
-                    SetForegroundColor(Color::Reset)
-                ));
-
             let try_to_use: BTreeSet<PackageId> = lockfile
                 .as_ids()
                 // We update the target packages by removing the package from the list of packages to try to keep.
-                .filter(|package_id| {
-                    if self.given_package_id_satisifies_targets(package_id) {
-                        progress.println(format!(
-                            "{}   Selected {}{}",
-                            SetForegroundColor(Color::DarkGreen),
-                            SetForegroundColor(Color::Reset),
-                            &package_id
-                        ));
-                        false
-                    } else {
-                        progress.tick();
-                        true
-                    }
-                })
+                .filter(|package_id| self.given_package_id_satisifies_targets(package_id))
                 .collect();
-
-            progress.finish_and_clear();
 
             println!(
                 "{}   Selected {}{} dependencies to try update",
