@@ -76,7 +76,7 @@ Installs all packages.
 Parity with:
 * `npm install` with no arguments
 
-### `wally update [package-names]` (unimplemented)
+### `wally update [package-names]`
 Update packages recursively. By default, will update all packages. If any package names are given (in the form `scope/name` or `scope/name@version-req`), just those packages will be updated instead.
 
 Parity with:
