@@ -18,8 +18,28 @@ pub enum AnalyticsMode {
     },
 }
 
+#[derive(Clone)]
+pub enum AnalyticsBackend {
+    Postgres(PostgresAnalytics),
+}
+
 #[async_trait]
-pub trait AnalyticsBackend: Send + Sync {
-    async fn record_download(&self, package_id: PackageId) -> anyhow::Result<()>;
+pub trait AnalyticsBackendProvider: Send + Sync + Clone + 'static {
+    async fn record_download(self, package_id: PackageId) -> anyhow::Result<()>;
     async fn ensure_initialized(&self) -> anyhow::Result<()>;
+}
+
+#[async_trait]
+impl AnalyticsBackendProvider for AnalyticsBackend {
+    async fn record_download(self, package_id: PackageId) -> anyhow::Result<()> {
+        match self {
+            AnalyticsBackend::Postgres(backend) => backend.record_download(package_id).await,
+        }
+    }
+
+    async fn ensure_initialized(&self) -> anyhow::Result<()> {
+        match self {
+            AnalyticsBackend::Postgres(backend) => backend.ensure_initialized().await,
+        }
+    }
 }

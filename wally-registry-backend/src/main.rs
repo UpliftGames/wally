@@ -26,7 +26,6 @@ use libwally::{
     package_index::PackageIndex,
     package_name::PackageName,
 };
-use rand::Rng;
 use rocket::fairing::{Fairing, Info, Kind};
 use rocket::http::Header;
 use rocket::request::{FromRequest, Outcome};
@@ -46,7 +45,7 @@ use serde_json::json;
 use storage::StorageMode;
 use zip::ZipArchive;
 
-use crate::analytics::AnalyticsBackend;
+use crate::analytics::{AnalyticsBackend, AnalyticsBackendProvider};
 use crate::auth::{ReadAccess, WriteAccess};
 use crate::config::Config;
 use crate::error::{ApiErrorContext, ApiErrorStatus, Error};
@@ -62,20 +61,7 @@ use crate::analytics::{AnalyticsMode, PostgresAnalytics};
 use sqlx::postgres::PgPoolOptions;
 
 #[get("/")]
-async fn root(
-    analytics_backend: &State<Option<Box<dyn AnalyticsBackend>>>,
-) -> content::RawJson<serde_json::Value> {
-    let num = rand::thread_rng().gen_range(0..10);
-    analytics_backend
-        .as_ref()
-        .expect("No analytics!")
-        .record_download(PackageId::new(
-            PackageName::new("hello", "world").unwrap(),
-            Version::new(1, num, 0),
-        ))
-        .await
-        .unwrap();
-
+async fn root() -> content::RawJson<serde_json::Value> {
     content::RawJson(json!({
         "message": "Wally Registry is up and running!",
     }))
@@ -85,6 +71,7 @@ async fn root(
 async fn package_contents(
     storage: &State<Box<dyn StorageBackend>>,
     _read: Result<ReadAccess, Error>,
+    analytics: &State<Option<Box<AnalyticsBackend>>>,
     scope: String,
     name: String,
     version: String,
@@ -102,8 +89,22 @@ async fn package_contents(
         .status(Status::BadRequest)?;
     let package_id = PackageId::new(package_name, version);
 
+    let analytics_request = analytics
+        .as_ref()
+        .expect("Failed to use analytics backend!")
+        .clone()
+        .record_download(package_id.clone());
+
     match storage.read(&package_id).await.map(ReaderStream::one) {
-        Ok(stream) => Ok((ContentType::GZIP, stream)),
+        Ok(stream) => {
+            tokio::spawn(async move {
+                analytics_request
+                    .await
+                    .expect("Failed to record package download!");
+            });
+
+            Ok((ContentType::GZIP, stream))
+        }
         Err(e) => Err(e).status(Status::NotFound),
     }
 }
@@ -263,7 +264,7 @@ pub fn server(figment: Figment) -> rocket::Rocket<Build> {
     };
 
     println!("Using analytics backend: {:?}", config.analytics);
-    let analytics_backend: Option<Box<dyn AnalyticsBackend>> = match config.analytics {
+    let analytics_backend: Option<Box<AnalyticsBackend>> = match config.analytics {
         #[cfg(feature = "postgres-analytics")]
         Some(AnalyticsMode::Postgres {
             database_url,
@@ -345,7 +346,7 @@ fn configure_s3(bucket: String, cache_size: Option<u64>) -> anyhow::Result<S3Sto
 }
 
 #[cfg(feature = "postgres-analytics")]
-fn configure_postgres(url: &str, table_name: String) -> anyhow::Result<PostgresAnalytics> {
+fn configure_postgres(url: &str, table_name: String) -> anyhow::Result<AnalyticsBackend> {
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
@@ -360,7 +361,7 @@ fn configure_postgres(url: &str, table_name: String) -> anyhow::Result<PostgresA
             .await
             .context("Failed to initialise analytics backend")?;
 
-        Ok(analytics_backend)
+        Ok(AnalyticsBackend::Postgres(analytics_backend))
     })
 }
 

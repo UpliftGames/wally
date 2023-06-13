@@ -1,5 +1,7 @@
-use super::AnalyticsBackend;
+use super::AnalyticsBackendProvider;
 use sqlx::{Pool, Postgres};
+
+#[derive(Clone)]
 pub struct PostgresAnalytics {
     pool: Pool<Postgres>,
     table_name: String,
@@ -12,9 +14,9 @@ impl PostgresAnalytics {
 }
 
 #[async_trait]
-impl AnalyticsBackend for PostgresAnalytics {
+impl AnalyticsBackendProvider for PostgresAnalytics {
     async fn record_download(
-        &self,
+        self,
         package_id: libwally::package_id::PackageId,
     ) -> anyhow::Result<()> {
         sqlx::query(&format!(
