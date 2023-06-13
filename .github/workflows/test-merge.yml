@@ -4,6 +4,7 @@ on:
     types: [labeled]
 jobs:
   merge-branch:
+    if: contains(github.event.pull_request.labels.*.name, 'merged to test')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
