@@ -94,7 +94,7 @@ fn prompt_github_auth(api: url::Url, github_oauth_id: &str) -> anyhow::Result<()
             "scope": "read:user read:org",
         }))
         .send()?;
-    
+
     let device_code_response = device_code_response.json::<DeviceCodeResponse>()?;
 
     println!();
