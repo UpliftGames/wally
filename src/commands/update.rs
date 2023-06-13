@@ -64,7 +64,7 @@ impl UpdateSubcommand {
             let try_to_use: BTreeSet<PackageId> = lockfile
                 .as_ids()
                 // We update the target packages by removing the package from the list of packages to try to keep.
-                .filter(|package_id| self.given_package_id_satisifies_targets(package_id))
+                .filter(|package_id| !self.given_package_id_satisifies_targets(package_id))
                 .collect();
 
             println!(
