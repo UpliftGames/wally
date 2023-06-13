@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unescaped-entities */
 import React, { useEffect, useState } from "react"
 import { useHistory, useLocation, useParams } from "react-router"
-import styled from "styled-components"
+import styled, { keyframes } from "styled-components"
 import { isMobile, notMobile } from "../breakpoints"
 import { Button } from "../components/Button"
 import ContentSection from "../components/ContentSection"
@@ -18,6 +18,7 @@ import {
   AccordionItemButton,
   AccordionItemPanel,
 } from 'react-accessible-accordion';
+import { Tooltip } from "react-tooltip";
 
 // A custom hook that builds on useLocation to parse
 // the query string for you.
@@ -87,12 +88,6 @@ const MetaItemWrapper = styled.div<StyledMetaItemProps>`
   margin: 0.5rem 0;
   white-space: nowrap;
   text-overflow: ellipsis;
-
-  a:hover,
-  a:focus {
-    text-decoration: underline;
-    color: var(--wally-red);
-  }
 `
 
 const AuthorItem = styled.p`
@@ -106,12 +101,6 @@ const DependencyLinkWrapper = styled.div`
   flex-wrap: wrap;
   position: relative;
   width: 100%;
-
-  &:hover {
-    > span {
-      visibility: visible;
-    }
-  }
 `
 
 const DependencyLinkItem = styled.a`
@@ -119,9 +108,16 @@ const DependencyLinkItem = styled.a`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+
+  :hover,
+  :focus {
+    text-decoration: underline;
+    color: var(--wally-red);
+  }
 `
 
-const DependencyVersionReq = styled.a`
+const DependencyVersionReq = styled.span`
   display: flex;
   margin-left: auto;
   text-align: right;
@@ -129,45 +125,16 @@ const DependencyVersionReq = styled.a`
   opacity: 0.6;
 `
 
-const DependencyLinkSpan = styled.span`
-  width:100%;
-  height:1em;
-  display:inline-block;
-`
-
-const DependencyLinkTooltip = styled.span`
-  visibility: hidden;
-  position: absolute;
-  z-index: 2;
+const DependencyLinkTooltip = styled(Tooltip)`
   color: white;
   font-size: 0.8rem;
   background-color: var(--wally-brown);
   border-radius: 5px;
   padding: 10px;
-  top: -45px;
-  left: 50%;
-  transform: translateX(-50%);
-
-  &::before {
-    content: "";
-    position: absolute;
-    transform: rotate(45deg);
-    background-color: var(--wally-brown);
-    padding: 6px;
-    z-index: 1;
-    top: 77%;
-    left: 45%;
-  }
+  opacity: 1;
 `
 
-const AccordionCSS = `.accordion {
-}
-
-.accordion__item + .accordion__item {
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.accordion__button {
+const DependentsAccordionButton = styled(AccordionItemButton)`
   font-weight: bold;
   display: block;
   font-size: 1.1rem;
@@ -179,45 +146,42 @@ const AccordionCSS = `.accordion {
   width: 100%;
   text-align: left;
   border: none;
-}
 
-.accordion__button:hover {
-  background-color: #ddd;
-}
+  :hover {
+    background-color: #ddd;
+  }
 
-.accordion__button:after {
-  display: inline-block;
-  content: '';
-  height: 10px;
-  width: 10px;
-  margin-left: 12px;
-  border-bottom: 2px solid currentColor;
-  border-right: 2px solid currentColor;
-  transform: rotate(-45deg);
-}
+  :after {
+    display: inline-block;
+    content: '';
+    height: 10px;
+    width: 10px;
+    margin-left: 12px;
+    border-bottom: 2px solid currentColor;
+    border-right: 2px solid currentColor;
+    transform: rotate(-45deg);
+    transition: transform 150ms ease;
+  }
 
-.accordion__button[aria-expanded='true']::after,
-.accordion__button[aria-selected='true']::after {
-  transform:  translate(0, -4px) rotate(45deg);
-}
+  &[aria-expanded='true']::after,
+  &[aria-selected='true']::after {
+    transform: translate(0, -4px) rotate(45deg);
+  }
+`
 
-[hidden] {
-  display: none;
-}
-
-.accordion__panel {
-  animation: fadein 0.15s ease-in;
-}
-
-@keyframes fadein {
+const panelFadeInKeyframes = keyframes`
   0% {
-      opacity: 0;
+    opacity: 0;
   }
 
   100% {
-      opacity: 1;
+    opacity: 1;
   }
-}`
+`
+
+const DependentsAccordionItemPanel = styled(AccordionItemPanel)`
+  animation: ${panelFadeInKeyframes} 0.15s ease-in;
+`
 
 const MetaItem = ({
   title,
@@ -243,10 +207,15 @@ const DependencyLink = ({ packageInfo }: { packageInfo: string }) => {
     let version = packageMatch[2]
     return (
       <DependencyLinkWrapper>
-        <DependencyLinkItem href={`/package/${name}?version=${version}`}>
+        <DependencyLinkItem id={name + "@" + version} href={`/package/${name}?version=${version}`}>
           {name + "@" + version}
-        </DependencyLinkItem>
-        <DependencyLinkTooltip>{name + "@" + version}</DependencyLinkTooltip>
+          </DependencyLinkItem>
+          <DependencyLinkTooltip
+            place="top"
+            float={true}
+            anchorId={name + "@" + version}
+            content={name + "@" + version}
+          />
       </DependencyLinkWrapper>
     )
   }
@@ -259,11 +228,16 @@ const LatestDependencyLink = ({ packageInfo, versionReq }: { packageInfo: string
     let name = packageMatch[1]
     return (
       <DependencyLinkWrapper>
-        <DependencyLinkItem href={`/package/${name}`}>
+        <DependencyLinkItem id={name} href={`/package/${name}`}>
           {name}
         </DependencyLinkItem>
+        <DependencyLinkTooltip
+            place="top"
+            float={true}
+            anchorId={name}
+            content={name}
+          />
         <DependencyVersionReq>{versionReq}</DependencyVersionReq>
-        <DependencyLinkTooltip>{name}</DependencyLinkTooltip>
       </DependencyLinkWrapper>
     )
   }
@@ -501,16 +475,13 @@ export default function Package() {
 
             {packageAnalytics != undefined && (
               <Accordion allowZeroExpanded>
-                <style>
-                  {AccordionCSS}
-                </style>
                 <AccordionItem>
                   <AccordionItemHeading>
-                    <AccordionItemButton>
+                    <DependentsAccordionButton>
                       {`${packageAnalytics.dependents.length} Dependents`}
-                    </AccordionItemButton>
+                    </DependentsAccordionButton>
                   </AccordionItemHeading>
-                  <AccordionItemPanel>
+                  <DependentsAccordionItemPanel>
                     {Object.values(packageAnalytics.dependents).map(
                       (dependency) => (
                         <LatestDependencyLink
@@ -520,7 +491,7 @@ export default function Package() {
                         />
                       )
                     )}
-                  </AccordionItemPanel>
+                  </DependentsAccordionItemPanel>
                 </AccordionItem>
               </Accordion>
             )}
