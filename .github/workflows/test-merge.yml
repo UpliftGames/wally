@@ -1,0 +1,17 @@
+name: Merge branch to test
+on:
+  pull_request:
+    types: [labeled]
+jobs:
+  merge-branch:
+    if: contains(github.event.pull_request.labels.*.name, 'merged to test')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+
+      - name: Merge to test
+        uses: devmasx/merge-branch@master
+        with:
+          label_name: 'merged to test'
+          target_branch: 'test'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
