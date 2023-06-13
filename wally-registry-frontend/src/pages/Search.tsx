@@ -36,7 +36,8 @@ const SearchPackages = ({ packages }: { packages: WallyPackageBrief[] }) => (
           .substr(0, 15)
           .toLowerCase()
           .replace(/[^a-z]/gi, "")}
-        title={`${pack.scope}/${pack.name}`}
+        scope={pack.scope}
+        name={pack.name}
         version={pack.versions.at(-1)}
         linkTo={`${pack.scope}/${pack.name}`}
       >
