@@ -91,10 +91,11 @@ fn prompt_github_auth(api: url::Url, github_oauth_id: &str) -> anyhow::Result<()
         .header("accept", "application/json")
         .json(&serde_json::json!({
             "client_id": github_oauth_id,
-            "scope": "read:user",
+            "scope": "read:user read:org",
         }))
-        .send()?
-        .json::<DeviceCodeResponse>()?;
+        .send()?;
+    
+    let device_code_response = device_code_response.json::<DeviceCodeResponse>()?;
 
     println!();
     println!("Go to {}", device_code_response.verification_uri);

@@ -156,7 +156,7 @@ async fn publish(
     let manifest = get_manifest(&mut archive).status(Status::BadRequest)?;
     let package_id = manifest.package_id();
 
-    let write_permission = authorization.can_write_package(&package_id, &index)?;
+    let write_permission = authorization.can_write_package(&package_id, &index).await?;
 
     if write_permission.is_none() {
         return Err(format_err!(

@@ -27,7 +27,6 @@ pub enum AuthMode {
 pub struct GithubInfo {
     login: String,
     id: u64,
-    organizations_url: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -37,14 +36,13 @@ pub struct GithubOrgInfoOrganization {
 
 #[derive(Deserialize, Debug)]
 pub struct GithubOrgInfo {
-    organization: GithubOrgInfoOrganization,
-    user: GithubInfo,
+    organization: GithubOrgInfoOrganization
 }
 
 #[derive(Debug)]
 pub struct GithubWriteAccessInfo {
     pub user: GithubInfo,
-    pub organizations: Vec<String>,
+    pub token: String,
 }
 
 impl GithubInfo {
@@ -99,6 +97,38 @@ async fn verify_github_token(request: &Request<'_>) -> Outcome<WriteAccess, Erro
 
     let client = Client::new();
 
+    // The user is in no orgs we can see so we cannot get their userinfo from that.
+    let response = client
+        .get("https://api.github.com/user")
+        .header("accept", "application/json")
+        .header("user-agent", "wally")
+        .bearer_auth(&token)
+        .send()
+        .await;
+
+    let github_info = match response {
+        Err(err) => {
+            return format_err!(err).status(Status::InternalServerError).into();
+        }
+        Ok(response) => response.json::<GithubInfo>().await,
+    };
+
+    match github_info {
+        Err(err) => format_err!("Github auth failed: {}", err)
+            .status(Status::Unauthorized)
+            .into(),
+        Ok(github_info) => {
+            return Outcome::Success(WriteAccess::Github(GithubWriteAccessInfo {
+                user: github_info,
+                token: token
+            }));
+        }
+    }
+}
+
+pub async fn get_github_orgs(token: String) ->  Result<Vec<String>, Error> {
+    let client = Client::new();
+
     let org_response = client
         .get("https://api.github.com/user/memberships/orgs")
         .header("accept", "application/json")
@@ -109,7 +139,7 @@ async fn verify_github_token(request: &Request<'_>) -> Outcome<WriteAccess, Erro
 
     let github_org_info = match org_response {
         Err(err) => {
-            return format_err!(err).status(Status::InternalServerError).into();
+            return Err(format_err!(err).status(Status::InternalServerError));
         }
         Ok(response) => response.json::<Vec<GithubOrgInfo>>().await,
     };
@@ -117,49 +147,15 @@ async fn verify_github_token(request: &Request<'_>) -> Outcome<WriteAccess, Erro
     match github_org_info {
         Ok(github_org_info) => {
             match github_org_info.get(0) {
-                Some(org) => {
-                    return Outcome::Success(WriteAccess::Github(GithubWriteAccessInfo {
-                        user: org.user.clone(),
-                        organizations: github_org_info
-                            .iter()
-                            .map(|x| x.organization.login.to_lowercase())
-                            .collect::<Vec<_>>(),
-                    }));
-                }
-                None => {
-                    // The user is in no orgs we can see so we cannot get their userinfo from that.
-                    let response = client
-                        .get("https://api.github.com/user")
-                        .header("accept", "application/json")
-                        .header("user-agent", "wally")
-                        .bearer_auth(&token)
-                        .send()
-                        .await;
-
-                    let github_info = match response {
-                        Err(err) => {
-                            return format_err!(err).status(Status::InternalServerError).into();
-                        }
-                        Ok(response) => response.json::<GithubInfo>().await,
-                    };
-
-                    match github_info {
-                        Err(err) => format_err!("Github auth failed: {}", err)
-                            .status(Status::Unauthorized)
-                            .into(),
-                        Ok(github_info) => {
-                            return Outcome::Success(WriteAccess::Github(GithubWriteAccessInfo {
-                                user: github_info,
-                                organizations: vec![],
-                            }));
-                        }
-                    }
-                }
+                Some(_) => Ok(github_org_info
+                .iter()
+                .map(|x| x.organization.login.to_lowercase())
+                .collect::<Vec<_>>()),
+                None => Ok(vec![])
             }
         }
-        Err(err) => format_err!("Github auth failed: {}", err)
-            .status(Status::Unauthorized)
-            .into(),
+        Err(err) => Err(format_err!("Github auth failed: {}", err)
+            .status(Status::Unauthorized)),
     }
 }
 
@@ -201,11 +197,11 @@ pub enum WritePermission {
 }
 
 impl WriteAccess {
-    pub fn can_write_package(
+    pub async fn can_write_package(
         &self,
         package_id: &PackageId,
         index: &PackageIndex,
-    ) -> anyhow::Result<Option<WritePermission>> {
+    ) -> Result<Option<WritePermission>, Error> {
         let scope = package_id.name().scope();
 
         let write_permission = match self {
@@ -219,10 +215,23 @@ impl WriteAccess {
                             && index.get_scope_owners(scope)?.is_empty()
                         {
                             Some(WritePermission::Default)
-                        } else if github_info.organizations.contains(&scope.to_string()) {
-                            Some(WritePermission::Org)
                         } else {
-                            None
+                            let orgs = get_github_orgs(github_info.token.clone()).await;
+                            match orgs {
+                                Ok(orgs) => {
+                                    if orgs.contains(&scope.to_string()) {
+                                        Some(WritePermission::Org)
+                                    } else {
+                                        None
+                                    }
+                                },
+                                Err(err) => {
+                                    return Err(format_err!("Failed to get Github Organisations, do you need to re-login. Error: {:?}", err)
+                                    .status(Status::Unauthorized)
+                                    .into())
+                                },
+                            }
+                            
                         }
                     }
                 }
