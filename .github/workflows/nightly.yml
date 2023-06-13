@@ -36,5 +36,9 @@ jobs:
     uses: ./.github/workflows/build.yml
     needs: fetch_tag
     with:
+      tag: nightly
       upload_url: https://uploads.github.com/repos/UpliftGames/wally/releases/108261310/assets{?name,label}
       release_ref: ${{ needs.fetch_tag.outputs.previous_tag }}-nightly
+      overwrite: true
+      release_name: "Nightly 🌙 "
+      release_body: "😎 For those who live life on the edge 🔪🩸\nNot suitable for production use"

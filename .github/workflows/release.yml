@@ -26,5 +26,7 @@ jobs:
     uses: ./.github/workflows/build.yml
     needs: create-release
     with:
+      tag: ${{ github.ref_name }}
       upload_url: ${{ needs.create-release.outputs.upload_url }}
       release_ref: ${{ github.ref_name }}
+      overwrite: false
