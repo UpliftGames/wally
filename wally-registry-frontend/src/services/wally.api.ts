@@ -1,4 +1,5 @@
 import { WallyPackageBrief, WallyPackageMetadata } from "../types/wally"
+import 'dotenv/config'
 
 const wallyApiBaseUrl = `${process.env.WALLY_API_URL}/v1`
 // API/v1/package-search?query=<query>

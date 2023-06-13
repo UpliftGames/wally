@@ -27,7 +27,7 @@ body {
   flex-direction: column;
 }
 
-:global #app > * {
+:global #app>* {
   width: 100%;
 }
 
