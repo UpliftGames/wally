@@ -12,7 +12,9 @@ use crate::installation::InstallationContext;
 use crate::lockfile::{LockPackage, Lockfile};
 use crate::manifest::Manifest;
 use crate::package_id::PackageId;
-use crate::package_source::{PackageSource, PackageSourceMap, Registry, TestRegistry};
+use crate::package_source::{
+    PackageSource, PackageSourceMap, Registry, TestRegistry,
+};
 use crate::resolution::resolve;
 
 use super::GlobalOptions;
@@ -25,8 +27,8 @@ pub struct InstallSubcommand {
     pub project_path: PathBuf,
 
     /// Flag to error if the lockfile does not match with the latest dependencies.
-    #[structopt(long = "latest-lock")]
-    pub latest_lock: bool,
+    #[structopt(long = "locked")]
+    pub locked: bool,
 }
 
 impl InstallSubcommand {
@@ -82,7 +84,7 @@ impl InstallSubcommand {
             resolved.activated.len() - 1
         ));
 
-        if self.latest_lock && resolved.activated != try_to_use {
+        if self.locked && resolved.activated != try_to_use {
             // We know at this point that these are not equal sets.
             // Meaning, at least there was a new dependency being used or an old dependency that is no longer being used.
             // We'll find either by taking the difference of the latest set of dependencies and the old set of dependencies.
@@ -127,7 +129,7 @@ impl InstallSubcommand {
 
             let mut formatted_result: String = updated_dependencies
                 .iter()
-                .map(|(old, new)| format!("Updated {} to {}\n", old.to_string(), new.to_string()))
+                .map(|(old, new)| format!("Updated {} to {}\n", old, new))
                 .chain(
                     gained_dependencies
                         .iter()
