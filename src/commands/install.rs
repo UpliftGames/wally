@@ -2,8 +2,10 @@ use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::time::Duration;
 
+use anyhow::bail;
 use crossterm::style::{Color, SetForegroundColor};
 use indicatif::{ProgressBar, ProgressStyle};
+use indoc::indoc;
 use structopt::StructOpt;
 
 use crate::installation::InstallationContext;
@@ -21,6 +23,10 @@ pub struct InstallSubcommand {
     /// Path to the project to install dependencies for.
     #[structopt(long = "project-path", default_value = ".")]
     pub project_path: PathBuf,
+
+    /// Flag to error if the lockfile does not match with the latest dependencies.
+    #[structopt(long = "latest-lock")]
+    pub latest_lock: bool,
 }
 
 impl InstallSubcommand {
@@ -76,8 +82,79 @@ impl InstallSubcommand {
             resolved.activated.len() - 1
         ));
 
-        let lockfile = Lockfile::from_resolve(&resolved);
-        lockfile.save(&self.project_path)?;
+        if self.latest_lock && resolved.activated != try_to_use {
+            // We know at this point that these are not equal sets.
+            // Meaning, at least there was a new dependency being used or an old dependency that is no longer being used.
+            // We'll find either by taking the difference of the latest set of dependencies and the old set of dependencies.
+            let old_dependencies: Vec<_> = try_to_use.difference(&resolved.activated).collect();
+            let latest_dependencies: Vec<_> = resolved.activated.difference(&try_to_use).collect();
+
+            // If a dependency name is present in both sets, then it was updated.
+            let updated_dependencies = {
+                let mut updated_ids = Vec::new();
+
+                for old_id in old_dependencies.iter() {
+                    for new_id in latest_dependencies.iter() {
+                        if old_id.name() == new_id.name() {
+                            updated_ids.push((old_id, new_id));
+                            break;
+                        }
+                    }
+                }
+
+                updated_ids
+            };
+
+            // If there is a dependency in the latest set, but not in the old set, then it is a new dependency.
+            let gained_dependencies: Vec<_> = latest_dependencies
+                .iter()
+                .filter(|new_id| {
+                    !old_dependencies
+                        .iter()
+                        .any(|old_id| old_id.name() == new_id.name())
+                })
+                .collect();
+
+            // If there is a dependency in the old set, but not in the latest, then it's a dependency no longer used.
+            let lost_dependencies: Vec<_> = old_dependencies
+                .iter()
+                .filter(|old_id| {
+                    !latest_dependencies
+                        .iter()
+                        .any(|new_id| new_id.name() == old_id.name())
+                })
+                .collect();
+
+            let mut formatted_result: String = updated_dependencies
+                .iter()
+                .map(|(old, new)| format!("Updated {} to {}\n", old.to_string(), new.to_string()))
+                .chain(
+                    gained_dependencies
+                        .iter()
+                        .map(|new| format!("Added {}\n", new)),
+                )
+                .chain(
+                    lost_dependencies
+                        .iter()
+                        .map(|old| format!("Removed {}\n", old)),
+                )
+                .collect();
+
+            // There'll be an extra new-line at the end, we can pop it off for comestic reasons.
+            formatted_result.pop();
+
+            bail!(
+                indoc! {r#"
+                The dependencies and their versions being installed do not match with the lockfile! These are the conflicts:
+    
+                {}
+            "#},
+                formatted_result
+            )
+        }
+
+        let new_lockfile = Lockfile::from_resolve(&resolved);
+        new_lockfile.save(&self.project_path)?;
 
         progress.println(format!(
             "{}  Generated {}lockfile",
