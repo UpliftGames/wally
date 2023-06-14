@@ -393,7 +393,8 @@ export default function Package() {
                   "/" +
                   packageName +
                   "@" +
-                  packageMetadata.package.version
+                  packageMetadata.package.version +
+                  ".zip"
                 }
               >
                 <img
