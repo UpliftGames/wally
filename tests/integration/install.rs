@@ -60,7 +60,7 @@ fn run_locked_install(name: &str) -> Result<(), anyhow::Error> {
         Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/test-projects",)).join(name);
 
     let project = TempProject::new(&source_project).unwrap();
-    
+
     Args {
         global: GlobalOptions {
             test_registry: true,
