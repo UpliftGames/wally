@@ -71,7 +71,6 @@ Parity with:
 Installs all packages.
 
 `--locked` matches `cargo XXX --locked`, which will error if there is not an up-to-date lockfile. Intended for use on CI machines.
-(locked is a planned feature and not yet implemented)
 
 Parity with:
 * `npm install` with no arguments
