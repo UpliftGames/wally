@@ -7,6 +7,7 @@ mod package;
 mod publish;
 mod search;
 mod update;
+mod utils;
 
 pub use init::InitSubcommand;
 pub use install::InstallSubcommand;

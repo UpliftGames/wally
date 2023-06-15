@@ -1,22 +1,22 @@
 use std::collections::BTreeSet;
+
 use std::path::PathBuf;
 use std::time::Duration;
 
-use anyhow::bail;
-use crossterm::style::{Color, SetForegroundColor};
+use crossterm::style::{Attribute, Color, SetAttribute, SetForegroundColor};
 use indicatif::{ProgressBar, ProgressStyle};
-use indoc::indoc;
+
+use std::io::Write;
 use structopt::StructOpt;
 
 use crate::installation::InstallationContext;
-use crate::lockfile::{LockPackage, Lockfile};
+use crate::lockfile::Lockfile;
 use crate::manifest::Manifest;
 use crate::package_id::PackageId;
-use crate::package_source::{
-    PackageSource, PackageSourceMap, Registry, TestRegistry,
-};
+use crate::package_source::{PackageSource, PackageSourceMap, Registry, TestRegistry};
 use crate::resolution::resolve;
 
+use super::utils::{generate_depedency_changes, render_update_difference};
 use super::GlobalOptions;
 
 /// Install all of the dependencies of this project.
@@ -51,29 +51,64 @@ impl InstallSubcommand {
         let mut package_sources = PackageSourceMap::new(default_registry);
         package_sources.add_fallbacks()?;
 
-        let mut try_to_use = BTreeSet::new();
-        for package in lockfile.packages {
-            match package {
-                LockPackage::Registry(registry_package) => {
-                    try_to_use.insert(PackageId::new(
-                        registry_package.name,
-                        registry_package.version,
-                    ));
-                }
-                LockPackage::Git(_) => {}
-            }
-        }
+        let try_to_use = lockfile.as_ids().collect();
 
-        let progress = ProgressBar::new(0)
-            .with_style(
-                ProgressStyle::with_template("{spinner:.cyan}{wide_msg}")?.tick_chars("⠁⠈⠐⠠⠄⠂ "),
-            )
-            .with_message(format!(
-                "{} Resolving {}packages...",
+        let progress = ProgressBar::new(0).with_style(
+            ProgressStyle::with_template("{spinner:.cyan}{wide_msg}")?.tick_chars("⠁⠈⠐⠠⠄⠂ "),
+        );
+
+        progress.enable_steady_tick(Duration::from_millis(100));
+
+        if self.locked {
+            progress.println(format!(
+                "{} Verifying {}lockfile is up-to-date...",
                 SetForegroundColor(Color::DarkGreen),
                 SetForegroundColor(Color::Reset)
             ));
-        progress.enable_steady_tick(Duration::from_millis(100));
+
+            let latest_graph = resolve(&manifest, &BTreeSet::new(), &package_sources)?;
+
+            if try_to_use != latest_graph.activated {
+                progress.finish_and_clear();
+
+                let old_dependencies = &try_to_use;
+
+                let changes = generate_depedency_changes(old_dependencies, &latest_graph.activated);
+                let mut error_output = Vec::new();
+
+                writeln!(
+                    error_output,
+                    "{} The Lockfile is out of date and wasn't changed due to --locked{}",
+                    SetForegroundColor(Color::Yellow),
+                    SetForegroundColor(Color::Reset)
+                )?;
+                render_update_difference(&changes, &mut error_output)?;
+                writeln!(
+                    error_output,
+                    "{}{} Suggestion{}{} try running wally update",
+                    SetAttribute(Attribute::Bold),
+                    SetForegroundColor(Color::DarkGreen),
+                    SetForegroundColor(Color::Reset),
+                    SetAttribute(Attribute::Reset)
+                )?;
+
+                // Should be safe since we're only getting valid utf-8.
+                anyhow::bail!(String::from_utf8(error_output).unwrap());
+            }
+
+            progress.println(format!(
+                "{} Verified {}lockfile is up-to-date...{}",
+                SetForegroundColor(Color::DarkGreen),
+                SetForegroundColor(Color::Green),
+                SetForegroundColor(Color::Reset)
+            ));
+        }
+
+        progress.println(format!(
+            "{} Resolving {}packages...",
+            SetForegroundColor(Color::DarkGreen),
+            SetForegroundColor(Color::Reset)
+        ));
 
         let resolved = resolve(&manifest, &try_to_use, &package_sources)?;
 
@@ -83,77 +118,6 @@ impl InstallSubcommand {
             SetForegroundColor(Color::Reset),
             resolved.activated.len() - 1
         ));
-
-        if self.locked && resolved.activated != try_to_use {
-            // We know at this point that these are not equal sets.
-            // Meaning, at least there was a new dependency being used or an old dependency that is no longer being used.
-            // We'll find either by taking the difference of the latest set of dependencies and the old set of dependencies.
-            let old_dependencies: Vec<_> = try_to_use.difference(&resolved.activated).collect();
-            let latest_dependencies: Vec<_> = resolved.activated.difference(&try_to_use).collect();
-
-            // If a dependency name is present in both sets, then it was updated.
-            let updated_dependencies = {
-                let mut updated_ids = Vec::new();
-
-                for old_id in old_dependencies.iter() {
-                    for new_id in latest_dependencies.iter() {
-                        if old_id.name() == new_id.name() {
-                            updated_ids.push((old_id, new_id));
-                            break;
-                        }
-                    }
-                }
-
-                updated_ids
-            };
-
-            // If there is a dependency in the latest set, but not in the old set, then it is a new dependency.
-            let gained_dependencies: Vec<_> = latest_dependencies
-                .iter()
-                .filter(|new_id| {
-                    !old_dependencies
-                        .iter()
-                        .any(|old_id| old_id.name() == new_id.name())
-                })
-                .collect();
-
-            // If there is a dependency in the old set, but not in the latest, then it's a dependency no longer used.
-            let lost_dependencies: Vec<_> = old_dependencies
-                .iter()
-                .filter(|old_id| {
-                    !latest_dependencies
-                        .iter()
-                        .any(|new_id| new_id.name() == old_id.name())
-                })
-                .collect();
-
-            let mut formatted_result: String = updated_dependencies
-                .iter()
-                .map(|(old, new)| format!("Updated {} to {}\n", old, new))
-                .chain(
-                    gained_dependencies
-                        .iter()
-                        .map(|new| format!("Added {}\n", new)),
-                )
-                .chain(
-                    lost_dependencies
-                        .iter()
-                        .map(|old| format!("Removed {}\n", old)),
-                )
-                .collect();
-
-            // There'll be an extra new-line at the end, we can pop it off for comestic reasons.
-            formatted_result.pop();
-
-            bail!(
-                indoc! {r#"
-                The dependencies and their versions being installed do not match with the lockfile! These are the conflicts:
-    
-                {}
-            "#},
-                formatted_result
-            )
-        }
 
         let new_lockfile = Lockfile::from_resolve(&resolved);
         new_lockfile.save(&self.project_path)?;
