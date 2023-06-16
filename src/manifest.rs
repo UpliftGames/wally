@@ -43,8 +43,10 @@ impl Manifest {
     }
 
     pub fn from_slice(slice: &[u8]) -> anyhow::Result<Self> {
-        let manifest: Manifest =
-            toml::from_slice(slice).with_context(|| format!("failed to parse manifest"))?;
+        use std::str::from_utf8;
+
+        let manifest: Manifest = toml::from_str(from_utf8(slice)?)
+            .with_context(|| format!("failed to parse manifest"))?;
 
         Ok(manifest)
     }

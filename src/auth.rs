@@ -51,11 +51,18 @@ impl AuthStore {
 
         let mut auth: Document = contents.parse().unwrap();
 
-        if !auth.as_table_mut().contains_table("tokens") {
+        if !auth.as_table().contains_table("tokens") {
             auth["tokens"] = table();
         }
 
-        let tokens = auth.as_table_mut().entry("tokens");
+        let tokens = auth
+            .as_table_mut()
+            // We know that it exists due to the prior check.
+            .get_mut("tokens")
+            .unwrap()
+            // We know for a fact that it is a table due to the prior check.
+            .as_table_mut()
+            .unwrap();
 
         if let Some(token) = token {
             tokens[key] = value(token);
