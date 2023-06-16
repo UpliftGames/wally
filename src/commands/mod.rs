@@ -7,6 +7,7 @@ mod package;
 mod publish;
 mod search;
 mod update;
+mod utils;
 
 pub use init::InitSubcommand;
 pub use install::InstallSubcommand;
@@ -16,7 +17,8 @@ pub use manifest_to_json::ManifestToJsonSubcommand;
 pub use package::PackageSubcommand;
 pub use publish::PublishSubcommand;
 pub use search::SearchSubcommand;
-pub use update::{PackageSpec, UpdateSubcommand};
+pub use update::UpdateSubcommand;
+pub use utils::PackageSpec;
 
 use structopt::StructOpt;
 

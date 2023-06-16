@@ -1,7 +1,5 @@
 use std::collections::BTreeSet;
-use std::convert::TryInto;
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::time::Duration;
 
 use crate::installation::InstallationContext;
@@ -9,12 +7,13 @@ use crate::lockfile::Lockfile;
 use crate::manifest::Manifest;
 use crate::package_id::PackageId;
 use crate::package_name::PackageName;
-use crate::package_req::PackageReq;
 use crate::package_source::{PackageSource, PackageSourceMap, Registry, TestRegistry};
 use crate::{resolution, GlobalOptions};
 use crossterm::style::{Attribute, Color, SetAttribute, SetForegroundColor};
 use indicatif::{ProgressBar, ProgressStyle};
 use structopt::StructOpt;
+
+use super::utils::PackageSpec;
 
 /// Update all of the dependencies of this project.
 #[derive(Debug, StructOpt)]
@@ -153,29 +152,6 @@ impl UpdateSubcommand {
                     required_target.matches(package_id.name(), package_id.version())
                 }
             })
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Hash)]
-pub enum PackageSpec {
-    Named(PackageName),
-    Required(PackageReq),
-}
-
-impl FromStr for PackageSpec {
-    type Err = anyhow::Error;
-
-    fn from_str(value: &str) -> anyhow::Result<Self> {
-        if let Ok(package_req) = value.parse() {
-            Ok(PackageSpec::Required(package_req))
-        } else if let Ok(package_name) = value.parse() {
-            Ok(PackageSpec::Named(package_name))
-        } else {
-            anyhow::bail!(
-                "Was unable to parse {} into a package requirement or a package name!",
-                value
-            )
-        }
     }
 }
 
