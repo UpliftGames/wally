@@ -2,14 +2,13 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use anyhow::bail;
-use anyhow::format_err;
 use semver::Version;
 use serde::Serialize;
 
 use crate::manifest::{Manifest, Realm};
 use crate::package_id::PackageId;
 use crate::package_req::PackageReq;
-use crate::package_source::{PackageSourceId, PackageSourceMap, PackageSourceProvider};
+use crate::package_source::{PackageSourceId, PackageSourceMap};
 
 /// A completely resolved graph of packages returned by `resolve`.
 ///
@@ -165,25 +164,8 @@ pub fn resolve(
         }
 
         // Look through all our packages sources in order of priority
-        let (source_registry, mut candidates) = package_sources
-            .source_order()
-            .iter()
-            .find_map(|source| {
-                let registry = package_sources.get(source).unwrap();
-
-                // Pull all of the possible candidate versions of the package we're
-                // looking for from the highest priority source which has them.
-                match registry.query(&dependency_request.package_req) {
-                    Ok(manifests) => Some((source, manifests)),
-                    Err(_) => None,
-                }
-            })
-            .ok_or_else(|| {
-                format_err!(
-                    "Failed to find a source for {}",
-                    dependency_request.package_req
-                )
-            })?;
+        let (source_registry, mut candidates) =
+            package_sources.search_for(&dependency_request.package_req)?;
 
         // Sort our candidate packages by descending version, so that we try the
         // highest versions first.

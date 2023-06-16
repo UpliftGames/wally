@@ -83,6 +83,25 @@ impl PackageSourceMap {
 
         Ok(())
     }
+
+    pub(crate) fn search_for(
+        &self,
+        package_req: &PackageReq,
+    ) -> anyhow::Result<(&PackageSourceId, Vec<Manifest>)> {
+        self.source_order()
+            .iter()
+            .find_map(|source| {
+                let registry = self.get(source).unwrap();
+
+                // Pull all of the possible candidate versions of the package we're
+                // looking for from the highest priority source which has them.
+                match registry.query(package_req) {
+                    Ok(manifests) => Some((source, manifests)),
+                    Err(_) => None,
+                }
+            })
+            .ok_or_else(|| anyhow::format_err!("Failed to find a source for {}", package_req))
+    }
 }
 
 pub trait PackageSourceProvider: Sync + Send + Clone {
