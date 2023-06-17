@@ -1,5 +1,7 @@
+use core::fmt::Display;
 use std::collections::BTreeMap;
 use std::path::Path;
+use std::str::FromStr;
 
 use anyhow::Context;
 use semver::Version;
@@ -173,5 +175,28 @@ impl Realm {
             (dep_type, dep_realm),
             (Server, _) | (Shared, Shared) | (Dev, _)
         )
+    }
+}
+
+impl Display for Realm {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Realm::Server => f.write_str("Server"),
+            Realm::Shared => f.write_str("Shared"),
+            Realm::Dev => f.write_str("Dev"),
+        }
+    }
+}
+
+impl FromStr for Realm {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().trim() {
+            "shared" => Ok(Self::Shared),
+            "dev" => Ok(Self::Dev),
+            "server" => Ok(Self::Server),
+            _ => anyhow::bail!("'{}' is not a valid realm.", s),
+        }
     }
 }
