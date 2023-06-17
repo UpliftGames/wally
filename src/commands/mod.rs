@@ -1,3 +1,4 @@
+mod add;
 mod init;
 mod install;
 mod login;
@@ -9,6 +10,7 @@ mod search;
 mod update;
 mod utils;
 
+pub use add::AddSubcommand;
 pub use init::InitSubcommand;
 pub use install::InstallSubcommand;
 pub use login::LoginSubcommand;
@@ -35,6 +37,7 @@ pub struct Args {
 impl Args {
     pub fn run(self) -> anyhow::Result<()> {
         match self.subcommand {
+            Subcommand::Add(subcommand) => subcommand.run(self.global),
             Subcommand::Publish(subcommand) => subcommand.run(self.global),
             Subcommand::Init(subcommand) => subcommand.run(),
             Subcommand::Login(subcommand) => subcommand.run(),
@@ -82,6 +85,7 @@ impl Default for GlobalOptions {
 
 #[derive(Debug, StructOpt)]
 pub enum Subcommand {
+    Add(AddSubcommand),
     Init(InitSubcommand),
     Install(InstallSubcommand),
     Update(UpdateSubcommand),
