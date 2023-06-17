@@ -109,7 +109,7 @@ impl SearchBackend {
             for manifest in &(*metadata).versions {
                 doc.add_text(versions, manifest.package.version.to_string());
 
-                if !manifest.package.version.is_prerelease() {
+                if !manifest.package.version.pre.is_empty() {
                     doc.add_text(scope, manifest.package.name.scope());
                     doc.add_text(name, manifest.package.name.name());
 
