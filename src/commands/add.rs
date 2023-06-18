@@ -19,7 +19,7 @@ pub struct AddSubcommand {
     pub project_path: PathBuf,
 
     /// What realm (dev, server, shared) you wish to add your dependency.
-    #[structopt(long = "what-realm", default_value = "shared")]
+    #[structopt(long = "realm", default_value = "shared")]
     pub what_realm: Realm,
 
     /// Desired dependencies to add.
