@@ -59,8 +59,8 @@ impl AddSubcommand {
         let mut package_sources = PackageSourceMap::new(default_registry);
         package_sources.add_fallbacks()?;
 
-        let mut manifest = String::from_utf8(fs::read(self.project_path.join("wally.toml"))?)?
-            .parse::<toml_edit::Document>()?;
+        let mut manifest: toml_edit::Document =
+            String::from_utf8(fs::read(self.project_path.join("wally.toml"))?)?.parse()?;
 
         self.update_manifest(&mut manifest, package_sources)?;
 
