@@ -2,7 +2,7 @@ use std::fmt;
 use std::str::FromStr;
 
 use anyhow::{anyhow, bail, Context};
-use semver::{Version, VersionReq};
+use semver::{Op, Version, VersionReq};
 use serde::de::{Deserialize, Deserializer, Error, Visitor};
 use serde::ser::{Serialize, Serializer};
 
@@ -46,7 +46,18 @@ impl PackageReq {
 
 impl fmt::Display for PackageReq {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "{}@{}", self.name, self.version_req)
+        let version_req = self.version_req().to_string();
+
+        write!(
+            formatter,
+            "{}@{}",
+            self.name,
+            // Convention: The VersionReq ^1.1.1 should simplify to 1.1.1.
+            match &self.version_req.comparators[..] {
+                [comparator] if comparator.op == Op::Caret => version_req.trim_start_matches('^'),
+                _ => &version_req,
+            }
+        )
     }
 }
 
@@ -85,12 +96,7 @@ impl FromStr for PackageReq {
 
 impl Serialize for PackageReq {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let combined_name = format!(
-            "{}/{}@{}",
-            self.name().scope(),
-            self.name().name(),
-            self.version_req()
-        );
+        let combined_name = self.to_string();
         serializer.serialize_str(&combined_name)
     }
 }
@@ -134,16 +140,14 @@ mod test {
     }
 
     #[test]
-    fn display() {
+    fn when_one_carot_predicate_omit_carot() {
         let req = PackageReq::new(
             PackageName::new("hello", "world").unwrap(),
             VersionReq::parse("0.2.3").unwrap(),
         );
 
-        // The semver crate's VersionReq type stores and prints using the most
-        // explicit version of a constraint. This normalization helps make
-        // comparison and evaluation simpler, but make printing a little ugly.
-        assert_eq!(req.to_string(), "hello/world@>=0.2.3, <0.3.0");
+        // We make sure that if there's only one predicate that's the '^', the carot is omitted.
+        assert_eq!(req.to_string(), "hello/world@0.2.3");
     }
 
     #[test]
@@ -184,7 +188,7 @@ mod test {
         let package_req = PackageReq::new(name, VersionReq::parse("2.3.1").unwrap());
 
         let serialized = serde_json::to_string(&package_req).unwrap();
-        assert_eq!(serialized, "\"lpghatguy/asink@>=2.3.1, <3.0.0\"");
+        assert_eq!(serialized, "\"lpghatguy/asink@2.3.1\"");
 
         let deserialized: PackageReq = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized, package_req);
