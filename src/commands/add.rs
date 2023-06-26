@@ -90,8 +90,8 @@ impl AddSubcommand {
         let was_lexicographically_sorted = is_table_lexicographically_sorted(table);
         for package_spec in &self.dependencies {
             let alias = match &package_spec {
-                PackageSpec::Named(named) => named.name().to_owned(),
-                PackageSpec::Required(required) => required.name().name().to_owned(),
+                PackageSpec::Named(named) => named.name(),
+                PackageSpec::Required(required) => required.name().name(),
             }
             // Luau does not do kebab-casing.
             .replace("-", "_");
