@@ -62,18 +62,6 @@ impl AddSubcommand {
         let mut manifest: toml_edit::Document =
             String::from_utf8(fs::read(self.project_path.join("wally.toml"))?)?.parse()?;
 
-        self.update_manifest(&mut manifest, package_sources)?;
-
-        fs::write(self.project_path.join("wally.toml"), manifest.to_string())?;
-
-        Ok(())
-    }
-
-    fn update_manifest(
-        &self,
-        manifest: &mut toml_edit::Document,
-        package_sources: PackageSourceMap,
-    ) -> anyhow::Result<()> {
         let table_name = self.what_realm.as_table_name();
         let table = match manifest
             .as_table_mut()
@@ -87,7 +75,9 @@ impl AddSubcommand {
                 table_name
             ),
         };
+
         let was_lexicographically_sorted = is_table_lexicographically_sorted(table);
+
         for package_spec in &self.dependencies {
             let alias = match &package_spec {
                 PackageSpec::Named(named) => named.name(),
@@ -139,6 +129,8 @@ impl AddSubcommand {
         if was_lexicographically_sorted {
             table.sort_values_by(|key_a, _, key_b, _| compare_key_lexicographically(key_a, key_b))
         }
+
+        fs::write(self.project_path.join("wally.toml"), manifest.to_string())?;
 
         Ok(())
     }
