@@ -1,12 +1,13 @@
 use crate::{
     manifest::{Manifest, Realm},
+    package_name::PackageName,
     package_req::PackageReq,
     package_source::{PackageSource, PackageSourceMap, Registry, TestRegistry},
     GlobalOptions,
 };
 use anyhow::Context;
 use fs_err as fs;
-use semver::VersionReq;
+use semver::{Version, VersionReq};
 use std::{cmp::Ordering, path::PathBuf};
 use structopt::StructOpt;
 
@@ -96,18 +97,7 @@ impl AddSubcommand {
                     let latest_package = packages.last().unwrap().package_id();
                     let latest_version = latest_package.version();
 
-                    PackageReq::new(
-                        named.clone(),
-                        VersionReq {
-                            comparators: vec![semver::Comparator {
-                                op: semver::Op::Caret,
-                                major: latest_version.major,
-                                minor: Some(latest_version.minor),
-                                patch: Some(latest_version.patch),
-                                pre: latest_version.pre.clone(),
-                            }],
-                        },
-                    )
+                    into_carot_req(named, latest_version)
                 }
                 PackageSpec::Required(required) => {
                     let _ = package_sources.search_for(&required)?;
@@ -134,6 +124,21 @@ impl AddSubcommand {
 
         Ok(())
     }
+}
+
+fn into_carot_req(named: &PackageName, latest_version: &Version) -> PackageReq {
+    PackageReq::new(
+        named.clone(),
+        VersionReq {
+            comparators: vec![semver::Comparator {
+                op: semver::Op::Caret,
+                major: latest_version.major,
+                minor: Some(latest_version.minor),
+                patch: Some(latest_version.patch),
+                pre: latest_version.pre.clone(),
+            }],
+        },
+    )
 }
 
 fn is_table_lexicographically_sorted(table: &toml_edit::Table) -> bool {
