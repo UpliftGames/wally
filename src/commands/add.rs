@@ -39,7 +39,7 @@ impl Realm {
 
 impl AddSubcommand {
     pub fn run(self, global: GlobalOptions) -> anyhow::Result<()> {
-        if !self.dependencies.is_empty() {
+        if self.dependencies.is_empty() {
             anyhow::bail!("One more or more dependencies should of been specified.")
         }
 
