@@ -152,7 +152,7 @@ fn is_table_lexicographically_sorted(table: &toml_edit::Table) -> bool {
         let mut index = 1;
         let items = table.get_values();
 
-        while index < length - 1 {
+        while index <= length - 1 {
             let last_key = &items[index - 1].0;
             let current_key = &items[index].0;
 
