@@ -1,0 +1,6 @@
+{
+	"name": "sorted-dependencies",
+	"tree": {
+		"$path": "src"
+	}
+}

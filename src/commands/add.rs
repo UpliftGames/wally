@@ -100,7 +100,14 @@ impl AddSubcommand {
                     into_carot_req(named, latest_version)
                 }
                 PackageSpec::Required(required) => {
-                    let _ = package_sources.search_for(&required)?;
+                    let matches = package_sources.search_for(&required)?.1;
+                    if matches.is_empty() {
+                        anyhow::bail!(
+                            "Could not find a package from any sources that matched {}!",
+                            required
+                        )
+                    }
+
                     required.clone()
                 }
             };

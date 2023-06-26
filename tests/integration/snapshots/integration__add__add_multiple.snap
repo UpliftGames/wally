@@ -1,0 +1,17 @@
+---
+source: tests/integration/add.rs
+expression: "fs::read_to_string(project.path().join(\"wally.toml\")).unwrap()"
+---
+[package]
+name = "biff/server-depends-on-shared"
+version = "0.1.0"
+license = "MIT"
+realm = "server"
+registry = "test-registries/primary-registry"
+
+[dependencies]
+b = "biff/minimal@0.1.0"
+a = "biff/minimal-shared@0.1.0"
+minimal = "biff/minimal@0.1.0"
+transitive_dependency = "biff/transitive-dependency@=0.1.0"
+

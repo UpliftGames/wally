@@ -1,0 +1,10 @@
+[package]
+name = "biff/sorted-dependencies"
+version = "0.1.0"
+license = "MIT"
+realm = "server"
+registry = "test-registries/primary-registry"
+
+[dependencies]
+a = "biff/minimal-shared@0.1.0"
+b = "biff/minimal@0.1.0"

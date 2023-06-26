@@ -2,6 +2,7 @@
 mod util;
 mod temp_project;
 
+mod add;
 mod install;
 mod publish;
 mod read_projects;
