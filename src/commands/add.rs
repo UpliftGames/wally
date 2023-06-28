@@ -60,7 +60,7 @@ impl AddSubcommand {
             .or_insert(toml_edit::table())
         {
             toml_edit::Item::Table(table) => table,
-            entry @ _ => anyhow::bail!(
+            entry => anyhow::bail!(
                 "Found unexpectedly {} found for {}!",
                 entry.type_name(),
                 table_name
@@ -75,7 +75,7 @@ impl AddSubcommand {
                 PackageSpec::Required(required) => required.name().name(),
             }
             // Luau does not do kebab-casing.
-            .replace("-", "_");
+            .replace('-', "_");
 
             // Make sure that the package actually exists and convert into a requirement to place in the manifest.
             let package_req = match package_spec {
@@ -90,7 +90,7 @@ impl AddSubcommand {
                     into_carot_req(named, latest_version)
                 }
                 PackageSpec::Required(required) => {
-                    let matches = package_sources.search_for(&required)?.1;
+                    let matches = package_sources.search_for(required)?.1;
                     if matches.is_empty() {
                         anyhow::bail!(
                             "Could not find a package from any sources that matched {}!",
@@ -102,7 +102,7 @@ impl AddSubcommand {
                 }
             };
 
-            if let Some(_) = table.get(&alias) {
+            if table.get(&alias).is_some() {
                 anyhow::bail!(
                     "The alias {} already exists in {}! Stopped to prevent overriding.",
                     alias,
@@ -163,7 +163,7 @@ fn compare_list_of_keys_lexicographically(
         // TODO: this is very anglocentric, maybe fix?
         .find_map(|(a, b)| match compare_key_lexicographically(a, b) {
             Ordering::Equal => None,
-            ordering @ _ => Some(ordering),
+            ordering => Some(ordering),
         })
         .unwrap_or_else(|| a.len().cmp(&b.len()))
 }
