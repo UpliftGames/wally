@@ -1,4 +1,4 @@
-use crate::{package_name::PackageName, package_req::PackageReq};
+use crate::{manifest::Realm, package_name::PackageName, package_req::PackageReq};
 use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -21,5 +21,13 @@ impl FromStr for PackageSpec {
                 value
             )
         }
+    }
+}
+
+pub fn as_table_name(realm: &Realm) -> &'static str {
+    match realm {
+        Realm::Server => "server-dependencies",
+        Realm::Shared => "dependencies",
+        Realm::Dev => "dev-dependencies",
     }
 }

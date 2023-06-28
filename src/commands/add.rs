@@ -11,7 +11,7 @@ use semver::{Version, VersionReq};
 use std::{cmp::Ordering, path::PathBuf};
 use structopt::StructOpt;
 
-use super::utils::PackageSpec;
+use super::utils::{as_table_name, PackageSpec};
 
 #[derive(Debug, StructOpt)]
 pub struct AddSubcommand {
@@ -26,16 +26,6 @@ pub struct AddSubcommand {
     /// Desired dependencies to add.
     /// If it's a named dependency, it will pick the latest version.
     pub dependencies: Vec<PackageSpec>,
-}
-
-impl Realm {
-    fn as_table_name(&self) -> &str {
-        match self {
-            Realm::Server => "server-dependencies",
-            Realm::Shared => "dependencies",
-            Realm::Dev => "dev-dependencies",
-        }
-    }
 }
 
 impl AddSubcommand {
@@ -63,7 +53,7 @@ impl AddSubcommand {
         let mut manifest: toml_edit::Document =
             String::from_utf8(fs::read(self.project_path.join("wally.toml"))?)?.parse()?;
 
-        let table_name = self.what_realm.as_table_name();
+        let table_name = as_table_name(&self.what_realm);
         let table = match manifest
             .as_table_mut()
             .entry(table_name)
