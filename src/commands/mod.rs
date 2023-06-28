@@ -6,6 +6,7 @@ mod logout;
 mod manifest_to_json;
 mod package;
 mod publish;
+mod remove;
 mod search;
 mod update;
 mod utils;
@@ -18,6 +19,7 @@ pub use logout::LogoutSubcommand;
 pub use manifest_to_json::ManifestToJsonSubcommand;
 pub use package::PackageSubcommand;
 pub use publish::PublishSubcommand;
+pub use remove::RemoveSubcommand;
 pub use search::SearchSubcommand;
 pub use update::UpdateSubcommand;
 pub use utils::PackageSpec;
@@ -47,6 +49,7 @@ impl Args {
             Subcommand::Package(subcommand) => subcommand.run(),
             Subcommand::Install(subcommand) => subcommand.run(self.global),
             Subcommand::ManifestToJson(subcommand) => subcommand.run(),
+            Subcommand::Remove(subcommand) => subcommand.run(),
         }
     }
 }
@@ -95,4 +98,5 @@ pub enum Subcommand {
     Search(SearchSubcommand),
     Package(PackageSubcommand),
     ManifestToJson(ManifestToJsonSubcommand),
+    Remove(RemoveSubcommand),
 }
