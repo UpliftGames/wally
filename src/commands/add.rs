@@ -149,29 +149,19 @@ fn into_carot_req(named: &PackageName, latest_version: &Version) -> PackageReq {
 }
 
 fn is_table_lexicographically_sorted(table: &toml_edit::Table) -> bool {
-    let length = table.len();
-    if length <= 1 {
-        true
-    } else {
-        let mut index = 1;
-        let items = table.get_values();
+    let items = table.get_values();
 
-        while index <= length - 1 {
-            let last_key = &items[index - 1].0;
-            let current_key = &items[index].0;
+    let behind = items.iter().map(|x| &x.0);
+    let leading = behind.clone().skip(1);
 
-            match compare_list_of_keys_lexicographically(last_key, current_key) {
-                Ordering::Greater => return false,
-                // TODO: I don't think it's possible for it to be equal?
-                // Should be fine, TM.
-                Ordering::Less | Ordering::Equal => {}
-            };
-
-            index += 1
+    // Verifying that it's in ascending order by checking if for all of n to total minus one, k[n] <= k[n + 1] holds!
+    behind.zip(leading).all(|(prior_key, following_key)| {
+        match compare_list_of_keys_lexicographically(prior_key, following_key) {
+            Ordering::Greater => false,
+            Ordering::Less => true,
+            Ordering::Equal => unreachable!("Impossible for duplicate keys to exist!"),
         }
-
-        true
-    }
+    })
 }
 
 fn compare_list_of_keys_lexicographically(
