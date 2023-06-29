@@ -9,6 +9,7 @@ use fs_err::File;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
+use crate::manifest::Alias;
 use crate::package_id;
 use crate::{
     manifest::Manifest, package_id::PackageId, package_name::PackageName, resolution::Resolve,
@@ -26,11 +27,8 @@ pub struct Lockfile {
 
 fn grab_dependencies(
     package_id: &PackageId,
-    dependencies: &BTreeMap<
-        package_id::PackageId,
-        BTreeMap<std::string::String, package_id::PackageId>,
-    >,
-) -> Vec<(String, PackageId)> {
+    dependencies: &BTreeMap<package_id::PackageId, BTreeMap<Alias, PackageId>>,
+) -> Vec<(Alias, PackageId)> {
     dependencies
         .get(package_id)
         .map(|dependencies| {
@@ -127,7 +125,7 @@ pub struct RegistryLockPackage {
     pub checksum: Option<String>,
 
     #[serde(default)]
-    pub dependencies: Vec<(String, PackageId)>,
+    pub dependencies: Vec<(Alias, PackageId)>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

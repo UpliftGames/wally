@@ -6,7 +6,7 @@ use anyhow::format_err;
 use semver::Version;
 use serde::Serialize;
 
-use crate::manifest::{Manifest, Realm};
+use crate::manifest::{Alias, Manifest, Realm};
 use crate::package_id::PackageId;
 use crate::package_req::PackageReq;
 use crate::package_source::{PackageSourceId, PackageSourceMap, PackageSourceProvider};
@@ -26,17 +26,17 @@ pub struct Resolve {
     pub metadata: BTreeMap<PackageId, ResolvePackageMetadata>,
 
     /// Graph of all dependencies originating from the "shared" dependency realm.
-    pub shared_dependencies: BTreeMap<PackageId, BTreeMap<String, PackageId>>,
+    pub shared_dependencies: BTreeMap<PackageId, BTreeMap<Alias, PackageId>>,
 
     /// Graph of all dependencies originating from the "server" dependency realm.
-    pub server_dependencies: BTreeMap<PackageId, BTreeMap<String, PackageId>>,
+    pub server_dependencies: BTreeMap<PackageId, BTreeMap<Alias, PackageId>>,
 
     /// Graph of all dependencies originating from the "dev" dependency realm.
-    pub dev_dependencies: BTreeMap<PackageId, BTreeMap<String, PackageId>>,
+    pub dev_dependencies: BTreeMap<PackageId, BTreeMap<Alias, PackageId>>,
 }
 
 impl Resolve {
-    fn activate(&mut self, source: PackageId, dep_name: String, dep_realm: Realm, dep: PackageId) {
+    fn activate(&mut self, source: PackageId, dep_name: Alias, dep_realm: Realm, dep: PackageId) {
         self.activated.insert(dep.clone());
 
         let dependencies = match dep_realm {
@@ -314,7 +314,7 @@ pub struct DependencyRequest {
     request_source: PackageId,
     request_realm: Realm,
     origin_realm: Realm,
-    package_alias: String,
+    package_alias: Alias,
     package_req: PackageReq,
 }
 

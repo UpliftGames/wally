@@ -1,7 +1,10 @@
 use std::collections::BTreeMap;
+use std::convert::TryFrom;
+use std::fmt::{self, Display};
 use std::path::Path;
+use std::str::FromStr;
 
-use anyhow::Context;
+use anyhow::{ensure, Context};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
@@ -21,13 +24,13 @@ pub struct Manifest {
     pub place: PlaceInfo,
 
     #[serde(default)]
-    pub dependencies: BTreeMap<String, PackageReq>,
+    pub dependencies: BTreeMap<Alias, PackageReq>,
 
     #[serde(default)]
-    pub server_dependencies: BTreeMap<String, PackageReq>,
+    pub server_dependencies: BTreeMap<Alias, PackageReq>,
 
     #[serde(default)]
-    pub dev_dependencies: BTreeMap<String, PackageReq>,
+    pub dev_dependencies: BTreeMap<Alias, PackageReq>,
 }
 
 impl Manifest {
@@ -171,5 +174,101 @@ impl Realm {
             (dep_type, dep_realm),
             (Server, _) | (Shared, Shared) | (Dev, _)
         )
+    }
+}
+
+/// This newtype struct represents a valid alias for a given dependency.
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Serialize, Deserialize)]
+#[serde(try_from = "String", into = "String")]
+pub struct Alias(String);
+
+impl Display for Alias {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.0.as_str())
+    }
+}
+
+impl Alias {
+    pub fn new<T>(input: T) -> anyhow::Result<Alias>
+    where
+        T: Into<String>,
+    {
+        let inner = input.into();
+        Self::is_valid(&inner)?;
+        Ok(Alias(inner))
+    }
+
+    pub fn is_valid(alias: &str) -> anyhow::Result<()> {
+        // An empty alias is nonsensical (doesn't map to Lua well and doesn't map to the file system at all).
+        let is_not_empty = !alias.is_empty();
+        ensure!(is_not_empty, "Cannot have an empty alias.");
+
+        // The following two ensures that the alias is a valid Lua identifier.
+        let does_not_start_with_digit = !alias.chars().next().unwrap().is_ascii_digit();
+        let only_valid_chars = alias.chars().all(|c| c.is_ascii_alphanumeric() || c == '_');
+
+        // Windows' filesystem doesn't like the following names.
+        // https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#win32-file-namespaces
+        let not_reserved_windows_name = !matches!(
+            alias,
+            "con"
+                | "prn"
+                | "aux"
+                | "nul"
+                | "com0"
+                | "com1"
+                | "com2"
+                | "com3"
+                | "com4"
+                | "com5"
+                | "com6"
+                | "com7"
+                | "com8"
+                | "com9"
+                | "lpt0"
+                | "lpt1"
+                | "lpt2"
+                | "lpt3"
+                | "lpt4"
+                | "lpt5"
+                | "lpt6"
+                | "lpt7"
+                | "lpt8"
+                | "lpt9"
+        );
+
+        ensure!(
+            does_not_start_with_digit,
+            "The alias {} is invalid since it starts with a digit."
+        );
+        ensure!(only_valid_chars, "The alias {} is invalid since it has invalid characters (can only have a-Z, A-Z, _, 0-9).");
+        ensure!(
+            not_reserved_windows_name,
+            "The alias {} is invalid since it matches a reserved Windows name."
+        );
+
+        Ok(())
+    }
+}
+
+impl FromStr for Alias {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> anyhow::Result<Self> {
+        Self::new(s)
+    }
+}
+
+impl TryFrom<String> for Alias {
+    type Error = anyhow::Error;
+
+    fn try_from(value: String) -> anyhow::Result<Self> {
+        Self::new(value)
+    }
+}
+
+impl From<Alias> for String {
+    fn from(value: Alias) -> Self {
+        value.0
     }
 }
