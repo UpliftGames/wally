@@ -6,6 +6,7 @@ use crate::{
     GlobalOptions,
 };
 use anyhow::Context;
+use crossterm::style::{Color, SetForegroundColor};
 use fs_err as fs;
 use semver::{Version, VersionReq};
 use std::{cmp::Ordering, path::PathBuf, str::FromStr};
@@ -111,14 +112,33 @@ impl AddSubcommand {
                 );
             }
 
+            println!(
+                "{}      Added{} {} as {}.",
+                SetForegroundColor(Color::DarkGreen),
+                SetForegroundColor(Color::Reset),
+                package_req,
+                alias
+            );
+
             table.insert(&alias, toml_edit::value(package_req.to_string()));
         }
 
         if was_lexicographically_sorted {
-            table.sort_values_by(|key_a, _, key_b, _| compare_key_lexicographically(key_a, key_b))
+            table.sort_values_by(|key_a, _, key_b, _| compare_key_lexicographically(key_a, key_b));
+
+            println!(
+                "{}     Sorted{} dependencies alphabetically.",
+                SetForegroundColor(Color::DarkGreen),
+                SetForegroundColor(Color::Reset)
+            );
         }
 
         fs::write(self.project_path.join("wally.toml"), manifest.to_string())?;
+        println!(
+            "{}   Finished{} updated manifest with new dependencies!",
+            SetForegroundColor(Color::DarkGreen),
+            SetForegroundColor(Color::Reset)
+        );
 
         Ok(())
     }
