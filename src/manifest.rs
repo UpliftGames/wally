@@ -198,6 +198,10 @@ impl Alias {
         Ok(Alias(inner))
     }
 
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
     pub fn is_valid(alias: &str) -> anyhow::Result<()> {
         // An empty alias is nonsensical (doesn't map to Lua well and doesn't map to the file system at all).
         let is_not_empty = !alias.is_empty();
