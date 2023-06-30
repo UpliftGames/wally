@@ -276,3 +276,25 @@ impl From<Alias> for String {
         value.0
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::Alias;
+
+    #[test]
+    fn reject_bad_aliases() {
+        assert!(
+            Alias::new(":").is_err(),
+            "consist only of valid ascii characters"
+        );
+        assert!(Alias::new("").is_err(), "empty alias is bad.");
+        assert!(
+            Alias::new("1hello").is_err(),
+            "starting with a digit grinds against lua"
+        );
+        assert!(
+            Alias::new("aux").is_err(),
+            "windows will reject this file name since it's reserved"
+        )
+    }
+}
