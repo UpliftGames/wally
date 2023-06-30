@@ -1,6 +1,6 @@
 use fs_err as fs;
 use insta::assert_snapshot;
-use libwally::{manifest::{Realm}, AddSubcommand, Args, GlobalOptions, Subcommand};
+use libwally::{manifest::Realm, AddSubcommand, Args, GlobalOptions, Subcommand};
 use std::path::Path;
 
 use crate::temp_project::TempProject;
@@ -168,9 +168,7 @@ fn specify_alias() {
         subcommand: Subcommand::Add(AddSubcommand {
             project_path: project.path().to_owned(),
             what_realm: Realm::Shared,
-            packages: vec![
-                "variant:biff/minimal".parse().unwrap(),
-            ],
+            packages: vec!["variant:biff/minimal".parse().unwrap()],
         }),
     };
 
