@@ -11,7 +11,7 @@ mod search;
 mod update;
 mod utils;
 
-pub use add::AddSubcommand;
+pub use add::{AddSubcommand, PackageParam as AddPackageParam};
 pub use init::InitSubcommand;
 pub use install::InstallSubcommand;
 pub use login::LoginSubcommand;

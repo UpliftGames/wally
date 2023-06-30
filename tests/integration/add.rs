@@ -1,10 +1,7 @@
 use fs_err as fs;
 use insta::assert_snapshot;
-use libwally::{
-    manifest::Realm, package_name::PackageName, package_req::PackageReq, AddSubcommand, Args,
-    GlobalOptions, PackageSpec, Subcommand,
-};
-use std::{path::Path, str::FromStr};
+use libwally::{manifest::{Realm}, AddSubcommand, Args, GlobalOptions, Subcommand};
+use std::path::Path;
 
 use crate::temp_project::TempProject;
 
@@ -20,9 +17,7 @@ fn add_named_package() {
         subcommand: Subcommand::Add(AddSubcommand {
             project_path: project.path().to_owned(),
             what_realm: Realm::Shared,
-            dependencies: vec![PackageSpec::Named(
-                PackageName::from_str("biff/minimal").unwrap(),
-            )],
+            packages: vec!["biff/minimal".parse().unwrap()],
         }),
     };
 
@@ -42,10 +37,7 @@ fn add_versioned_package() {
         subcommand: Subcommand::Add(AddSubcommand {
             project_path: project.path().to_owned(),
             what_realm: Realm::Shared,
-            dependencies: vec![PackageSpec::Required(
-                // It has to be exact!
-                PackageReq::from_str("biff/minimal@=0.1.0").unwrap(),
-            )],
+            packages: vec!["biff/minimal@=0.1.0".parse().unwrap()],
         }),
     };
 
@@ -65,9 +57,7 @@ fn error_on_invalid_version() {
         subcommand: Subcommand::Add(AddSubcommand {
             project_path: project.path().to_owned(),
             what_realm: Realm::Shared,
-            dependencies: vec![PackageSpec::Required(
-                PackageReq::from_str("biff/minimal@1.0.0").unwrap(),
-            )],
+            packages: vec!["biff/minimal@1.0.0".parse().unwrap()],
         }),
     };
 
@@ -89,9 +79,7 @@ fn error_on_nonexistant_package() {
         subcommand: Subcommand::Add(AddSubcommand {
             project_path: project.path().to_owned(),
             what_realm: Realm::Shared,
-            dependencies: vec![PackageSpec::Named(
-                PackageName::from_str("biff/i-dont-exist").unwrap(),
-            )],
+            packages: vec!["biff/i-dont-exist".parse().unwrap()],
         }),
     };
 
@@ -113,9 +101,7 @@ fn add_to_target_realm() {
         subcommand: Subcommand::Add(AddSubcommand {
             project_path: project.path().to_owned(),
             what_realm: Realm::Server,
-            dependencies: vec![PackageSpec::Named(
-                PackageName::from_str("biff/minimal").unwrap(),
-            )],
+            packages: vec!["biff/minimal".parse().unwrap()],
         }),
     };
 
@@ -135,11 +121,9 @@ fn add_multiple() {
         subcommand: Subcommand::Add(AddSubcommand {
             project_path: project.path().to_owned(),
             what_realm: Realm::Shared,
-            dependencies: vec![
-                PackageSpec::Named(PackageName::from_str("biff/minimal").unwrap()),
-                PackageSpec::Required(
-                    PackageReq::from_str("biff/transitive-dependency@=0.1.0").unwrap(),
-                ),
+            packages: vec![
+                "biff/minimal".parse().unwrap(),
+                "biff/transitive-dependency@=0.1.0".parse().unwrap(),
             ],
         }),
     };
@@ -160,14 +144,32 @@ fn add_following_lexicographic_sort() {
         subcommand: Subcommand::Add(AddSubcommand {
             project_path: project.path().to_owned(),
             what_realm: Realm::Shared,
-            dependencies: vec![
-                PackageSpec::Named(PackageName::from_str("biff/minimal").unwrap()),
-                PackageSpec::Named(
-                    PackageName::from_str("diamond-graph/direct-dependency-b").unwrap(),
-                ),
-                PackageSpec::Named(
-                    PackageName::from_str("diamond-graph/direct-dependency-a").unwrap(),
-                ),
+            packages: vec![
+                "biff/minimal".parse().unwrap(),
+                "diamond-graph/direct-dependency-b".parse().unwrap(),
+                "diamond-graph/direct-dependency-a".parse().unwrap(),
+            ],
+        }),
+    };
+
+    args.run().unwrap();
+    snapshot_manifest(&project);
+}
+
+#[test]
+fn specify_alias() {
+    let project = unsorted_project();
+
+    let args = Args {
+        global: GlobalOptions {
+            test_registry: true,
+            ..Default::default()
+        },
+        subcommand: Subcommand::Add(AddSubcommand {
+            project_path: project.path().to_owned(),
+            what_realm: Realm::Shared,
+            packages: vec![
+                "variant:biff/minimal".parse().unwrap(),
             ],
         }),
     };

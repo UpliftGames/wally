@@ -7,6 +7,15 @@ pub enum PackageSpec {
     Required(PackageReq),
 }
 
+impl PackageSpec {
+    pub fn name(&self) -> &str {
+        match self {
+            PackageSpec::Named(named) => named.name(),
+            PackageSpec::Required(required) => required.name().name(),
+        }
+    }
+}
+
 impl FromStr for PackageSpec {
     type Err = anyhow::Error;
 

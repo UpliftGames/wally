@@ -8,7 +8,7 @@ use crate::{
 use anyhow::Context;
 use fs_err as fs;
 use semver::{Version, VersionReq};
-use std::{cmp::Ordering, path::PathBuf};
+use std::{cmp::Ordering, path::PathBuf, str::FromStr};
 use structopt::StructOpt;
 
 use super::utils::{as_table_name, PackageSpec};
@@ -23,14 +23,15 @@ pub struct AddSubcommand {
     #[structopt(long = "realm", default_value = "shared")]
     pub what_realm: Realm,
 
-    /// Desired dependencies to add.
-    /// If it's a named dependency, it will pick the latest version.
-    pub dependencies: Vec<PackageSpec>,
+    /// Desired packages to add.
+    /// By default, the alias is the package's name.
+    /// If the version is omitted, it will pick the latest version.
+    pub packages: Vec<PackageParam>,
 }
 
 impl AddSubcommand {
     pub fn run(self, global: GlobalOptions) -> anyhow::Result<()> {
-        if self.dependencies.is_empty() {
+        if self.packages.is_empty() {
             anyhow::bail!("One more or more dependencies should of been specified.")
         }
 
@@ -69,16 +70,16 @@ impl AddSubcommand {
 
         let was_lexicographically_sorted = is_table_lexicographically_sorted(table);
 
-        for package_spec in &self.dependencies {
-            let alias = match &package_spec {
-                PackageSpec::Named(named) => named.name(),
-                PackageSpec::Required(required) => required.name().name(),
-            }
-            // Luau does not do kebab-casing.
-            .replace('-', "_");
+        for desired_package in &self.packages {
+            let alias = desired_package
+                .alias
+                .as_deref()
+                .unwrap_or(desired_package.spec.name())
+                // Luau does not do kebab-casing.
+                .replace('-', "_");
 
             // Make sure that the package actually exists and convert into a requirement to place in the manifest.
-            let package_req = match package_spec {
+            let package_req = match &desired_package.spec {
                 PackageSpec::Named(named) => {
                     let query = PackageReq::new(named.clone(), VersionReq::STAR);
 
@@ -120,6 +121,29 @@ impl AddSubcommand {
         fs::write(self.project_path.join("wally.toml"), manifest.to_string())?;
 
         Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct PackageParam {
+    // TODO: merge Alias and use it here instead.
+    pub alias: Option<String>,
+    pub spec: PackageSpec,
+}
+
+impl FromStr for PackageParam {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (alias, spec) = match s.split_once(":") {
+            Some((alias, spec)) => (Some(alias.to_owned()), spec.parse()?),
+            None => {
+                let spec = s.parse()?;
+                (None, spec)
+            }
+        };
+
+        Ok(PackageParam { alias, spec })
     }
 }
 
