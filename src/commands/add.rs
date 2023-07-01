@@ -155,7 +155,7 @@ impl FromStr for PackageParam {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (alias, spec) = match s.split_once(":") {
+        let (alias, spec) = match s.split_once(':') {
             Some((alias, spec)) => (Some(alias.to_owned()), spec.parse()?),
             None => {
                 let spec = s.parse()?;

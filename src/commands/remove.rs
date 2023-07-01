@@ -33,7 +33,7 @@ impl RemoveSubcommand {
             let content = fs::read_to_string(self.project_path.join("wally.toml"))?;
             content.parse::<toml_edit::Document>()?
         };
-        let mut manifest = manifest_document.as_table_mut();
+        let manifest = manifest_document.as_table_mut();
 
         for target in self.packages {
             if let Some(realm) = target.realm {
@@ -49,7 +49,7 @@ impl RemoveSubcommand {
                     );
                 }
             } else {
-                let present_in_dev = is_alias_present(Realm::Dev, &target.name, &manifest);
+                let present_in_dev = is_alias_present(Realm::Dev, &target.name, manifest);
                 let present_in_shared = is_alias_present(Realm::Shared, &target.name, manifest);
                 let present_in_server = is_alias_present(Realm::Server, &target.name, manifest);
 
@@ -80,7 +80,7 @@ impl RemoveSubcommand {
                     }
                 };
 
-                let entry = remove_dependency_from_realm(realm, &mut manifest, &target)?.unwrap();
+                let entry = remove_dependency_from_realm(realm, manifest, &target)?.unwrap();
                 write_removal(entry, &target, realm);
             }
         }
@@ -89,7 +89,7 @@ impl RemoveSubcommand {
             let table_name = as_table_name(&realm);
             if manifest
                 .get(table_name)
-                .map_or(false, |x| x.as_table().unwrap().len() > 0)
+                .map_or(false, |x| x.as_table().unwrap().is_empty())
             {
                 manifest.remove(table_name);
             }
