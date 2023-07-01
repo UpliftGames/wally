@@ -15,36 +15,83 @@ pub struct RemoveSubcommand {
     #[structopt(long = "project-path", default_value = ".")]
     pub project_path: PathBuf,
 
-    /// Dependencies that you want to get rid of.
+    /// Packages that you want to get rid of.
     /// You can either just specify the alias (e.g, "roact") which will delete any instances of "roact"
     /// Or, you can also specify the realm to delete from (e.g "dev:roact").
-    pub target_dependencies: Vec<AliasTarget>,
+    pub packages: Vec<PackageParam>,
 }
 
 impl RemoveSubcommand {
     pub fn run(self) -> anyhow::Result<()> {
-        if self.target_dependencies.is_empty() {
+        if self.packages.is_empty() {
             anyhow::bail!("Specified no dependencies to remove!")
         }
 
         Manifest::load(&self.project_path).context("Expected a valid wally.toml file.")?;
 
-        let mut manifest: toml_edit::Document =
-            String::from_utf8(fs::read(self.project_path.join("wally.toml"))?)?.parse()?;
+        let mut manifest_document = {
+            let content = fs::read_to_string(self.project_path.join("wally.toml"))?;
+            content.parse::<toml_edit::Document>()?
+        };
+        let mut manifest = manifest_document.as_table_mut();
 
-        for target in self.target_dependencies {
+        for target in self.packages {
             if let Some(realm) = target.realm {
-                if let Some(entry) = remove_dependency_from_realm(realm, &mut manifest, &target)? {
-                    write_removal(entry, &target);
+                if let Some(entry) = remove_dependency_from_realm(realm, manifest, &target)? {
+                    write_removal(entry, &target, realm);
+                } else {
+                    println!(
+                        "{}    Missed{} {} in {}",
+                        SetForegroundColor(Color::DarkYellow),
+                        SetForegroundColor(Color::Reset),
+                        target.name,
+                        realm
+                    );
                 }
             } else {
-                for realm in REALMS {
-                    if let Some(entry) =
-                        remove_dependency_from_realm(realm, &mut manifest, &target)?
-                    {
-                        write_removal(entry, &target);
+                let present_in_dev = is_alias_present(Realm::Dev, &target.name, &manifest);
+                let present_in_shared = is_alias_present(Realm::Shared, &target.name, manifest);
+                let present_in_server = is_alias_present(Realm::Server, &target.name, manifest);
+
+                let realm = match (present_in_shared, present_in_server, present_in_dev) {
+                    (true, false, false) => Realm::Shared,
+                    (false, true, false) => Realm::Server,
+                    (false, false, true) => Realm::Dev,
+                    (false, false, false) => {
+                        println!(
+                            "{}    Missed{} {}",
+                            SetForegroundColor(Color::DarkYellow),
+                            SetForegroundColor(Color::Reset),
+                            target.name
+                        );
+                        continue;
                     }
-                }
+                    (_, _, _) => {
+                        anyhow::bail!(
+                            "{} Error{} the alias {} is ambiguous as it is present in:\n{}{}{}Specify which realm you want to remove! (e.g 'shared:{}'). ",
+                            SetForegroundColor(Color::DarkRed),
+                            SetForegroundColor(Color::Reset),
+                            target.name,
+                            if present_in_shared { "Shared\n" } else { "" },
+                            if present_in_server { "Server\n" } else { "" },
+                            if present_in_dev { "Dev\n" } else { "" },
+                            target.name,
+                        )
+                    }
+                };
+
+                let entry = remove_dependency_from_realm(realm, &mut manifest, &target)?.unwrap();
+                write_removal(entry, &target, realm);
+            }
+        }
+
+        for realm in REALMS {
+            let table_name = as_table_name(&realm);
+            if manifest
+                .get(table_name)
+                .map_or(false, |x| x.as_table().unwrap().len() > 0)
+            {
+                manifest.remove(table_name);
             }
         }
 
@@ -52,7 +99,7 @@ impl RemoveSubcommand {
 
         println!(
             "{}   Finished{} removing target dependencies.",
-            SetForegroundColor(Color::Green),
+            SetForegroundColor(Color::DarkGreen),
             SetForegroundColor(Color::Reset)
         );
 
@@ -60,66 +107,59 @@ impl RemoveSubcommand {
     }
 }
 
-fn write_removal(entry: toml_edit::Item, alias_target: &AliasTarget) {
+fn write_removal(entry: toml_edit::Item, alias_target: &PackageParam, which_realm: Realm) {
     match entry {
         toml_edit::Item::Value(value) => {
             let package_req = value.as_str().unwrap();
             println!(
-                "{}    Removed {}\"{}\" ({}) from {}.",
+                "{}    Removed {}\"{}\" ({}) from the {} realm.",
                 SetForegroundColor(Color::DarkRed),
                 SetForegroundColor(Color::Reset),
                 alias_target.name,
                 package_req,
-                write_alias_target_realm(alias_target)
+                which_realm
             )
         }
         _ => unreachable!("It shouldn't be possible for the table to be of any other type."),
     }
 }
 
-fn write_alias_target_realm(alias_target: &AliasTarget) -> &str {
-    if let Some(realm) = alias_target.realm {
-        match realm {
-            Realm::Server => "server realm",
-            Realm::Shared => "shared realm",
-            Realm::Dev => "dev realm",
-        }
-    } else {
-        "all realms"
-    }
-}
-
 fn remove_dependency_from_realm(
     realm: Realm,
-    manifest: &mut toml_edit::Document,
-    target: &AliasTarget,
+    manifest: &mut toml_edit::Table,
+    target: &PackageParam,
 ) -> anyhow::Result<Option<toml_edit::Item>> {
     let table_name = as_table_name(&realm);
 
-    manifest
-        .as_table_mut()
-        .get_mut(table_name)
-        .map_or(Ok(None), |value| {
-            let table = match value {
-                toml_edit::Item::Table(table) => table,
-                entry => anyhow::bail!(
-                    "Found unexpectedly {} found for {}!",
-                    entry.type_name(),
-                    table_name
-                ),
-            };
+    manifest.get_mut(table_name).map_or(Ok(None), |value| {
+        let table = match value {
+            toml_edit::Item::Table(table) => table,
+            entry => anyhow::bail!(
+                "Found unexpectedly {} found for {}!",
+                entry.type_name(),
+                table_name
+            ),
+        };
 
-            Ok(table.remove(&target.name))
-        })
+        Ok(table.remove(&target.name))
+    })
+}
+
+fn is_alias_present(realm: Realm, alias: &str, manifest: &toml_edit::Table) -> bool {
+    let table_name = as_table_name(&realm);
+    manifest
+        .get(table_name)
+        .map(|table| table.get(alias).is_some())
+        .unwrap_or(false)
 }
 
 #[derive(Debug)]
-pub struct AliasTarget {
+pub struct PackageParam {
     realm: Option<Realm>,
     name: String,
 }
 
-impl FromStr for AliasTarget {
+impl FromStr for PackageParam {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -132,7 +172,7 @@ impl FromStr for AliasTarget {
             anyhow::bail!("Expected target '{}' to be alphanumeric.")
         }
 
-        Ok(AliasTarget { realm, name })
+        Ok(PackageParam { realm, name })
     }
 }
 
