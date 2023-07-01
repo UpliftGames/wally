@@ -6,4 +6,5 @@ mod add;
 mod install;
 mod publish;
 mod read_projects;
+mod remove;
 mod update;
