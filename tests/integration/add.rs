@@ -1,9 +1,7 @@
-use fs_err as fs;
-use insta::assert_snapshot;
 use libwally::{manifest::Realm, AddSubcommand, Args, GlobalOptions, Subcommand};
 use std::path::Path;
 
-use crate::temp_project::TempProject;
+use crate::{temp_project::TempProject, util::snapshot_manifest};
 
 #[test]
 fn add_named_package() {
@@ -176,22 +174,10 @@ fn specify_alias() {
     snapshot_manifest(&project);
 }
 
-fn snapshot_manifest(project: &TempProject) {
-    assert_snapshot!(fs::read_to_string(project.path().join("wally.toml")).unwrap())
-}
-
 fn sorted_project() -> TempProject {
-    TempProject::new(Path::new(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/test-projects/sorted-dependencies"
-    )))
-    .unwrap()
+    open_test_project!("sorted-dependencies")
 }
 
 fn unsorted_project() -> TempProject {
-    TempProject::new(Path::new(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/test-projects/unsorted-dependencies"
-    )))
-    .unwrap()
+    open_test_project!("unsorted-dependencies")
 }

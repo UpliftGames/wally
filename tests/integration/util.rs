@@ -1,7 +1,11 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
+use fs_err as fs;
+use insta::assert_snapshot;
 use serde::{Deserialize, Serialize};
+
+use crate::temp_project::TempProject;
 
 #[macro_export]
 macro_rules! assert_dir_snapshot {
@@ -9,6 +13,22 @@ macro_rules! assert_dir_snapshot {
         let result = crate::util::read_path($path).unwrap();
         insta::assert_yaml_snapshot!(result);
     };
+}
+
+#[macro_export]
+macro_rules! open_test_project {
+    ( $path:expr ) => {
+        TempProject::new(Path::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/test-projects/",
+            $path
+        )))
+        .unwrap()
+    };
+}
+
+pub fn snapshot_manifest(project: &TempProject) {
+    assert_snapshot!(fs::read_to_string(project.path().join("wally.toml")).unwrap())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
