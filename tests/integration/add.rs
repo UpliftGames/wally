@@ -118,7 +118,7 @@ fn add_multiple() {
         },
         subcommand: Subcommand::Add(AddSubcommand {
             project_path: project.path().to_owned(),
-            what_realm: Realm::Shared,
+            what_realm: Realm::Server,
             packages: vec![
                 "biff/minimal-shared".parse().unwrap(),
                 "biff/transitive-dependency@=0.1.0".parse().unwrap(),
@@ -141,10 +141,11 @@ fn add_following_lexicographic_sort() {
         },
         subcommand: Subcommand::Add(AddSubcommand {
             project_path: project.path().to_owned(),
-            what_realm: Realm::Shared,
+            what_realm: Realm::Server,
             packages: vec![
-                "biff/minimal-shared".parse().unwrap(),
                 "diamond-graph/direct-dependency-b".parse().unwrap(),
+                "biff/minimal-shared".parse().unwrap(),
+                "biff/minimal".parse().unwrap(),
                 "diamond-graph/direct-dependency-a".parse().unwrap(),
             ],
         }),

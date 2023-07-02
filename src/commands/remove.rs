@@ -178,7 +178,7 @@ impl FromStr for PackageParam {
         };
 
         if !valid_identifier(name.as_str()) {
-            anyhow::bail!("Expected target '{}' to be alphanumeric.")
+            anyhow::bail!("Expected target '{}' to be a valid identifier.", s)
         }
 
         Ok(PackageParam { realm, name })
@@ -186,5 +186,5 @@ impl FromStr for PackageParam {
 }
 
 fn valid_identifier(name: &str) -> bool {
-    name.chars().all(|c| c.is_alphanumeric())
+    name.chars().all(|c| c.is_alphanumeric() || c == '_')
 }
