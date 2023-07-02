@@ -15,7 +15,7 @@ fn add_named_package() {
         subcommand: Subcommand::Add(AddSubcommand {
             project_path: project.path().to_owned(),
             what_realm: Realm::Shared,
-            packages: vec!["biff/minimal".parse().unwrap()],
+            packages: vec!["biff/minimal-shared".parse().unwrap()],
         }),
     };
 
@@ -35,7 +35,7 @@ fn add_versioned_package() {
         subcommand: Subcommand::Add(AddSubcommand {
             project_path: project.path().to_owned(),
             what_realm: Realm::Shared,
-            packages: vec!["biff/minimal@=0.1.0".parse().unwrap()],
+            packages: vec!["biff/minimal-shared@=0.1.0".parse().unwrap()],
         }),
     };
 
@@ -55,7 +55,7 @@ fn error_on_invalid_version() {
         subcommand: Subcommand::Add(AddSubcommand {
             project_path: project.path().to_owned(),
             what_realm: Realm::Shared,
-            packages: vec!["biff/minimal@1.0.0".parse().unwrap()],
+            packages: vec!["biff/minimal-shared@1.0.0".parse().unwrap()],
         }),
     };
 
@@ -120,7 +120,7 @@ fn add_multiple() {
             project_path: project.path().to_owned(),
             what_realm: Realm::Shared,
             packages: vec![
-                "biff/minimal".parse().unwrap(),
+                "biff/minimal-shared".parse().unwrap(),
                 "biff/transitive-dependency@=0.1.0".parse().unwrap(),
             ],
         }),
@@ -143,7 +143,7 @@ fn add_following_lexicographic_sort() {
             project_path: project.path().to_owned(),
             what_realm: Realm::Shared,
             packages: vec![
-                "biff/minimal".parse().unwrap(),
+                "biff/minimal-shared".parse().unwrap(),
                 "diamond-graph/direct-dependency-b".parse().unwrap(),
                 "diamond-graph/direct-dependency-a".parse().unwrap(),
             ],
@@ -165,7 +165,7 @@ fn specify_alias() {
         },
         subcommand: Subcommand::Add(AddSubcommand {
             project_path: project.path().to_owned(),
-            what_realm: Realm::Shared,
+            what_realm: Realm::Server,
             packages: vec!["variant:biff/minimal".parse().unwrap()],
         }),
     };

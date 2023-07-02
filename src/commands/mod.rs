@@ -49,7 +49,7 @@ impl Args {
             Subcommand::Package(subcommand) => subcommand.run(),
             Subcommand::Install(subcommand) => subcommand.run(self.global),
             Subcommand::ManifestToJson(subcommand) => subcommand.run(),
-            Subcommand::Remove(subcommand) => subcommand.run(),
+            Subcommand::Remove(subcommand) => subcommand.run(self.global),
         }
     }
 }

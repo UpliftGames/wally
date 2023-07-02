@@ -5,7 +5,10 @@ use std::{path::PathBuf, str::FromStr};
 use structopt::StructOpt;
 
 use super::utils::as_table_name;
-use crate::manifest::{Manifest, Realm};
+use crate::{
+    manifest::{Manifest, Realm},
+    GlobalOptions, InstallSubcommand,
+};
 
 const REALMS: [Realm; 3] = [Realm::Server, Realm::Shared, Realm::Dev];
 
@@ -16,13 +19,13 @@ pub struct RemoveSubcommand {
     pub project_path: PathBuf,
 
     /// Packages that you want to get rid of.
-    /// You can either just specify the alias (e.g, "roact") which will delete any instances of "roact"
-    /// Or, you can also specify the realm to delete from (e.g "dev:roact").
+    /// You can either just specify the alias (e.g, "roact") and it will guess which realm.
+    /// You can also specify the exact realm to delete from (e.g "dev:roact").
     pub packages: Vec<PackageParam>,
 }
 
 impl RemoveSubcommand {
-    pub fn run(self) -> anyhow::Result<()> {
+    pub fn run(self, global: GlobalOptions) -> anyhow::Result<()> {
         if self.packages.is_empty() {
             anyhow::bail!("Specified no dependencies to remove!")
         }
@@ -95,7 +98,10 @@ impl RemoveSubcommand {
             }
         }
 
-        fs::write(self.project_path.join("wally.toml"), manifest_document.to_string())?;
+        fs::write(
+            self.project_path.join("wally.toml"),
+            manifest_document.to_string(),
+        )?;
 
         println!(
             "{}   Finished{} removing target dependencies.",
@@ -103,7 +109,10 @@ impl RemoveSubcommand {
             SetForegroundColor(Color::Reset)
         );
 
-        Ok(())
+        InstallSubcommand {
+            project_path: self.project_path,
+        }
+        .run(global)
     }
 }
 

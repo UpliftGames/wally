@@ -3,7 +3,7 @@ use crate::{
     package_name::PackageName,
     package_req::PackageReq,
     package_source::{PackageSource, PackageSourceMap, Registry, TestRegistry},
-    GlobalOptions,
+    GlobalOptions, InstallSubcommand,
 };
 use anyhow::Context;
 use crossterm::style::{Color, SetForegroundColor};
@@ -140,7 +140,10 @@ impl AddSubcommand {
             SetForegroundColor(Color::Reset)
         );
 
-        Ok(())
+        InstallSubcommand {
+            project_path: self.project_path,
+        }
+        .run(global)
     }
 }
 
