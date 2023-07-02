@@ -49,7 +49,7 @@ fn should_error_if_alias_is_ambiguous() {
 
 #[test]
 fn delete_package_from_one_realm() {
-    let project = open_test_project!("cross-realm-explicit-dependency");
+    let project = open_test_project!("duplicate-alias-different-realms");
 
     let args = Args {
         global: GlobalOptions {
@@ -58,7 +58,7 @@ fn delete_package_from_one_realm() {
         },
         subcommand: Subcommand::Remove(RemoveSubcommand {
             project_path: project.path().to_owned(),
-            packages: vec!["server:sdos".parse().unwrap()],
+            packages: vec!["server:Minimal".parse().unwrap()],
         }),
     };
 

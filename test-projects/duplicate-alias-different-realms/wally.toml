@@ -6,7 +6,7 @@ realm = "server"
 registry = "test-registries/primary-registry"
 
 [dependencies]
-Minimal = "biff/minimal@0.1.0"
+Minimal = "biff/minimal-shared@0.1.0"
 
 [server-dependencies]
 Minimal = "biff/minimal@0.1.0"
