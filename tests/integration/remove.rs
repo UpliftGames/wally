@@ -1,8 +1,6 @@
 use libwally::{Args, GlobalOptions, RemoveSubcommand, Subcommand};
 use std::path::Path;
 
-use crate::{temp_project::TempProject, util::snapshot_manifest};
-
 #[test]
 fn delete_target() {
     let project = open_test_project!("one-dependency");
@@ -19,7 +17,7 @@ fn delete_target() {
     };
 
     args.run().unwrap();
-    snapshot_manifest(&project);
+    snapshot_manifest!(&project);
 }
 
 #[test]
@@ -63,7 +61,7 @@ fn delete_package_from_one_realm() {
     };
 
     args.run().unwrap();
-    snapshot_manifest(&project);
+    snapshot_manifest!(&project);
 }
 
 #[test]

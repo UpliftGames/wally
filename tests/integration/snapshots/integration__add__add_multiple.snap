@@ -1,6 +1,6 @@
 ---
-source: tests/integration/util.rs
-expression: "fs::read_to_string(project.path().join(\"wally.toml\")).unwrap()"
+source: tests/integration/add.rs
+expression: "fs_err::read_to_string((&project).path().join(\"wally.toml\")).unwrap()"
 ---
 [package]
 name = "biff/server-depends-on-shared"
@@ -14,5 +14,6 @@ b = "biff/minimal-shared@0.1.0"
 a = "biff/minimal-shared@0.1.0"
 
 [server-dependencies]
-minimal = "biff/minimal@0.1.0"
+minimal_shared = "biff/minimal-shared@0.1.0"
+transitive_dependency = "biff/transitive-dependency@=0.1.0"
 

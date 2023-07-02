@@ -1,6 +1,6 @@
 ---
-source: tests/integration/util.rs
-expression: "fs::read_to_string(project.path().join(\"wally.toml\")).unwrap()"
+source: tests/integration/add.rs
+expression: "fs_err::read_to_string((&project).path().join(\"wally.toml\")).unwrap()"
 ---
 [package]
 name = "biff/server-depends-on-shared"
@@ -12,7 +12,5 @@ registry = "test-registries/primary-registry"
 [dependencies]
 b = "biff/minimal-shared@0.1.0"
 a = "biff/minimal-shared@0.1.0"
-
-[server-dependencies]
-variant = "biff/minimal@0.1.0"
+minimal_shared = "biff/minimal-shared@=0.1.0"
 

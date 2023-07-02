@@ -1,6 +1,6 @@
 ---
-source: tests/integration/util.rs
-expression: "fs::read_to_string(project.path().join(\"wally.toml\")).unwrap()"
+source: tests/integration/add.rs
+expression: "fs_err::read_to_string((&project).path().join(\"wally.toml\")).unwrap()"
 ---
 [package]
 name = "biff/sorted-dependencies"

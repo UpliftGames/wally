@@ -1,7 +1,7 @@
 use libwally::{manifest::Realm, AddSubcommand, Args, GlobalOptions, Subcommand};
 use std::path::Path;
 
-use crate::{temp_project::TempProject, util::snapshot_manifest};
+use crate::temp_project::TempProject;
 
 #[test]
 fn add_named_package() {
@@ -20,7 +20,7 @@ fn add_named_package() {
     };
 
     args.run().unwrap();
-    snapshot_manifest(&project);
+    snapshot_manifest!(&project);
 }
 
 #[test]
@@ -40,7 +40,7 @@ fn add_versioned_package() {
     };
 
     args.run().unwrap();
-    snapshot_manifest(&project);
+    snapshot_manifest!(&project);
 }
 
 #[test]
@@ -104,7 +104,7 @@ fn add_to_target_realm() {
     };
 
     args.run().unwrap();
-    snapshot_manifest(&project);
+    snapshot_manifest!(&project);
 }
 
 #[test]
@@ -127,7 +127,7 @@ fn add_multiple() {
     };
 
     args.run().unwrap();
-    snapshot_manifest(&project);
+    snapshot_manifest!(&project);
 }
 
 #[test]
@@ -152,7 +152,7 @@ fn add_following_lexicographic_sort() {
     };
 
     args.run().unwrap();
-    snapshot_manifest(&project);
+    snapshot_manifest!(&project);
 }
 
 #[test]
@@ -172,7 +172,7 @@ fn specify_alias() {
     };
 
     args.run().unwrap();
-    snapshot_manifest(&project);
+    snapshot_manifest!(&project);
 }
 
 fn sorted_project() -> TempProject {
