@@ -95,7 +95,7 @@ impl RemoveSubcommand {
             }
         }
 
-        fs::write(self.project_path.join("wally.toml"), manifest.to_string())?;
+        fs::write(self.project_path.join("wally.toml"), manifest_document.to_string())?;
 
         println!(
             "{}   Finished{} removing target dependencies.",
