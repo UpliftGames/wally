@@ -1,7 +1,10 @@
 <div align="center" width="800">
     <img alt="Wally Logo" src="wally-logo.svg" />
-    <h1>Wally, a package manager for Roblox</h1>
+    <h1>Wally, a package manager for Roblox
+    	<br><img alt="Dynamic Status Badge" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fvhs2807lh6ws.statuspage.io%2Fapi%2Fv2%2Fsummary.json&query=%24.status.description&label=Status%20&link=https%3A%2F%2Fupliftgames-wally.statuspage.io%2F">
+	</h1>
 </div>
+
 
 * [Installation](#installation)
 * [Commands](#commands)
