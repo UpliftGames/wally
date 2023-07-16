@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate rocket;
 
+mod analytics;
 mod auth;
 mod config;
 mod error;
@@ -40,9 +41,11 @@ use rocket::{
 use rocket::{Build, Request, Response};
 use semver::Version;
 use serde_json::json;
+
 use storage::StorageMode;
 use zip::ZipArchive;
 
+use crate::analytics::{AnalyticsBackend, AnalyticsBackendProvider};
 use crate::auth::{ReadAccess, WriteAccess};
 use crate::config::Config;
 use crate::error::{ApiErrorContext, ApiErrorStatus, Error};
@@ -52,8 +55,13 @@ use crate::storage::{GcsStorage, LocalStorage, StorageBackend, StorageOutput};
 #[cfg(feature = "s3-storage")]
 use crate::storage::S3Storage;
 
+#[cfg(feature = "postgres-analytics")]
+use crate::analytics::{AnalyticsMode, PostgresAnalytics};
+#[cfg(feature = "postgres-analytics")]
+use sqlx::postgres::PgPoolOptions;
+
 #[get("/")]
-fn root() -> content::RawJson<serde_json::Value> {
+async fn root() -> content::RawJson<serde_json::Value> {
     content::RawJson(json!({
         "message": "Wally Registry is up and running!",
     }))
@@ -63,6 +71,7 @@ fn root() -> content::RawJson<serde_json::Value> {
 async fn package_contents(
     storage: &State<Box<dyn StorageBackend>>,
     _read: Result<ReadAccess, Error>,
+    analytics: &State<Option<Box<AnalyticsBackend>>>,
     scope: String,
     name: String,
     version: String,
@@ -80,9 +89,21 @@ async fn package_contents(
         .status(Status::BadRequest)?;
     let package_id = PackageId::new(package_name, version);
 
+    let analytics_request = analytics
+        .as_ref()
+        .map(|backend| backend.clone().record_download(package_id.clone()));
+
     match storage.read(&package_id).await.map(ReaderStream::one) {
-        Ok(stream) => Ok((ContentType::GZIP, stream)),
         Err(e) => Err(e).status(Status::NotFound),
+        Ok(stream) => {
+            if let Some(request) = analytics_request {
+                tokio::spawn(async move {
+                    request.await.expect("Failed to record package download!");
+                });
+            }
+
+            Ok((ContentType::GZIP, stream))
+        }
     }
 }
 
@@ -240,6 +261,24 @@ pub fn server(figment: Figment) -> rocket::Rocket<Build> {
         }
     };
 
+    println!("Using analytics backend: {:?}", config.analytics);
+    let analytics_backend: Option<Box<AnalyticsBackend>> = match config.analytics {
+        #[cfg(feature = "postgres-analytics")]
+        Some(AnalyticsMode::Postgres {
+            database_url,
+            downloads_table_name,
+        }) => Some(Box::new(
+            configure_postgres(&database_url, downloads_table_name)
+                .expect("Failed to initialize postgres backend"),
+        )),
+        Some(_) => panic!(
+            "Attempted to use an analytics backend 
+        but the required backend isn't enabled in features. 
+        Try adding the 'postgres-analytics' feature."
+        ),
+        None => None,
+    };
+
     println!("Cloning package index repository...");
     let package_index = PackageIndex::new_temp(&config.index_url, config.github_token).unwrap();
 
@@ -260,6 +299,7 @@ pub fn server(figment: Figment) -> rocket::Rocket<Build> {
         )
         .manage(storage_backend)
         .manage(package_index)
+        .manage(analytics_backend)
         .manage(RwLock::new(search_backend))
         .attach(AdHoc::config::<Config>())
         .attach(Cors)
@@ -301,6 +341,26 @@ fn configure_s3(bucket: String, cache_size: Option<u64>) -> anyhow::Result<S3Sto
     );
 
     Ok(S3Storage::new(client, bucket, cache_size))
+}
+
+#[cfg(feature = "postgres-analytics")]
+fn configure_postgres(url: &str, table_name: String) -> anyhow::Result<AnalyticsBackend> {
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+
+    rt.block_on(async {
+        let pool = PgPoolOptions::new().max_connections(5).connect(url).await?;
+
+        let analytics_backend = PostgresAnalytics::new(pool, table_name);
+
+        analytics_backend
+            .ensure_initialized()
+            .await
+            .context("Failed to initialise analytics backend")?;
+
+        Ok(AnalyticsBackend::Postgres(analytics_backend))
+    })
 }
 
 struct Cors;

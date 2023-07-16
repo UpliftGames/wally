@@ -10,6 +10,7 @@ publish = false
 [features]
 default = []
 s3-storage = ["dep:rusoto_core", "dep:rusoto_s3"]
+postgres-analytics = ["dep:sqlx"]
 
 [dependencies]
 wally = { path = ".." }
@@ -37,6 +38,8 @@ url = { version = "2.2.1", features = ["serde"] }
 walkdir = "2.3.1"
 zip = "0.5.11"
 moka = "0.11.1"
+sqlx = { version = "0.6", features = [ "runtime-tokio-rustls", "postgres", "chrono" ], optional = true }
+chrono = "0.4.26"
 
 [dev-dependencies]
 tempfile = "3.1.0"

@@ -4,42 +4,42 @@ use std::path::Path;
 
 #[test]
 fn minimal() {
-    run_test("minimal");
+    assert_project_snapshot!(run_test("minimal"));
 }
 
 #[test]
 fn one_dependency() {
-    run_test("one-dependency");
+    assert_project_snapshot!(run_test("one-dependency"));
 }
 
 #[test]
 fn transitive_dependency() {
-    run_test("transitive-dependency");
+    assert_project_snapshot!(run_test("transitive-dependency"));
 }
 
 #[test]
 fn private_with_public_dependency() {
-    run_test("private-with-public-dependency");
+    assert_project_snapshot!(run_test("private-with-public-dependency"));
 }
 
 #[test]
 fn dev_dependency() {
-    run_test("dev-dependency");
+    assert_project_snapshot!(run_test("dev-dependency"));
 }
 
 #[test]
 fn dev_dependency_also_required_as_non_dev() {
-    run_test("dev-dependency-also-required-as-non-dev");
+    assert_project_snapshot!(run_test("dev-dependency-also-required-as-non-dev"));
 }
 
 #[test]
 fn cross_realm_dependency() {
-    run_test("cross-realm-dependency");
+    assert_project_snapshot!(run_test("cross-realm-dependency"));
 }
 
 #[test]
 fn cross_realm_explicit_dependency() {
-    run_test("cross-realm-explicit-dependency");
+    assert_project_snapshot!(run_test("cross-realm-explicit-dependency"));
 }
 
 fn run_test(name: &str) -> TempProject {
@@ -60,6 +60,5 @@ fn run_test(name: &str) -> TempProject {
 
     args.run().unwrap();
 
-    assert_dir_snapshot!(project.path());
     project
 }

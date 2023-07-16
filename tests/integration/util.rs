@@ -4,9 +4,9 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 
 #[macro_export]
-macro_rules! assert_dir_snapshot {
-    ( $path:expr ) => {
-        let result = crate::util::read_path($path).unwrap();
+macro_rules! assert_project_snapshot {
+    ( $project:expr ) => {
+        let result = crate::util::read_path($project.path()).unwrap();
         insta::assert_yaml_snapshot!(result);
     };
 }
