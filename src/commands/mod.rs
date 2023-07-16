@@ -1,3 +1,4 @@
+mod add;
 mod init;
 mod install;
 mod login;
@@ -5,9 +6,12 @@ mod logout;
 mod manifest_to_json;
 mod package;
 mod publish;
+mod remove;
 mod search;
 mod update;
+mod utils;
 
+pub use add::{AddSubcommand, PackageParam as AddPackageParam};
 pub use init::InitSubcommand;
 pub use install::InstallSubcommand;
 pub use login::LoginSubcommand;
@@ -15,8 +19,10 @@ pub use logout::LogoutSubcommand;
 pub use manifest_to_json::ManifestToJsonSubcommand;
 pub use package::PackageSubcommand;
 pub use publish::PublishSubcommand;
+pub use remove::RemoveSubcommand;
 pub use search::SearchSubcommand;
-pub use update::{PackageSpec, UpdateSubcommand};
+pub use update::UpdateSubcommand;
+pub use utils::PackageSpec;
 
 use structopt::StructOpt;
 
@@ -33,6 +39,7 @@ pub struct Args {
 impl Args {
     pub fn run(self) -> anyhow::Result<()> {
         match self.subcommand {
+            Subcommand::Add(subcommand) => subcommand.run(self.global),
             Subcommand::Publish(subcommand) => subcommand.run(self.global),
             Subcommand::Init(subcommand) => subcommand.run(),
             Subcommand::Login(subcommand) => subcommand.run(),
@@ -42,6 +49,7 @@ impl Args {
             Subcommand::Package(subcommand) => subcommand.run(),
             Subcommand::Install(subcommand) => subcommand.run(self.global),
             Subcommand::ManifestToJson(subcommand) => subcommand.run(),
+            Subcommand::Remove(subcommand) => subcommand.run(self.global),
         }
     }
 }
@@ -80,6 +88,7 @@ impl Default for GlobalOptions {
 
 #[derive(Debug, StructOpt)]
 pub enum Subcommand {
+    Add(AddSubcommand),
     Init(InitSubcommand),
     Install(InstallSubcommand),
     Update(UpdateSubcommand),
@@ -89,4 +98,5 @@ pub enum Subcommand {
     Search(SearchSubcommand),
     Package(PackageSubcommand),
     ManifestToJson(ManifestToJsonSubcommand),
+    Remove(RemoveSubcommand),
 }

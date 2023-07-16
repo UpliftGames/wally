@@ -1,0 +1,21 @@
+---
+source: tests/integration/add.rs
+expression: "fs_err::read_to_string((&project).path().join(\"wally.toml\")).unwrap()"
+---
+[package]
+name = "biff/sorted-dependencies"
+version = "0.1.0"
+license = "MIT"
+realm = "server"
+registry = "test-registries/primary-registry"
+
+[dependencies]
+a = "biff/minimal-shared@0.1.0"
+b = "biff/minimal-shared@0.1.0"
+
+[server-dependencies]
+direct_dependency_a = "diamond-graph/direct-dependency-a@0.1.1"
+direct_dependency_b = "diamond-graph/direct-dependency-b@0.1.0"
+minimal = "biff/minimal@0.1.0"
+minimal_shared = "biff/minimal-shared@0.1.0"
+

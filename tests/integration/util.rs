@@ -11,6 +11,25 @@ macro_rules! assert_dir_snapshot {
     };
 }
 
+#[macro_export]
+macro_rules! open_test_project {
+    ( $path:expr ) => {
+        crate::temp_project::TempProject::new(Path::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/test-projects/",
+            $path
+        )))
+        .unwrap()
+    };
+}
+
+#[macro_export]
+macro_rules! snapshot_manifest {
+    ( $project:expr ) => {
+        insta::assert_snapshot!(fs_err::read_to_string($project.path().join("wally.toml")).unwrap())
+    };
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Entry {
