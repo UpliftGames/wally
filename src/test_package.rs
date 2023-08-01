@@ -59,23 +59,27 @@ impl PackageBuilder {
 
     pub fn with_dep<A, R>(mut self, alias: A, package_req: R) -> Self
     where
-        A: Into<String>,
+        A: AsRef<str>,
         R: AsRef<str>,
     {
         let req: PackageReq = package_req.as_ref().parse().expect("invalid PackageReq");
 
-        self.manifest.dependencies.insert(alias.into(), req);
+        self.manifest
+            .dependencies
+            .insert(alias.as_ref().parse().expect("invalid alias"), req);
         self
     }
 
     pub fn with_server_dep<A, R>(mut self, alias: A, package_req: R) -> Self
     where
-        A: Into<String>,
+        A: AsRef<str>,
         R: AsRef<str>,
     {
         let req: PackageReq = package_req.as_ref().parse().expect("invalid PackageReq");
 
-        self.manifest.server_dependencies.insert(alias.into(), req);
+        self.manifest
+            .server_dependencies
+            .insert(alias.as_ref().parse().expect("invalid alias"), req);
         self
     }
 
