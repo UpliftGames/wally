@@ -139,7 +139,7 @@ Manifest files are written by humans. They can contain comments and formatting d
 
 [Manifest files](https://en.wikipedia.org/wiki/Manifest_file) define all necessary information about a package.
 
-The concept of this package [manifest](https://doc.rust-lang.org/cargo/reference/manifest.html) file draws inspiration from Rust's package manager, Cargo. In both of these cases, this file is aptly referred to as a 'manifest' because it serves as the central document that outlines how a project should be built, configured, and managed. The term 'manifest' signifies that this file encapsulates all the essential information and metadata required to describe the current project and its dependencies; similarly extending to when working with package manifest files in the context of Wally.
+The concept of this package [manifest](https://doc.rust-lang.org/cargo/reference/manifest.html) file draws inspiration from Rust's package manager, Cargo. In both of these cases, this file is aptly referred to as a 'manifest' because it serves as the central document that outlines how a project should be built, configured, and managed.
 
 Here is an example package manifest, annotated with comments:
 
