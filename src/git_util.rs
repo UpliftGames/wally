@@ -27,6 +27,11 @@ fn make_credentials_callback(
     let mut token_tried = false;
 
     move |url, username, allowed_types| {
+        if allowed_types.contains(CredentialType::SSH_KEY) {
+            let username = username.unwrap();
+            return Cred::ssh_key_from_agent(username);
+        }
+
         if allowed_types.contains(CredentialType::USER_PASS_PLAINTEXT) {
             if let Some(token) = &access_token {
                 if !token_tried {
