@@ -15,6 +15,7 @@ use std::io::{Cursor, Read, Seek};
 use std::sync::RwLock;
 
 use anyhow::{format_err, Context};
+use auth::WritePermission;
 use figment::{
     providers::{Env, Format, Toml},
     Figment,
@@ -155,7 +156,9 @@ async fn publish(
     let manifest = get_manifest(&mut archive).status(Status::BadRequest)?;
     let package_id = manifest.package_id();
 
-    if !authorization.can_write_package(&package_id, &index)? {
+    let write_permission = authorization.can_write_package(&package_id, index).await?;
+
+    if write_permission.is_none() {
         return Err(format_err!(
             "you do not have permission to write in scope {}",
             package_id.name().scope()
@@ -164,12 +167,18 @@ async fn publish(
     }
 
     // If a user can write but isn't in the scope owner file then we should add them!
-    if let WriteAccess::Github(github_info) = authorization {
-        let user_id = github_info.id();
+    if let WriteAccess::Github(github) = authorization {
+        let user_id = github.id();
         let scope = package_id.name().scope();
 
-        if !index.is_scope_owner(scope, user_id)? {
-            index.add_scope_owner(scope, user_id)?;
+        // However we should only do this if they are the user matching this scope!
+        // If they have permission due to being a member of an org we want to leave
+        // the permission up to the org membership so if they are removed from the
+        // org they automatically lose write permission.
+        if let WritePermission::User = write_permission.unwrap() {
+            if !index.is_scope_owner(scope, user_id)? {
+                index.add_scope_owner(scope, user_id)?;
+            }
         }
     }
 
@@ -195,7 +204,7 @@ async fn publish(
     if let Ok(mut search_backend) = search_backend.try_write() {
         // TODO: Recrawling the whole index for each publish is very wasteful!
         // Eventually this will get too expensive and we should only add the new package.
-        search_backend.crawl_packages(&index)?;
+        search_backend.crawl_packages(index)?;
     }
 
     Ok(Json(json!({
