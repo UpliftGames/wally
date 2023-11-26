@@ -1,0 +1,6 @@
+{
+	"name": "minimal",
+	"tree": {
+		"$path": "src"
+	}
+}

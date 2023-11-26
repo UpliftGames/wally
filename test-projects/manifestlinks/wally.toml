@@ -1,0 +1,8 @@
+[package]
+name = "biff/minimal"
+version = "0.1.0"
+license = "MIT"
+realm = "server"
+registry = "test-registries/primary-registry"
+repository = "https://github.com/UpliftGames/player-module.git"
+homepage = "https://github.com/UpliftGames/player-module"
