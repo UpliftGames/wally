@@ -2,6 +2,7 @@ version: "3.9"
 
 services:
   backend:
+    image: 386138156553.dkr.ecr.us-west-2.amazonaws.com/wally-backend:latest
     build:
       context: .
       dockerfile: wally-registry-backend/Dockerfile
@@ -11,7 +12,7 @@ services:
       - "8000:8000"
 
   frontend:
-    build: wally-registry-frontend
+    image: 386138156553.dkr.ecr.us-west-2.amazonaws.com/wally-frontend:latest
     ports:
       - "8001:8000"
     links:
