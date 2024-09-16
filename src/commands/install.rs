@@ -17,6 +17,7 @@ use super::GlobalOptions;
 
 /// Install all of the dependencies of this project.
 #[derive(Debug, StructOpt)]
+#[structopt(alias = "instally")]
 pub struct InstallSubcommand {
     /// Path to the project to install dependencies for.
     #[structopt(long = "project-path", default_value = ".")]
