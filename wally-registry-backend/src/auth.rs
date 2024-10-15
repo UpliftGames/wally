@@ -23,7 +23,9 @@ pub enum AuthMode {
         write: String,
     },
     GithubOAuth {
+        #[serde(rename = "client-id")]
         client_id: String,
+        #[serde(rename = "client-secret")]
         client_secret: String,
     },
     Unauthenticated,
