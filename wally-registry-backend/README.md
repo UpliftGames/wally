@@ -2,7 +2,7 @@
 This directory contains the backend to the Wally registry. It's the interface that clients use for downloading, publishing, and yanking packages.
 
 ## Requirements
-- Rust 1.50.0+
+- Rust 1.80.0+
 - C toolchain for OpenSSL
 
 ## Running
