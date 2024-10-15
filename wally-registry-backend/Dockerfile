@@ -24,7 +24,7 @@ COPY ./wally-registry-backend ./wally-registry-backend/
 RUN touch wally-registry-backend/src/main.rs
 RUN cargo build --package wally-registry-backend --release
 
-FROM debian:buster-slim
+FROM debian:bookworm-slim
 
 # Install the same SSL packages as in our build image.
 RUN apt-get update
