@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{collections::HashMap, fmt};
 
 use anyhow::format_err;
 use constant_time_eq::constant_time_eq;
@@ -18,8 +18,14 @@ use crate::{config::Config, error::ApiErrorStatus};
 #[serde(tag = "type", content = "value", rename_all = "kebab-case")]
 pub enum AuthMode {
     ApiKey(String),
-    DoubleApiKey { read: Option<String>, write: String },
-    GithubOAuth,
+    DoubleApiKey {
+        read: Option<String>,
+        write: String,
+    },
+    GithubOAuth {
+        client_id: String,
+        client_secret: String,
+    },
     Unauthenticated,
 }
 
@@ -39,12 +45,25 @@ impl GithubInfo {
     }
 }
 
+#[derive(Deserialize)]
+#[allow(unused)] // Variables are (currently) not accessed but ensure they are present during json parsing
+struct ValidatedGithubApp {
+    client_id: String,
+}
+
+#[derive(Deserialize)]
+#[allow(unused)] // Variables are (currently) not accessed but ensure they are present during json parsing
+struct ValidatedGithubInfo {
+    id: u64,
+    app: ValidatedGithubApp,
+}
+
 impl fmt::Debug for AuthMode {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match self {
             AuthMode::ApiKey(_) => write!(formatter, "API key"),
             AuthMode::DoubleApiKey { .. } => write!(formatter, "double API key"),
-            AuthMode::GithubOAuth => write!(formatter, "Github OAuth"),
+            AuthMode::GithubOAuth { .. } => write!(formatter, "Github OAuth"),
             AuthMode::Unauthenticated => write!(formatter, "no authentication"),
         }
     }
@@ -69,7 +88,11 @@ fn match_api_key<T>(request: &Request<'_>, key: &str, result: T) -> Outcome<T, E
     }
 }
 
-async fn verify_github_token(request: &Request<'_>) -> Outcome<WriteAccess, Error> {
+async fn verify_github_token(
+    request: &Request<'_>,
+    client_id: &str,
+    client_secret: &str,
+) -> Outcome<WriteAccess, Error> {
     let token: String = match request.headers().get_one("authorization") {
         Some(key) if key.starts_with("Bearer ") => (key[6..].trim()).to_owned(),
         _ => {
@@ -84,7 +107,7 @@ async fn verify_github_token(request: &Request<'_>) -> Outcome<WriteAccess, Erro
         .get("https://api.github.com/user")
         .header("accept", "application/json")
         .header("user-agent", "wally")
-        .bearer_auth(token)
+        .bearer_auth(&token)
         .send()
         .await;
 
@@ -92,14 +115,43 @@ async fn verify_github_token(request: &Request<'_>) -> Outcome<WriteAccess, Erro
         Err(err) => {
             return format_err!(err).status(Status::InternalServerError).into();
         }
-        Ok(response) => response.json::<GithubInfo>().await,
+        Ok(response) => match response.json::<GithubInfo>().await {
+            Err(err) => {
+                return format_err!("Github auth failed: {}", err)
+                    .status(Status::Unauthorized)
+                    .into();
+            }
+            Ok(github_info) => github_info,
+        },
     };
 
-    match github_info {
+    let mut body = HashMap::new();
+    body.insert("access_token", &token);
+
+    let response = client
+        .post(format!(
+            "https://api.github.com/applications/{}/token",
+            client_id
+        ))
+        .header("accept", "application/json")
+        .header("user-agent", "wally")
+        .basic_auth(client_id, Some(client_secret))
+        .json(&body)
+        .send()
+        .await;
+
+    let validated_github_info = match response {
+        Err(err) => {
+            return format_err!(err).status(Status::InternalServerError).into();
+        }
+        Ok(response) => response.json::<ValidatedGithubInfo>().await,
+    };
+
+    match validated_github_info {
         Err(err) => format_err!("Github auth failed: {}", err)
             .status(Status::Unauthorized)
             .into(),
-        Ok(github_info) => Outcome::Success(WriteAccess::Github(github_info)),
+        Ok(_) => Outcome::Success(WriteAccess::Github(github_info)),
     }
 }
 
@@ -120,7 +172,7 @@ impl<'r> FromRequest<'r> for ReadAccess {
 
         match &config.auth {
             AuthMode::Unauthenticated => Outcome::Success(ReadAccess::Public),
-            AuthMode::GithubOAuth => Outcome::Success(ReadAccess::Public),
+            AuthMode::GithubOAuth { .. } => Outcome::Success(ReadAccess::Public),
             AuthMode::ApiKey(key) => match_api_key(request, key, ReadAccess::ApiKey),
             AuthMode::DoubleApiKey { read, .. } => match read {
                 None => Outcome::Success(ReadAccess::Public),
@@ -179,7 +231,10 @@ impl<'r> FromRequest<'r> for WriteAccess {
             AuthMode::DoubleApiKey { write, .. } => {
                 match_api_key(request, write, WriteAccess::ApiKey)
             }
-            AuthMode::GithubOAuth => verify_github_token(request).await,
+            AuthMode::GithubOAuth {
+                client_id,
+                client_secret,
+            } => verify_github_token(request, client_id, client_secret).await,
         }
     }
 }

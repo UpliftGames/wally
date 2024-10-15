@@ -53,7 +53,7 @@ Pre-built binaries are available for Windows, macOS, and Linux from the [GitHub 
 [releases]: https://github.com/UpliftGames/wally/releases
 
 ### From Source
-It's straightforward to compile Wally from source. Wally requires Rust 1.51.0 or newer.
+It's straightforward to compile Wally from source. Wally requires Rust 1.80.0 or newer.
 
 Clone the repository and use:
 

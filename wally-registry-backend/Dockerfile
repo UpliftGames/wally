@@ -1,4 +1,4 @@
-FROM rust:1-slim-buster AS build
+FROM rust:1.81-slim-bookworm AS build
 WORKDIR /usr/app
 
 # Debian Slim doesn't install certificates by default, but we kinda want those.
