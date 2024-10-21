@@ -1,9 +1,9 @@
 use std::{collections::HashMap, fmt};
 
-use anyhow::format_err;
+use anyhow::{anyhow, format_err};
 use constant_time_eq::constant_time_eq;
 use libwally::{package_id::PackageId, package_index::PackageIndex};
-use reqwest::Client;
+use reqwest::{Client, StatusCode};
 use rocket::{
     http::Status,
     request::{FromRequest, Outcome},
@@ -146,7 +146,24 @@ async fn verify_github_token(
         Err(err) => {
             return format_err!(err).status(Status::InternalServerError).into();
         }
-        Ok(response) => response.json::<ValidatedGithubInfo>().await,
+        Ok(response) => {
+            // If a code 422 (unprocessable entity) is returned, it's a sign of
+            // auth failure. Otherwise, we don't know what happened!
+            // https://docs.github.com/en/rest/apps/oauth-applications#check-a-token--status-codes
+            match response.status() {
+                StatusCode::OK => response.json::<ValidatedGithubInfo>().await,
+                StatusCode::UNPROCESSABLE_ENTITY => {
+                    return anyhow!("GitHub auth was invalid")
+                        .status(Status::Unauthorized)
+                        .into();
+                }
+                status => {
+                    return format_err!("Github auth failed because: {}", status)
+                        .status(Status::UnprocessableEntity)
+                        .into()
+                }
+            }
+        }
     };
 
     match validated_github_info {
