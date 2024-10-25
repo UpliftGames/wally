@@ -159,6 +159,10 @@ version = "2.0.7"
 # Licenses are required for publishing code to public registries.
 license = "MIT OR Apache-2.0"
 
+# A link to the repository hosting this package, if one exists.
+# This field is optional, but it is recommended.
+repository = "https://github.com/LPGhatguy/asink"
+
 # The author list is a free-form list, but conventionally contains names and
 # email addresses.
 authors = ["Lucien Greathouse <lucien@uplift.games>"]
