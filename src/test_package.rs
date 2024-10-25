@@ -35,6 +35,7 @@ impl PackageBuilder {
                 realm: Realm::Shared,
                 description: None,
                 license: None,
+                repository: None,
                 authors: Vec::new(),
                 include: Vec::new(),
                 exclude: Vec::new(),

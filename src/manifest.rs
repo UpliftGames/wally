@@ -90,6 +90,11 @@ pub struct Package {
     /// Example: `MIT OR Apache-2.0`
     pub license: Option<String>,
 
+    /// A link to the repository that hosts the package's source.
+    ///
+    /// Example: https://github.com/UpliftGames/wally
+    pub repository: Option<String>,
+
     /// A list of the package's authors.
     ///
     /// Example: ["Biff Lumfer <biff@playadopt.me>"]
