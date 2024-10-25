@@ -95,6 +95,12 @@ pub struct Package {
     /// Example: https://github.com/UpliftGames/wally
     pub repository: Option<String>,
 
+    /// A link to a homepage for this package. This should differ from the
+    /// `repository` if one is set.
+    ///
+    /// Example: https://wally.run/
+    pub homepage: Option<String>,
+
     /// A list of the package's authors.
     ///
     /// Example: ["Biff Lumfer <biff@playadopt.me>"]

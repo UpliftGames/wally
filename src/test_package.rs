@@ -36,6 +36,7 @@ impl PackageBuilder {
                 description: None,
                 license: None,
                 repository: None,
+                homepage: None,
                 authors: Vec::new(),
                 include: Vec::new(),
                 exclude: Vec::new(),

@@ -159,9 +159,14 @@ version = "2.0.7"
 # Licenses are required for publishing code to public registries.
 license = "MIT OR Apache-2.0"
 
-# A link to the repository hosting this package, if one exists.
+# A link to the repository hosting a package, if one exists.
 # This field is optional, but it is recommended.
 repository = "https://github.com/LPGhatguy/asink"
+
+# A link to a 'homepage' for a package. This should not be
+# redundant with `repository`; it only be set if there's a dedicated
+# website for the package.
+homepage = "https://eryn.io/roblox-lua-promise/"
 
 # The author list is a free-form list, but conventionally contains names and
 # email addresses.
