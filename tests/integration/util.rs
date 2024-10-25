@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 #[macro_export]
 macro_rules! assert_dir_snapshot {
     ( $path:expr ) => {
-        let result = crate::util::read_path($path).unwrap();
+        let result = $crate::util::read_path($path).unwrap();
         insta::assert_yaml_snapshot!(result);
     };
 }
@@ -34,7 +34,19 @@ pub fn read_path(path: &Path) -> anyhow::Result<Entry> {
 
         Ok(Entry::Dir(children))
     } else {
-        let contents = fs_err::read_to_string(path)?;
+        let contents = normalize_line_ends(fs_err::read_to_string(path)?);
         Ok(Entry::File(contents))
     }
+}
+
+fn normalize_line_ends(str: String) -> String {
+    let mut new = String::with_capacity(str.len() + 1);
+    for line in str.lines() {
+        new.push_str(line);
+        new.push('\n')
+    }
+    if !str.ends_with('\n') {
+        new.pop();
+    }
+    new
 }
