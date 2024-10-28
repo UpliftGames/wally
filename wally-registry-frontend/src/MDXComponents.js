@@ -2,11 +2,10 @@ import { MDXProvider } from "@mdx-js/react"
 import React from "react"
 import InlineLink from "./components/InlineLink"
 import { Heading, Paragraph } from "./components/Typography"
-import style from "./MDXComponents.css"
+import style from "./MDXComponents.module.css"
 
-const mdxify = (Component) => (props) => (
+const mdxify = (Component) => (props) =>
   <Component className={style[Component]} {...props} />
-)
 
 const primitives = [
   "h2",
