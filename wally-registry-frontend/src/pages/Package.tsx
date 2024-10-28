@@ -295,7 +295,6 @@ export default function Package() {
   const packageMetadata = packageHistory?.find(
     (item: WallyPackageMetadata) => item.package.version === packageVersion
   )
-    console.log(packageMetadata)
   if (packageMetadata == undefined) {
     return (
       <>
