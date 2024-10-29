@@ -208,7 +208,7 @@ const DownloadLink = ({
   children: React.ReactNode
 }) => {
   const handleAction = async () => {
-    // Using bare JavaScript mutations over a React ref keeps this link tag keyboard accessible, because you
+    // Using bare JavaScript mutations over a React ref keeps this link tag keyboard accessible, because you can't include an href on the base anchor tag and overwrite it with a ref, and we need an href to ensure full keyboard compatibility
     const link = document.createElement("a")
 
     const result = await fetch(url, {

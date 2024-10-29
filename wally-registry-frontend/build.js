@@ -21,12 +21,4 @@ const bundler = new Parcel({
   logLevel: 2,
 })
 
-// ,["src/index.html"], {
-//   outDir: "build/static",
-//   publicUrl: "/static",
-//   watch: false,
-//   autoInstall: false,
-//   logLevel: 2,
-// })
-
 bundler.run().then(() => {})
