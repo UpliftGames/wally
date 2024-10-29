@@ -1,7 +1,6 @@
-import React, { createRef, useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 import { useHistory, useLocation, useParams } from "react-router"
 import styled from "styled-components"
-import iconDownload from "../assets/icon-download.svg"
 import { isMobile, notMobile } from "../breakpoints"
 import { Button } from "../components/Button"
 import ContentSection from "../components/ContentSection"
@@ -91,6 +90,22 @@ const MetaItemWrapper = styled.div<StyledMetaItemProps>`
   }
 `
 
+const VersionSelect = styled.select`
+  :hover {
+    cursor: pointer;
+  }
+
+  :hover,
+  :focus {
+    text-decoration: underline;
+    color: var(--wally-red);
+  }
+
+  > option {
+    color: var(--wally-mauve);
+  }
+`
+
 const AuthorItem = styled.p`
   white-space: nowrap;
   overflow: hidden;
@@ -141,6 +156,14 @@ const DependencyLinkTooltip = styled.span`
   }
 `
 
+const StyledDownloadLink = styled.a`
+  display: inline-block;
+  height: 1rem;
+  width: auto;
+  padding-right: 0.3rem;
+  cursor: pointer;
+`
+
 const MetaItem = ({
   title,
   width,
@@ -184,16 +207,9 @@ const DownloadLink = ({
   filename: string
   children: React.ReactNode
 }) => {
-  const link = createRef<HTMLAnchorElement>()
-
   const handleAction = async () => {
-    if (link.current === null) {
-      return
-    }
-    if (link.current.href) {
-      // Already has the download blob
-      return
-    }
+    // Using bare JavaScript mutations over a React ref keeps this link tag keyboard accessible, because you
+    const link = document.createElement("a")
 
     const result = await fetch(url, {
       headers: {
@@ -204,20 +220,44 @@ const DownloadLink = ({
     const blob = await result.blob()
     const href = window.URL.createObjectURL(blob)
 
-    link.current.download = filename
-    link.current.href = href
+    link.href = href
+    link.download = filename
 
-    link.current.click()
+    document.body.appendChild(link)
+
+    link.click()
+
+    link.parentNode?.removeChild(link)
   }
 
   return (
     <>
-      <a role="button" ref={link} onClick={handleAction}>
+      <StyledDownloadLink role="button" href="#" onClick={handleAction}>
         {children}
-      </a>
+      </StyledDownloadLink>
     </>
   )
 }
+
+const DownloadIcon = ({ packageName }: { packageName: string }) => (
+  <svg
+    role="img"
+    aria-label="[title + description]"
+    xmlns="http://www.w3.org/2000/svg"
+    width="512"
+    height="512"
+    style={{ height: "100%", width: "100%" }}
+    enableBackground="new 0 0 512 512"
+    viewBox="0 0 512 512"
+  >
+    <title>Download a Wally Package</title>
+    <desc>Downloads {packageName}</desc>
+    <g fill="currentColor">
+      <path d="M382.56 233.376A15.96 15.96 0 00368 224h-64V16c0-8.832-7.168-16-16-16h-64c-8.832 0-16 7.168-16 16v208h-64a16.013 16.013 0 00-14.56 9.376c-2.624 5.728-1.6 12.416 2.528 17.152l112 128A15.946 15.946 0 00256 384c4.608 0 8.992-2.016 12.032-5.472l112-128c4.16-4.704 5.12-11.424 2.528-17.152z"></path>
+      <path d="M432 352v96H80v-96H16v128c0 17.696 14.336 32 32 32h416c17.696 0 32-14.304 32-32V352h-64z"></path>
+    </g>
+  </svg>
+)
 
 type PackageParams = {
   packageScope: string
@@ -348,7 +388,7 @@ export default function Package() {
             </MetaItem>
 
             <MetaItem title="Version" width="half">
-              <select
+              <VersionSelect
                 name="version"
                 id="version-select"
                 value={packageVersion ?? "?.?.?"}
@@ -368,7 +408,7 @@ export default function Package() {
                     </option>
                   )
                 })}
-              </select>
+              </VersionSelect>
             </MetaItem>
 
             {packageMetadata.package.license && (
@@ -397,11 +437,7 @@ export default function Package() {
                   ".zip"
                 }
               >
-                <img
-                  src={iconDownload}
-                  alt="Download"
-                  style={{ fill: "var(--wally-mauve)", height: "1rem" }}
-                />
+                <DownloadIcon packageName={packageScope + "/" + packageName} />
               </DownloadLink>
             </MetaItem>
 
