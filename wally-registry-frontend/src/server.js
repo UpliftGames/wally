@@ -1,6 +1,6 @@
 import fastify from "fastify"
 import fastifyStatic from "fastify-static"
-import { createReadStream, readFileSync } from "fs"
+import { readFileSync } from "fs"
 import path from "path"
 import React from "react"
 import ReactDOMServer from "react-dom/server"
@@ -9,7 +9,7 @@ import { StaticRouter as Router } from "react-router-dom"
 import { ServerStyleSheet } from "styled-components"
 import App from "./App"
 
-const staticFolder = path.join(__dirname, "../static")
+const staticFolder = path.join(__dirname, "../build/static")
 const index = readFileSync(path.join(staticFolder, "index.html"), "utf8")
 
 const renderRoute = (request, reply) => {
@@ -41,7 +41,7 @@ const renderRoute = (request, reply) => {
     .replace(`<div id="app"></div>`, `<div id="app">${body}</div>`)
 }
 
-const app = fastify({ logger: true })
+const app = fastify()
 
 app.register(fastifyStatic, {
   root: staticFolder,

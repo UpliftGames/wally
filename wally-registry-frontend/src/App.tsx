@@ -35,9 +35,7 @@ export default function App() {
           </Helmet>
           <ScrollToTop />
           <CanonicalTag />
-
           <Header />
-
           <Switch>
             <Route exact path="/">
               <Home />
@@ -77,7 +75,6 @@ export default function App() {
               }}
             />
           </Switch>
-
           <Footer />
         </>
       </StyleSheetManager>
