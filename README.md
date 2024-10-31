@@ -1,7 +1,10 @@
 <div align="center" width="800">
     <img alt="Wally Logo" src="wally-logo.svg" />
-    <h1>Wally, a package manager for Roblox</h1>
+    <h1>Wally, a package manager for Roblox
+    	<br><a href="https://upliftgames-wally.statuspage.io/"><img alt="Dynamic Status Badge" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fvhs2807lh6ws.statuspage.io%2Fapi%2Fv2%2Fsummary.json&query=%24.status.description&label=Status%20"></a>
+	</h1>
 </div>
+
 
 * [Installation](#installation)
 * [Commands](#commands)
@@ -50,7 +53,7 @@ Pre-built binaries are available for Windows, macOS, and Linux from the [GitHub 
 [releases]: https://github.com/UpliftGames/wally/releases
 
 ### From Source
-It's straightforward to compile Wally from source. Wally requires Rust 1.51.0 or newer.
+It's straightforward to compile Wally from source. Wally requires Rust 1.80.0 or newer.
 
 Clone the repository and use:
 
