@@ -13,60 +13,47 @@ pub(crate) fn generate_dependency_changes(
     old_dependencies: &BTreeSet<PackageId>,
     new_dependencies: &BTreeSet<PackageId>,
 ) -> Vec<DependencyChange> {
-    let added_packages = new_dependencies.difference(old_dependencies);
-    let removed_packages = old_dependencies.difference(new_dependencies);
-    let changed_dependencies: BTreeSet<&PackageName> = added_packages
-        .clone()
-        .chain(removed_packages.clone())
-        .map(|package| package.name())
+    let changed_dependencies: BTreeSet<&PackageName> = old_dependencies
+        .symmetric_difference(new_dependencies)
+        .map(|changed_package| changed_package.name())
         .collect();
 
     let mut dependency = Vec::new();
 
-    for dependency_name in changed_dependencies {
-        let matching_packages_removed = removed_packages
-            .clone()
-            .filter(|x| *x.name() == *dependency_name);
-        let matching_packages_added = added_packages
-            .clone()
-            .filter(|x| *x.name() == *dependency_name);
+    for changed_dependency_name in changed_dependencies {
+        let match_package_ids_by_name =
+            |maybe_matching: &&PackageId| maybe_matching.name() == changed_dependency_name;
 
-        match (
-            matching_packages_added.clone().count(),
-            matching_packages_removed.clone().count(),
-        ) {
-            (1, 1) => {
-                // We know for certain that there is only one item in the iterator.
-                let package_added = matching_packages_added.last().unwrap();
-                let package_removed = matching_packages_removed.last().unwrap();
+        let mut old_matches = old_dependencies.iter().filter(match_package_ids_by_name);
+        let total_old_matches = old_matches.clone().count();
 
-                if package_added.gt(package_removed) {
-                    dependency.push(DependencyChange::Updated {
-                        from: package_removed.clone(),
-                        to: package_added.clone(),
-                    });
-                } else {
-                    dependency.push(DependencyChange::Downgrade {
-                        from: package_added.clone(),
-                        to: package_removed.clone(),
-                    });
-                }
-            }
-            (0, 1) => {
-                // We know for certain that there is only one item in the iterator.
-                let package_removed = matching_packages_removed.last().unwrap();
-                dependency.push(DependencyChange::Removed(package_removed.clone()));
-            }
-            (1, 0) => {
-                // We know for certain that there is only one item in the iterator.
-                let package_added = matching_packages_added.last().unwrap();
-                dependency.push(DependencyChange::Added(package_added.clone()));
-            }
-            (0, 0) => panic!("Impossible for the package name {} to not be removed or added if found in earlier.", dependency_name),
-            (_, _) => {
-                dependency.extend(matching_packages_added.map(|package| DependencyChange::Added(package.clone())));
-                dependency.extend(matching_packages_removed.map(|package| DependencyChange::Removed(package.clone())));
-            }
+        let mut new_matches = new_dependencies.iter().filter(match_package_ids_by_name);
+        let total_new_matches = new_matches.clone().count();
+
+        // If there's more than one new or old matches, then we do the simple route of listing the exact versions removed/added.
+        if total_new_matches > 1 || total_old_matches > 1 {
+            dependency
+                .extend(old_matches.map(|package| DependencyChange::Removed(package.clone())));
+            dependency.extend(new_matches.map(|package| DependencyChange::Added(package.clone())));
+        } else {
+            // Otherwise, we can try being more specific about what changed.
+            dependency.push(
+                match (old_matches.next().cloned(), new_matches.next().cloned()) {
+                    (Some(old), Some(new)) if old.le(&new) => {
+                        DependencyChange::Updated { from: old, to: new }
+                    }
+                    (Some(old), Some(new)) => DependencyChange::Downgrade { from: old, to: new },
+
+                    // Or, there's been a singular removal/addition.
+                    (Some(old), None) => DependencyChange::Removed(old),
+                    (None, Some(new)) => DependencyChange::Added(new),
+                    (None, None) => panic!(
+                        "Impossible for the package name {} to not be removed or added if found \
+                     in earlier.",
+                        changed_dependency_name
+                    ),
+                },
+            )
         }
     }
 

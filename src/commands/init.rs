@@ -35,7 +35,8 @@ impl InitSubcommand {
 
         match fs_err::metadata(&manifest_path) {
             Ok(_) => bail!(
-                "There is already a Wally project in this directory. Manifest file ({}) already exists.",
+                "There is already a Wally project in this directory. Manifest file ({}) already \
+                 exists.",
                 MANIFEST_FILE_NAME
             ),
 
@@ -43,7 +44,11 @@ impl InitSubcommand {
                 if err.kind() == std::io::ErrorKind::NotFound {
                     // Perfect! This is the state that we want
                 } else {
-                    bail!("Error accessing manifest file ({}): {}", MANIFEST_FILE_NAME, err);
+                    bail!(
+                        "Error accessing manifest file ({}): {}",
+                        MANIFEST_FILE_NAME,
+                        err
+                    );
                 }
             }
         }
