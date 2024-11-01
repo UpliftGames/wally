@@ -9,7 +9,7 @@ pub(crate) enum DependencyChange {
     Downgrade { from: PackageId, to: PackageId },
 }
 
-pub(crate) fn generate_depedency_changes(
+pub(crate) fn generate_dependency_changes(
     old_dependencies: &BTreeSet<PackageId>,
     new_dependencies: &BTreeSet<PackageId>,
 ) -> Vec<DependencyChange> {

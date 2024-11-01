@@ -1,12 +1,13 @@
 use std::collections::BTreeSet;
 
+
+use std::io::Write;
 use std::path::PathBuf;
 use std::time::Duration;
 
 use crossterm::style::{Attribute, Color, SetAttribute, SetForegroundColor};
 use indicatif::{ProgressBar, ProgressStyle};
 
-use std::io::Write;
 use structopt::StructOpt;
 
 use crate::installation::InstallationContext;
@@ -16,7 +17,7 @@ use crate::package_id::PackageId;
 use crate::package_source::{PackageSource, PackageSourceMap, Registry, TestRegistry};
 use crate::resolution::resolve;
 
-use super::utils::{generate_depedency_changes, render_update_difference};
+use super::utils::{generate_dependency_changes, render_update_difference};
 use super::GlobalOptions;
 
 /// Install all of the dependencies of this project.
@@ -73,7 +74,8 @@ impl InstallSubcommand {
 
                 let old_dependencies = &try_to_use;
 
-                let changes = generate_depedency_changes(old_dependencies, &latest_graph.activated);
+                let changes =
+                    generate_dependency_changes(old_dependencies, &latest_graph.activated);
                 let mut error_output = Vec::new();
 
                 writeln!(
@@ -82,7 +84,9 @@ impl InstallSubcommand {
                     SetForegroundColor(Color::Yellow),
                     SetForegroundColor(Color::Reset)
                 )?;
+
                 render_update_difference(&changes, &mut error_output)?;
+
                 writeln!(
                     error_output,
                     "{}{} Suggestion{}{} try running wally update",
@@ -92,8 +96,8 @@ impl InstallSubcommand {
                     SetAttribute(Attribute::Reset)
                 )?;
 
-                // Should be safe since we're only getting valid utf-8.
-                anyhow::bail!(String::from_utf8(error_output).unwrap());
+                anyhow::bail!(String::from_utf8(error_output)
+                    .expect("output from render_update_difference should always be utf-8"));
             }
 
             progress.println(format!(

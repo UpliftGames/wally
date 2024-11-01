@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
@@ -15,7 +16,7 @@ use crossterm::style::{Attribute, Color, SetAttribute, SetForegroundColor};
 use indicatif::{ProgressBar, ProgressStyle};
 use structopt::StructOpt;
 
-use super::utils::{generate_depedency_changes, render_update_difference};
+use super::utils::{generate_dependency_changes, render_update_difference};
 
 /// Update all of the dependencies of this project.
 #[derive(Debug, StructOpt)]
@@ -99,8 +100,10 @@ impl UpdateSubcommand {
 
         progress.enable_steady_tick(Duration::from_millis(100));
         progress.suspend(|| {
-            let dependency_changes =
-                generate_depedency_changes(&lockfile.as_ids().collect(), &resolved_graph.activated);
+            let dependency_changes = generate_dependency_changes(
+                &lockfile.as_ids().collect(),
+                &resolved_graph.activated,
+            );
             render_update_difference(&dependency_changes, &mut std::io::stdout()).unwrap();
         });
 
