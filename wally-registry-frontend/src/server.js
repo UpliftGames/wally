@@ -1,6 +1,6 @@
 import fastify from "fastify"
 import fastifyStatic from "fastify-static"
-import { readFileSync } from "fs"
+import { createReadStream, readFileSync } from "fs"
 import path from "path"
 import React from "react"
 import ReactDOMServer from "react-dom/server"
