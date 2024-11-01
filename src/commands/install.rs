@@ -97,7 +97,7 @@ impl InstallSubcommand {
             }
 
             progress.println(format!(
-                "{} Verified {}lockfile is up-to-date...{}",
+                "{}   Verified {}lockfile is up-to-date...{}",
                 SetForegroundColor(Color::DarkGreen),
                 SetForegroundColor(Color::Green),
                 SetForegroundColor(Color::Reset)
