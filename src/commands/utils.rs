@@ -71,6 +71,8 @@ pub(crate) fn render_update_difference(
             SetForegroundColor(Color::DarkGreen),
             SetForegroundColor(Color::Reset)
         )?;
+
+        return Ok(());
     }
 
     writeln!(
