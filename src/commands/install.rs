@@ -1,18 +1,22 @@
 use std::collections::BTreeSet;
+
+use std::io::Write;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use crossterm::style::{Color, SetForegroundColor};
+use crossterm::style::{Attribute, Color, SetAttribute, SetForegroundColor};
 use indicatif::{ProgressBar, ProgressStyle};
+
 use structopt::StructOpt;
 
 use crate::installation::InstallationContext;
-use crate::lockfile::{LockPackage, Lockfile};
+use crate::lockfile::Lockfile;
 use crate::manifest::Manifest;
 use crate::package_id::PackageId;
 use crate::package_source::{PackageSource, PackageSourceMap, Registry, TestRegistry};
 use crate::resolution::resolve;
 
+use super::utils::{generate_dependency_changes, render_update_difference};
 use super::GlobalOptions;
 
 /// Install all of the dependencies of this project.
@@ -21,6 +25,10 @@ pub struct InstallSubcommand {
     /// Path to the project to install dependencies for.
     #[structopt(long = "project-path", default_value = ".")]
     pub project_path: PathBuf,
+
+    /// Flag to error if the lockfile does not match with the latest dependencies.
+    #[structopt(long = "locked")]
+    pub locked: bool,
 }
 
 impl InstallSubcommand {
@@ -43,29 +51,67 @@ impl InstallSubcommand {
         let mut package_sources = PackageSourceMap::new(default_registry);
         package_sources.add_fallbacks()?;
 
-        let mut try_to_use = BTreeSet::new();
-        for package in lockfile.packages {
-            match package {
-                LockPackage::Registry(registry_package) => {
-                    try_to_use.insert(PackageId::new(
-                        registry_package.name,
-                        registry_package.version,
-                    ));
-                }
-                LockPackage::Git(_) => {}
-            }
-        }
+        let try_to_use = lockfile.as_ids().collect();
 
-        let progress = ProgressBar::new(0)
-            .with_style(
-                ProgressStyle::with_template("{spinner:.cyan}{wide_msg}")?.tick_chars("⠁⠈⠐⠠⠄⠂ "),
-            )
-            .with_message(format!(
-                "{} Resolving {}packages...",
+        let progress = ProgressBar::new(0).with_style(
+            ProgressStyle::with_template("{spinner:.cyan}{wide_msg}")?.tick_chars("⠁⠈⠐⠠⠄⠂ "),
+        );
+
+        progress.enable_steady_tick(Duration::from_millis(100));
+
+        if self.locked {
+            progress.println(format!(
+                "{} Verifying {}lockfile is up-to-date...",
                 SetForegroundColor(Color::DarkGreen),
                 SetForegroundColor(Color::Reset)
             ));
-        progress.enable_steady_tick(Duration::from_millis(100));
+
+            let latest_graph = resolve(&manifest, &BTreeSet::new(), &package_sources)?;
+
+            if try_to_use != latest_graph.activated {
+                progress.finish_and_clear();
+
+                let old_dependencies = &try_to_use;
+
+                let changes =
+                    generate_dependency_changes(old_dependencies, &latest_graph.activated);
+                let mut error_output = Vec::new();
+
+                writeln!(
+                    error_output,
+                    "{} The Lockfile is out of date and wasn't changed due to --locked{}",
+                    SetForegroundColor(Color::Yellow),
+                    SetForegroundColor(Color::Reset)
+                )?;
+
+                render_update_difference(&changes, &mut error_output)?;
+
+                writeln!(
+                    error_output,
+                    "{}{} Suggestion{}{} try running wally update",
+                    SetAttribute(Attribute::Bold),
+                    SetForegroundColor(Color::DarkGreen),
+                    SetForegroundColor(Color::Reset),
+                    SetAttribute(Attribute::Reset)
+                )?;
+
+                anyhow::bail!(String::from_utf8(error_output)
+                    .expect("output from render_update_difference should always be utf-8"));
+            }
+
+            progress.println(format!(
+                "{}   Verified {}lockfile is up-to-date...{}",
+                SetForegroundColor(Color::DarkGreen),
+                SetForegroundColor(Color::Green),
+                SetForegroundColor(Color::Reset)
+            ));
+        }
+
+        progress.println(format!(
+            "{} Resolving {}packages...",
+            SetForegroundColor(Color::DarkGreen),
+            SetForegroundColor(Color::Reset)
+        ));
 
         let resolved = resolve(&manifest, &try_to_use, &package_sources)?;
 
@@ -76,8 +122,8 @@ impl InstallSubcommand {
             resolved.activated.len() - 1
         ));
 
-        let lockfile = Lockfile::from_resolve(&resolved);
-        lockfile.save(&self.project_path)?;
+        let new_lockfile = Lockfile::from_resolve(&resolved);
+        new_lockfile.save(&self.project_path)?;
 
         progress.println(format!(
             "{}  Generated {}lockfile",

@@ -64,8 +64,8 @@ impl PackageContents {
                     if project_name != package_name {
                         log::info!(
                             "The project and package names are mismatched. The project name in \
-                            `default.project.json` has been renamed to '{}' in the uploaded package \
-                            to match the name provided by `wally.toml`",
+                             `default.project.json` has been renamed to '{}' in the uploaded \
+                             package to match the name provided by `wally.toml`",
                             package_name
                         );
 

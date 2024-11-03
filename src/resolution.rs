@@ -273,8 +273,8 @@ pub fn resolve(
 
         if conflicting.is_empty() {
             bail!(
-                "No packages were found that matched ({req_realm:?}) {req}.\
-                \nAre you sure this is a {req_realm:?} dependency?",
+                "No packages were found that matched ({req_realm:?}) {req}.\nAre you sure this is \
+                 a {req_realm:?} dependency?",
                 req_realm = dependency_request.request_realm,
                 req = dependency_request.package_req,
             );
@@ -285,9 +285,9 @@ pub fn resolve(
                 .collect();
 
             bail!(
-                "All possible candidates for package {req} ({req_realm:?}) \
-                 conflicted with other packages that were already installed. \
-                 These packages were previously selected: {conflicting}",
+                "All possible candidates for package {req} ({req_realm:?}) conflicted with other \
+                 packages that were already installed. These packages were previously selected: \
+                 {conflicting}",
                 req = dependency_request.package_req,
                 req_realm = dependency_request.request_realm,
                 conflicting = conflicting_debug.join(", "),

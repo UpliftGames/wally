@@ -1,6 +1,9 @@
 # Wally Changelog
 
 ## Unreleased Changes
+* Added --locked flag for the install subcommand ([#119])
+
+[#119]: https://github.com/UpliftGames/wally/pull/119
 
 ## 0.3.2 (2023-06-05)
 * Added private field to package manifest ([#9])([#76])
