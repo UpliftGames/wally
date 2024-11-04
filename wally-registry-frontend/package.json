@@ -86,6 +86,7 @@
     "styled-components": "^5.2.1"
   },
   "optionalDependencies": {
-    "@parcel/watcher-linux-x64-glibc": "^2.4.2-alpha.0"
+    "@parcel/watcher-linux-x64-glibc": "^2.4.2-alpha.0",
+    "@swc/core-linux-x64-gnu": "^1.8.0"
   }
 }
