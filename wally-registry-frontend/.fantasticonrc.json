@@ -1,0 +1,16 @@
+{
+  "inputDir": "icons",
+  "outputDir": "src/app/fonts",
+  "fontTypes": ["woff2"],
+  "fontsUrl": "",
+  "assetTypes": ["ts", "css"],
+  "formatOptions": {
+    "ts": {
+      "types": ["literalId"]
+    }
+  },
+  "pathOptions": {
+    "ts": "src/types/icons.d.ts"
+  },
+  "normalize": true
+}
