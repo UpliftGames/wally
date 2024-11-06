@@ -5,3 +5,5 @@
 *.snap.new
 
 *.DS_Store
+
+/wally-registry-frontend2

@@ -10,16 +10,17 @@
     "fantasticon": "fantasticon"
   },
   "dependencies": {
+    "@emotion/is-prop-valid": "^1.3.1",
     "next": "15.0.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-select": "^5.8.2",
     "styled-components": "^6.1.13"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "@types/styled-components": "^5.1.34",
     "concurrently": "^9.1.0",
     "eslint": "^8",
     "eslint-config-next": "15.0.2",
