@@ -1,6 +1,6 @@
 import { WallyPackageBrief, WallyPackageMetadata } from "../types/wally"
 
-const wallyApiBaseUrl = `${process.env.WALLY_API_URL}/v1`
+const wallyApiBaseUrl = `${process.env.NEXT_PUBLIC_WALLY_API_URL}/v1`
 // API/v1/package-search?query=<query>
 const wallyApiSearchUrl = `${wallyApiBaseUrl}/package-search`
 // API/v1/package-metadata/<scope>/<name>
