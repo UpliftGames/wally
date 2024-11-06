@@ -74,10 +74,11 @@ const LogoImageLink = styled(Link)`
 `
 
 const LogoImage = styled(Image)`
+  position: relative !important;
   transition: all 350ms ease;
 
   @media screen and (${notMobile}) {
-    height: 4.8rem;
+    height: 4.8rem !important;
 
     &:hover {
       transition: all 350ms cubic-bezier(0.34, 2, 0.64, 1);
@@ -86,7 +87,7 @@ const LogoImage = styled(Image)`
   }
 
   @media screen and (${isMobile}) {
-    height: 100%;
+    height: 100% !important;
     padding: 0.75rem 0 0.75rem 3rem;
   }
 
@@ -351,7 +352,7 @@ export default function Header() {
           </HamburgerButton>
 
           <LogoImageLink href="/">
-            <LogoImage src={logo} alt="Wally" loading="eager" />
+            <LogoImage src={logo} alt="Wally" loading="eager" fill={true} />
           </LogoImageLink>
 
           <AsyncSelect
