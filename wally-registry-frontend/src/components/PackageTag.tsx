@@ -41,7 +41,7 @@ const StyledBlip = styled.div<{
   &:any-link:hover {
     background: var(--wally-red);
 
-    ::before {
+    &::before {
       animation: ${ArrowHoverKeyfames};
       animation-duration: 0.5s;
       animation-fill-mode: forwards;
@@ -49,7 +49,7 @@ const StyledBlip = styled.div<{
     }
   }
 
-  ::before {
+  &::before {
     position: absolute;
     content: "";
     display: inline-block;
