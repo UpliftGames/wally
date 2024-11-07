@@ -15,7 +15,7 @@ export default function InlineLink({
   children,
 }: {
   to: string
-  children: React.ReactNode
+  children?: React.ReactNode
 }) {
   if (to.match(/^[a-z/]+:/)) {
     return (
