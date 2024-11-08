@@ -16,6 +16,17 @@ const Flex = styled.div`
   margin: 1.5rem 0;
 `
 
+const BannerInlineLink = styled.a`
+  border-bottom: 1px dotted var(--wally-white);
+
+  &:hover,
+  &:focus {
+    color: var(--wally-mauve);
+    border-bottom: 1px solid var(--wally-mauve);
+    cursor: help;
+  }
+`
+
 const PopularPackages = () => {
   const popularPackagesList = mockPopularPackages.map((popPackage, index) => (
     <PackageTag
@@ -47,7 +58,22 @@ export default function Home() {
       <ContentSection variation="red" placement="floating">
         <Heading>Wally, a package manager for Roblox</Heading>
         <ResponsiveParagraph>
-          Wally is a package manager for Roblox inspired by Cargo (Rust) and npm
+          Wally is a package manager for Roblox inspired by{" "}
+          <BannerInlineLink
+            href="https://doc.rust-lang.org/stable/cargo/"
+            target="_blank"
+            rel="noopener"
+          >
+            Cargo
+          </BannerInlineLink>{" "}
+          (Rust) and{" "}
+          <BannerInlineLink
+            href="https://www.npmjs.com/"
+            target="_blank"
+            rel="noopener"
+          >
+            npm
+          </BannerInlineLink>{" "}
           (JavaScript). It brings the familiar, community-oriented world of
           sharing code from other communities into the Roblox ecosystem.
         </ResponsiveParagraph>

@@ -44,7 +44,7 @@ const CopyIcon = styled.div`
   color: white;
 `
 
-const CopyCodeButton = styled.button<{ recentlyCopied: boolean }>`
+const CopyCodeButton = styled.button<{ $recentlyCopied: boolean }>`
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -59,7 +59,7 @@ const CopyCodeButton = styled.button<{ recentlyCopied: boolean }>`
   word-break: break-word;
   white-space: pre-line;
 
-  ${(props) => props.recentlyCopied && jumpAnimation}
+  ${(props) => props.$recentlyCopied && jumpAnimation}
 
   &:hover ${CopyIcon} {
     visibility: visible;
@@ -92,7 +92,7 @@ export default function CopyCody({
 
   return (
     <CopyCodeButton
-      recentlyCopied={recentlyCopied}
+      $recentlyCopied={recentlyCopied}
       onClick={() => copyToClipBoard(copyContent)}
     >
       <>

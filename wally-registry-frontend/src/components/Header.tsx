@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import AsyncSelect from "react-select/async"
 import styled from "styled-components"
 import logo from "../../public/assets/wally-logo.svg"
@@ -188,18 +188,8 @@ const StyledNav = styled.nav`
   }
 `
 
-const activeClassName = "nav-active"
-
-const StyledNavLink = styled<any>(Link).attrs({
-  activeClassName,
-})`
-  && {
-    ${(props) => props.$styles}
-  }
-
-  &.${activeClassName} {
-    color: var(--wally-red);
-  }
+const StyledNavLink = styled<any>(Link)`
+  color: ${(props) => (props.$active ? "var(--wally-red)" : "inherit")};
 
   &:hover {
     color: var(--wally-red);
@@ -317,6 +307,9 @@ const filterWallyPackages = async (inputValue: string) => {
 
 export default function Header() {
   const router = useRouter()
+  const pathname = usePathname()
+
+  const currentParentPage = pathname.split("/")[1]
 
   const loadOptions = async (inputValue: string) =>
     new Promise<WallyOption[]>((resolve) => {
@@ -380,9 +373,9 @@ export default function Header() {
           <StyledNav>
             {links.map(([text, url]) => (
               <StyledNavLink
-                activeClassName={activeClassName}
                 href={url}
                 key={url}
+                $active={currentParentPage === text.toLowerCase()}
               >
                 {text}
               </StyledNavLink>
