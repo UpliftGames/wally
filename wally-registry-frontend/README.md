@@ -61,3 +61,13 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 ## MDX
 
 This project makes use of MDX files, which is Markdown mixed with JSX. MDX can be used for pages, and is used for both `install` and `policies`. You can learn more [here](https://mdxjs.com/).
+
+## .env
+
+In order to run this project, you must create a `.env` file with the following fields:
+
+```
+NEXT_PUBLIC_WALLY_API_URL=""
+```
+
+The public, base Wally API endpoint is `https://api.wally.run`.
