@@ -312,7 +312,7 @@ export default function Header() {
   const router = useRouter()
   const pathname = usePathname()
 
-  const currentParentPage = pathname.split("/")[1]
+  const currentParentPage = pathname ? pathname.split("/")[1] : ""
 
   const loadOptions = async (inputValue: string) =>
     new Promise<WallyOption[]>((resolve) => {
