@@ -1,6 +1,10 @@
+# Wally Registry Frontend
+
+The Wally registry website serves as a place for Wally users to view information about the Wally package manager.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Getting Started
+## Usage
 
 First, run the development server:
 
@@ -16,21 +20,44 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+To build the production server:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+```
 
-## Learn More
+All files should be formatted with Prettier before committing. You can either (pick one):
 
-To learn more about Next.js, take a look at the following resources:
+- Install the Prettier editor extension, and turn on the "format file on save" setting in your editor
+- Run the `npm run lint` command before committing any files, which will format all changed files in-place.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Recommended Editor Extensions
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+These extensions make working on this project easier and help prevent mistakes. Links for VS Code extensions are provided.
 
-## Deploy on Vercel
+- [Styled Components](https://marketplace.visualstudio.com/items?itemName=jpoissonnier.vscode-styled-components) is important for syntax highlighting and IntelliSense for the Styled Components CSS.
+- [MDX](https://marketplace.visualstudio.com/items?itemName=silvenon.mdx) is important for proper syntax highlighting in MDX files.
+- [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
+- [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Structure
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### ./src
+
+The main source code for the website.
+
+#### ./public/assets
+
+Any images that are imported by the website should go here. Make sure you crush them before committing (see below)
+
+### ./icons
+
+This folder contains SVG icons that are built into an icon font using fantasticon. They are usable with the `<Icon />` component.
+
+### Fonts
+
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Iosevka](https://typeof.net/Iosevka/).
+
+## MDX
+
+This project makes use of MDX files, which is Markdown mixed with JSX. MDX can be used for pages, and is used for both `install` and `policies`. You can learn more [here](https://mdxjs.com/).
