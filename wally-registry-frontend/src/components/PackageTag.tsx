@@ -140,6 +140,7 @@ const BottomRow = styled.div`
   margin: 0.2rem 0.5rem 0.3rem 0.5rem;
 `
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const Author = styled.span`
   color: rgba(255, 255, 255, 0.7);
   font-size: 0.8rem;
@@ -156,6 +157,7 @@ export default function PackageBlip({
   children,
   title,
   version,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   uniqueId,
   className,
   linkTo,
@@ -173,6 +175,7 @@ export default function PackageBlip({
   linkTo?: string
   inset?: boolean
 }) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const Component: React.FC<any> = linkTo ? LinkBlip : StyledBlip
 
   return (

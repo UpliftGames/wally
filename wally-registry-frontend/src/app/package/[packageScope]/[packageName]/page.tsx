@@ -176,10 +176,10 @@ const MetaItem = ({
 }
 
 const DependencyLink = ({ packageInfo }: { packageInfo: string }) => {
-  let packageMatch = packageInfo.match(/(.+\/.+)@[^\d]+([\d.]+)/)
+  const packageMatch = packageInfo.match(/(.+\/.+)@[^\d]+([\d.]+)/)
   if (packageMatch != null) {
-    let name = packageMatch[1]
-    let version = packageMatch[2]
+    const name = packageMatch[1]
+    const version = packageMatch[2]
     return (
       <DependencyLinkWrapper>
         <DependencyLinkItem href={`/package/${name}?version=${version}`}>
@@ -305,6 +305,7 @@ export default function Package() {
 
   useEffect(() => {
     loadPackageData(packageScope, packageName)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [packageScope, packageName])
 
   if (!isLoaded) {
@@ -338,8 +339,8 @@ export default function Package() {
           <Heading>{packageName}</Heading>
 
           <Paragraph>
-            Couldn't find {capitalize(packageName)} version {packageVersion}.
-            Are you sure that's a valid version?
+            Couldn&apos;t find {capitalize(packageName)} version{" "}
+            {packageVersion}. Are you sure that&apos;s a valid version?
           </Paragraph>
 
           <Button

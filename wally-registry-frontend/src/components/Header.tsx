@@ -188,7 +188,7 @@ const StyledNav = styled.nav`
   }
 `
 
-const StyledNavLink = styled<any>(Link)`
+const StyledNavLink = styled(Link)<{ $active: boolean }>`
   color: ${(props) => (props.$active ? "var(--wally-red)" : "inherit")};
 
   &:hover {
@@ -261,6 +261,7 @@ const MobilePushDown = styled.div`
   }
 `
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const reactSelectSearchTheme = (theme: any) => ({
   ...theme,
   colors: {
@@ -271,6 +272,7 @@ const reactSelectSearchTheme = (theme: any) => ({
 })
 
 const reactSelectSearchStyles = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   container: (provided: any) => ({
     ...provided,
     flexGrow: 2,
@@ -279,6 +281,7 @@ const reactSelectSearchStyles = {
       margin: "0 0.5rem 0.5rem",
     },
   }),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   control: (provided: any) => ({
     ...provided,
     borderRadius: "var(--radius-small)",

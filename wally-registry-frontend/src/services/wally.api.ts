@@ -1,5 +1,3 @@
-import { WallyPackageBrief, WallyPackageMetadata } from "../types/wally"
-
 const wallyApiBaseUrl = `${process.env.NEXT_PUBLIC_WALLY_API_URL}/v1`
 // API/v1/package-search?query=<query>
 const wallyApiSearchUrl = `${wallyApiBaseUrl}/package-search`
@@ -28,7 +26,10 @@ export async function getWallyPackages(searchQuery: string | null) {
         return response.json()
       })
       .then((data) => data)
-      .catch((error) => {})
+      .catch((error) => {
+        // eslint-disable-next-line no-console
+        console.error(error)
+      })
   } else {
     return []
   }
@@ -52,7 +53,10 @@ export async function getWallyPackageMetadata(
       return response.json()
     })
     .then((data) => data)
-    .catch((error) => {})
+    .catch((error) => {
+      // eslint-disable-next-line no-console
+      console.error(error)
+    })
 }
 
 /**

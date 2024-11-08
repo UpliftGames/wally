@@ -59,11 +59,6 @@ const iosevka = localFont({
   fallback: ["Hack", "Consolas", "monospace"],
 })
 
-const iconFont = localFont({
-  src: "./fonts/icons.woff2",
-  display: "block",
-})
-
 export default function RootLayout({
   children,
 }: Readonly<{

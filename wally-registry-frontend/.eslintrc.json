@@ -3,10 +3,10 @@
   "extends": [
     "next/core-web-vitals",
     "next/typescript",
-    "plugin:jsx-a11y/strict "
+    "plugin:jsx-a11y/strict"
   ],
   "rules": {
-    "no-constant-condition": ["error", { "checkLoops": "all" }],
+    "no-constant-condition": ["error", { "checkLoops": true }],
     "no-unused-vars": 0,
     "no-console": 2
   }

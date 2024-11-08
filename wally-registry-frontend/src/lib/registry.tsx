@@ -1,19 +1,8 @@
 "use client"
 
-import isPropValid from "@emotion/is-prop-valid"
 import { useServerInsertedHTML } from "next/navigation"
 import React, { useState } from "react"
 import { ServerStyleSheet, StyleSheetManager } from "styled-components"
-
-// This implements the default behavior from styled-components v5
-function shouldForwardProp(propName: string, target: any) {
-  if (typeof target === "string") {
-    // For HTML elements, forward the prop if it is a valid HTML attribute
-    return isPropValid(propName)
-  }
-  // For other elements, forward all props
-  return true
-}
 
 export default function StyledComponentsRegistry({
   children,
@@ -35,7 +24,8 @@ export default function StyledComponentsRegistry({
   return (
     <StyleSheetManager
       sheet={styledComponentsStyleSheet.instance}
-      //   shouldForwardProp={shouldForwardProp}
+      //   shouldForwardProp={shouldForwardProp} If there are many styled-components collision issues, a shouldForwardProp function can be added to solve some v5 migration problems.
+      // https://styled-components.com/docs/api#shouldforwardprop
     >
       {children}
     </StyleSheetManager>
