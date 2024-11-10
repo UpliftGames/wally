@@ -7,7 +7,7 @@ use std::{collections::BTreeSet, io::Write};
 pub(crate) enum DependencyChange {
     Added(PackageId),
     Removed(PackageId),
-    Updated { from: PackageId, to: PackageId },
+    Upgraded { from: PackageId, to: PackageId },
     Downgraded { from: PackageId, to: PackageId },
 }
 
@@ -42,7 +42,7 @@ pub(crate) fn generate_dependency_changes(
             dependency.push(
                 match (old_matches.next().cloned(), new_matches.next().cloned()) {
                     (Some(old), Some(new)) if old.le(&new) => {
-                        DependencyChange::Updated { from: old, to: new }
+                        DependencyChange::Upgraded { from: old, to: new }
                     }
                     (Some(old), Some(new)) => DependencyChange::Downgraded { from: old, to: new },
 
@@ -102,7 +102,7 @@ pub(crate) fn render_update_difference(
                 package_id.name(),
                 package_id.version()
             ),
-            DependencyChange::Updated { from, to } => writeln!(
+            DependencyChange::Upgraded { from, to } => writeln!(
                 writer,
                 "{}    Updated {}{} from v{} to v{}",
                 SetForegroundColor(Color::DarkCyan),
@@ -159,7 +159,7 @@ mod test {
         ($changes:expr, $from_package_id:literal, $to_package_id:literal) => {
             $changes.iter().any(|change| {
                 *change
-                    == super::DependencyChange::Updated {
+                    == super::DependencyChange::Upgraded {
                         from: package_id!($from_package_id),
                         to: package_id!($to_package_id),
                     }
