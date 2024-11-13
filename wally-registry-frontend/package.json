@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "fantasticon && next dev --turbopack",
-    "build": "fantasticon && next build",
-    "start": "next start",
+    "vercel-build": "next build",
+    "pages:build": "fantasticon && npx @cloudflare/next-on-pages",
+    "preview": "npm run pages:build && wrangler pages dev",
+    "deploy": "npm run pages:build && wrangler pages deploy",
     "lint": "next lint",
     "fantasticon": "fantasticon"
   },
@@ -22,6 +23,7 @@
     "styled-components": "^6.1.13"
   },
   "devDependencies": {
+    "@cloudflare/next-on-pages": "^1.13.5",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

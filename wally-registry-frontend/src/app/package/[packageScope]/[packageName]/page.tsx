@@ -258,6 +258,8 @@ type PackageParams = {
   packageName: string
 }
 
+export const runtime = "edge";
+
 export default function Package() {
   const searchParams = useSearchParams()
   const router = useRouter()
