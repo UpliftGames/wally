@@ -1,6 +1,9 @@
 FROM rust:1.81-slim-bookworm AS build
 WORKDIR /usr/app
 
+ARG COMMIT_SHA
+ENV COMMIT_SHA=$COMMIT_SHA
+
 # Debian Slim doesn't install certificates by default, but we kinda want those.
 # pkg-config is used by some dependencies to locate system libraries.
 RUN apt-get update
