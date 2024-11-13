@@ -59,6 +59,11 @@ fn root() -> content::RawJson<serde_json::Value> {
     }))
 }
 
+#[get("/version")]
+fn version() -> content::RawText<&'static str> {
+    content::RawText(option_env!("GIT_HASH").unwrap_or(env!("CARGO_PKG_VERSION")))
+}
+
 #[get("/v1/package-contents/<scope>/<name>/<version>")]
 async fn package_contents(
     storage: &State<Box<dyn StorageBackend>>,
@@ -155,7 +160,7 @@ async fn publish(
     let manifest = get_manifest(&mut archive).status(Status::BadRequest)?;
     let package_id = manifest.package_id();
 
-    if !authorization.can_write_package(&package_id, &index)? {
+    if !authorization.can_write_package(&package_id, index)? {
         return Err(format_err!(
             "you do not have permission to write in scope {}",
             package_id.name().scope()
@@ -195,7 +200,7 @@ async fn publish(
     if let Ok(mut search_backend) = search_backend.try_write() {
         // TODO: Recrawling the whole index for each publish is very wasteful!
         // Eventually this will get too expensive and we should only add the new package.
-        search_backend.crawl_packages(&index)?;
+        search_backend.crawl_packages(index)?;
     }
 
     Ok(Json(json!({
@@ -251,6 +256,7 @@ pub fn server(figment: Figment) -> rocket::Rocket<Build> {
             "/",
             routes![
                 root,
+                version,
                 package_contents,
                 publish,
                 package_info,
