@@ -171,6 +171,15 @@ realm = "shared"
 # keep internal code private and isolated.
 registry = "https://github.com/upliftgames/wally-index"
 
+# Wally will display this link on the package's page on wally.run.
+# A value should only be set if there is a dedicated website for
+# the package other than the source repository. 
+homepage = "https://eryn.io/roblox-lua-promise/"
+
+# Wally will display this link on package's page on wally.run.
+# The repository field should be a URL to the source repository for a package.
+repository = "https://github.com/evaera/roblox-lua-promise"
+
 # You can also specify files to include or exclude from the package
 # By default gitignore files are respected and Wally won't include hidden
 # files/directories or packages downloaded by Wally.
