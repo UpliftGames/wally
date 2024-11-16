@@ -446,14 +446,14 @@ export default function Package() {
             {packageMetadata?.package.homepage && (
               <MetaItem title="Homepage" width="full">
                 <a href={packageMetadata?.package.homepage}>
-                  {packageMetadata?.package.homepage.replace("https://", "")}
+                  {packageMetadata?.package.homepage}
                 </a>
               </MetaItem>
             )}
 
             {packageMetadata?.package.repository && (
               <MetaItem title="Repository" width="full">
-                <a href={packageMetadata?.package.repository.replace("https://", "")}>
+                <a href={packageMetadata?.package.repository}>
                   {packageMetadata?.package.repository}
                 </a>
               </MetaItem>
