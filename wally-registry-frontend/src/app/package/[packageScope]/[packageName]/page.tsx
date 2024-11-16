@@ -288,8 +288,8 @@ export default function Package() {
       (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
     )
       ? packageData.versions.filter(
-          (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
-        )
+        (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
+      )
       : packageData.versions
 
     setPackageHistory(filteredPackageData)
@@ -443,14 +443,21 @@ export default function Package() {
               {capitalize(packageMetadata.package.realm)}
             </MetaItem>
 
-            {/* TODO: Re-implement when Wally API supports custom source repos */}
-            {/* {packageMetadata?.package.registry && (
-                <MetaItem title="Repository" width="full">
-                  <a href={packageMetadata?.package.registry}>
-                    {packageMetadata?.package.registry.replace("https://", "")}
-                  </a>
-                </MetaItem>
-              )} */}
+            {packageMetadata?.package.homepage && (
+              <MetaItem title="Homepage" width="full">
+                <a href={packageMetadata?.package.homepage}>
+                  {packageMetadata?.package.homepage.replace("https://", "")}
+                </a>
+              </MetaItem>
+            )}
+
+            {packageMetadata?.package.repository && (
+              <MetaItem title="Repository" width="full">
+                <a href={packageMetadata?.package.repository.replace("https://", "")}>
+                  {packageMetadata?.package.repository}
+                </a>
+              </MetaItem>
+            )}
 
             {packageMetadata.package.authors.length > 0 && (
               <MetaItem title="Authors" width="full">

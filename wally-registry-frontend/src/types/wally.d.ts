@@ -14,6 +14,8 @@ export interface WallyPackageMetadata {
     realm: string
     registry: string
     version: string
+    homepage: string?,
+    repository: string?,
   }
 
   place: {
