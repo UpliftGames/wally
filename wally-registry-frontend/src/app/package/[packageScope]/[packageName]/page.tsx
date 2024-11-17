@@ -192,6 +192,40 @@ const DependencyLink = ({ packageInfo }: { packageInfo: string }) => {
   return <DependencyLinkItem href={"/"}>{packageInfo}</DependencyLinkItem>
 }
 
+const MetadataLink = ({
+  url
+}: {
+  url: string
+
+}) => {
+  const Link = styled.a`
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    white-space: nowrap;
+    width: 100%;
+    display: inline-block;
+    font-size: 18px;
+  `
+
+  const urlNoSchema = (original: string) => {
+    try {
+      const url = new URL(original)
+      return `${url.host}${url?.pathname}`
+    } catch {
+      return original
+    }
+  }
+
+  return (
+    <>
+      <Link href={url} title={url}>
+        {urlNoSchema(url)}
+      </Link>
+    </>
+  )
+}
+
 const DownloadLink = ({
   url,
   filename,
@@ -445,17 +479,13 @@ export default function Package() {
 
             {packageMetadata?.package.homepage && (
               <MetaItem title="Homepage" width="full">
-                <a href={packageMetadata?.package.homepage}>
-                  {packageMetadata?.package.homepage}
-                </a>
+                <MetadataLink url={packageMetadata?.package.homepage} />
               </MetaItem>
             )}
 
             {packageMetadata?.package.repository && (
               <MetaItem title="Repository" width="full">
-                <a href={packageMetadata?.package.repository}>
-                  {packageMetadata?.package.repository}
-                </a>
+                <MetadataLink url={packageMetadata?.package.repository} />
               </MetaItem>
             )}
 
