@@ -192,6 +192,40 @@ const DependencyLink = ({ packageInfo }: { packageInfo: string }) => {
   return <DependencyLinkItem href={"/"}>{packageInfo}</DependencyLinkItem>
 }
 
+const MetadataLink = ({
+  url
+}: {
+  url: string
+
+}) => {
+  const Link = styled.a`
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    white-space: nowrap;
+    width: 100%;
+    display: inline-block;
+    font-size: 18px;
+  `
+
+  const urlNoSchema = (original: string) => {
+    try {
+      const url = new URL(original)
+      return `${url.host}${url?.pathname}`
+    } catch {
+      return original
+    }
+  }
+
+  return (
+    <>
+      <Link href={url} title={url}>
+        {urlNoSchema(url)}
+      </Link>
+    </>
+  )
+}
+
 const DownloadLink = ({
   url,
   filename,
@@ -288,8 +322,8 @@ export default function Package() {
       (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
     )
       ? packageData.versions.filter(
-          (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
-        )
+        (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
+      )
       : packageData.versions
 
     setPackageHistory(filteredPackageData)
@@ -443,14 +477,17 @@ export default function Package() {
               {capitalize(packageMetadata.package.realm)}
             </MetaItem>
 
-            {/* TODO: Re-implement when Wally API supports custom source repos */}
-            {/* {packageMetadata?.package.registry && (
-                <MetaItem title="Repository" width="full">
-                  <a href={packageMetadata?.package.registry}>
-                    {packageMetadata?.package.registry.replace("https://", "")}
-                  </a>
-                </MetaItem>
-              )} */}
+            {packageMetadata?.package.homepage && (
+              <MetaItem title="Homepage" width="full">
+                <MetadataLink url={packageMetadata?.package.homepage} />
+              </MetaItem>
+            )}
+
+            {packageMetadata?.package.repository && (
+              <MetaItem title="Repository" width="full">
+                <MetadataLink url={packageMetadata?.package.repository} />
+              </MetaItem>
+            )}
 
             {packageMetadata.package.authors.length > 0 && (
               <MetaItem title="Authors" width="full">

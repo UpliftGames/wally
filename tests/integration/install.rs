@@ -43,6 +43,11 @@ fn cross_realm_explicit_dependency() {
 }
 
 #[test]
+fn manifest_links() {
+    run_install_test("manifest-links");
+}
+
+#[test]
 fn locked_pass() {
     let result = run_locked_install("diamond-graph/root/latest");
 
