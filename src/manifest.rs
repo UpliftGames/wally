@@ -121,12 +121,6 @@ pub struct Package {
     #[serde(default)]
     pub exclude: Vec<String>,
 
-    /// Indicates whether the package can be published or not.
-    ///
-    /// Example: true
-    #[serde(default)]
-    pub private: bool,
-
     /// URL of the package homepage.
     ///
     /// Example: "https://github.com/sleitnick/knit"
@@ -138,6 +132,12 @@ pub struct Package {
     /// Example: "https://github.com/Sleitnick/Knit.git"
     #[serde(default)]
     pub repository: Option<String>,
+
+    /// Indicates whether the package can be published or not.
+    ///
+    /// Example: true
+    #[serde(default)]
+    pub private: bool,
 }
 
 // Metadata we require when this manifest will be used to generate package folders
