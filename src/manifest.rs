@@ -138,6 +138,12 @@ pub struct Package {
     /// Example: true
     #[serde(default)]
     pub private: bool,
+
+    /// Indicates whether the package is 'yanked' or not. If set to `true`,
+    /// it will not be searchable and will be skipped when installing without
+    /// `--locked`.
+    #[serde(default)]
+    pub yanked: bool,
 }
 
 // Metadata we require when this manifest will be used to generate package folders
