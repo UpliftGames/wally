@@ -106,10 +106,10 @@ impl SearchBackend {
 
             let mut doc = Document::default();
 
-            for manifest in &(*metadata).versions {
+            for manifest in &metadata.versions {
                 doc.add_text(versions, manifest.package.version.to_string());
 
-                if !manifest.package.version.is_prerelease() {
+                if !(manifest.package.version.is_prerelease() || manifest.package.yanked) {
                     doc.add_text(scope, manifest.package.name.scope());
                     doc.add_text(name, manifest.package.name.name());
 
@@ -172,6 +172,7 @@ struct NativeDocResult {
     name: Vec<String>,
     versions: Vec<String>,
     description: Option<Vec<String>>,
+    yanked: Vec<bool>,
 }
 
 #[derive(Serialize, Deserialize)]
