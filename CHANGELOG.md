@@ -2,8 +2,10 @@
 
 ## Unreleased Changes
 * Added --locked flag for the install subcommand ([#119])
+* Improved lockfile formatting for better text diffs ([#214])
 
 [#119]: https://github.com/UpliftGames/wally/pull/119
+[#214]: https://github.com/UpliftGames/wally/pull/214
 
 ## 0.3.2 (2023-06-05)
 * Added private field to package manifest ([#9])([#76])
