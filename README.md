@@ -135,7 +135,9 @@ The package manifest file describes a package and all of the packages it depends
 
 Manifest files are written by humans. They can contain comments and formatting decisions that are tough to preserve with automatic editing tools. This should be okay -- editing a package manifest should be easy.
 
-Manifest files define all necessary information about a package.
+[Manifest files](https://en.wikipedia.org/wiki/Manifest_file) define all necessary information about a package.
+
+The concept of this package [manifest](https://doc.rust-lang.org/cargo/reference/manifest.html) file draws inspiration from Rust's package manager, Cargo. In both of these cases, this file is aptly referred to as a 'manifest' because it serves as the central document that outlines how a project should be built, configured, and managed.
 
 Here is an example package manifest, annotated with comments:
 
