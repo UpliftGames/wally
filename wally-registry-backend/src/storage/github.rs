@@ -51,7 +51,10 @@ impl StorageBackend for GithubStorage {
             .content_file()
             .ok_or(anyhow::anyhow!("File not found"))?;
 
-        let content_str = STANDARD.decode(&encoded_content.content)?.to_vec();
+        // why does github return the content with newlines?
+        let content_str = STANDARD
+            .decode(&encoded_content.content.replace("\n", ""))?
+            .to_vec();
 
         if let Some(cache) = &self.cache {
             cache.insert(key.clone(), content_str.clone());
