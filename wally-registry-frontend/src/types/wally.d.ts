@@ -5,7 +5,7 @@ export interface WallyPackageBrief {
   versions: string[]
 }
 
-export interface WallyPackageMetadata {
+interface WallyPackageVersionedMetadata {
   package: {
     authors: string[]
     description: string
@@ -14,8 +14,8 @@ export interface WallyPackageMetadata {
     realm: string
     registry: string
     version: string
-    homepage: string?,
-    repository: string?,
+    homepage: string | null
+    repository: string?
   }
 
   place: {
@@ -26,4 +26,8 @@ export interface WallyPackageMetadata {
   dependencies: { [index: string]: string }
   "server-dependencies": { [index: string]: string }
   "dev-dependencies": { [index: string]: string }
+}
+
+export interface WallyPackageMetadata {
+  versions: WallyPackageVersionedMetadata[]
 }

@@ -10,7 +10,7 @@ import {
   buildWallyPackageDownloadLink,
   getWallyPackageMetadata,
 } from "@/services/wally.api"
-import { WallyPackageMetadata } from "@/types/wally"
+import { WallyPackageVersionedMetadata } from "@/types/wally"
 import capitalize from "@/utils/capitalize"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import React, { useEffect, useState } from "react"
@@ -192,12 +192,7 @@ const DependencyLink = ({ packageInfo }: { packageInfo: string }) => {
   return <DependencyLinkItem href={"/"}>{packageInfo}</DependencyLinkItem>
 }
 
-const MetadataLink = ({
-  url
-}: {
-  url: string
-
-}) => {
+const MetadataLink = ({ url }: { url: string }) => {
   const Link = styled.a`
     overflow: hidden;
     text-overflow: ellipsis;
@@ -292,14 +287,13 @@ type PackageParams = {
   packageName: string
 }
 
-export const runtime = "edge";
-
 export default function Package() {
   const searchParams = useSearchParams()
   const router = useRouter()
 
   const { packageScope, packageName } = useParams<PackageParams>()
-  const [packageHistory, setPackageHistory] = useState<[WallyPackageMetadata]>()
+  const [packageHistory, setPackageHistory] =
+    useState<WallyPackageVersionedMetadata[]>()
   const [packageVersion, setPackageVersion] = useState<string>()
   const [isLoaded, setIsLoaded] = useState(false)
   const [isError, setIsError] = useState(false)
@@ -319,11 +313,13 @@ export default function Package() {
     }
 
     const filteredPackageData = packageData.versions.some(
-      (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
+      (pack: WallyPackageVersionedMetadata) =>
+        !pack.package.version.includes("-")
     )
       ? packageData.versions.filter(
-        (pack: WallyPackageMetadata) => !pack.package.version.includes("-")
-      )
+          (pack: WallyPackageVersionedMetadata) =>
+            !pack.package.version.includes("-")
+        )
       : packageData.versions
 
     setPackageHistory(filteredPackageData)
@@ -365,7 +361,8 @@ export default function Package() {
   }
 
   const packageMetadata = packageHistory?.find(
-    (item: WallyPackageMetadata) => item.package.version === packageVersion
+    (item: WallyPackageVersionedMetadata) =>
+      item.package.version === packageVersion
   )
 
   if (packageMetadata == undefined) {
@@ -430,7 +427,7 @@ export default function Package() {
                   )
                 }}
               >
-                {packageHistory?.map((item: WallyPackageMetadata) => {
+                {packageHistory?.map((item: WallyPackageVersionedMetadata) => {
                   return (
                     <option
                       key={item.package.version}

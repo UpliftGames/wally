@@ -299,6 +299,7 @@ const links = [
 
 const filterWallyPackages = async (inputValue: string) => {
   const packagesListData = await getWallyPackages(inputValue)
+
   const searchOptions = packagesListData.map(
     (packageBrief: WallyPackageBrief) => ({
       label: `${packageBrief.scope}/${packageBrief.name}`,

@@ -1,7 +1,9 @@
+main = ".open-next/worker.js"
 name = "wally"
-compatibility_date = "2024-07-29"
+compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
-pages_build_output_dir = ".vercel/output/static"
+assets = { directory = ".open-next/assets", binding = "ASSETS"}
+services = [ { binding = "WORKER_SELF_REFERENCE", service = "wally" } ]
 
 vars = { NEXT_PUBLIC_WALLY_API_URL = "https://api.wally.run" }
 
