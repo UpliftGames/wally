@@ -1,6 +1,8 @@
 mod gcs;
 mod local;
 
+#[cfg(feature = "gh-storage")]
+mod github;
 #[cfg(feature = "s3-storage")]
 mod s3;
 
@@ -17,6 +19,9 @@ pub use local::LocalStorage;
 #[cfg(feature = "s3-storage")]
 pub use s3::S3Storage;
 
+#[cfg(feature = "gh-storage")]
+pub use github::GithubStorage;
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum StorageMode {
@@ -27,6 +32,13 @@ pub enum StorageMode {
     Gcs {
         bucket: String,
         // Moka cache to keep the most popular packages in memory and accelerate response times
+        cache_size: Option<u64>,
+    },
+    #[cfg(feature = "gh-storage")]
+    #[serde(rename_all = "kebab-case")]
+    Github {
+        owner: String,
+        repo: String,
         cache_size: Option<u64>,
     },
     #[cfg(feature = "s3-storage")]
