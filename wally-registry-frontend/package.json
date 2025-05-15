@@ -16,7 +16,7 @@
     "@mdx-js/react": "^3.1.0",
     "@next/mdx": "^15.0.2",
     "@types/mdx": "^2.0.13",
-    "next": "15.0.2",
+    "next": "15.2.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-select": "^5.8.2",
