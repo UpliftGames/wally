@@ -13,6 +13,16 @@ version = "0.1.0"
 registry = "https://github.com/UpliftGames/wally-index"
 realm = "shared"
 
+# Uncomment to customize package folder locations in the Roblox DataModel
+# [place]
+# shared-packages = "game.ReplicatedStorage.Packages"
+# server-packages = "game.ServerScriptService.Packages"
+
+# Uncomment to customize package folder names on the filesystem
+# shared-packages-folder = "Packages"
+# server-packages-folder = "ServerPackages"
+# dev-packages-folder = "DevPackages"
+
 [dependencies]
 "#;
 

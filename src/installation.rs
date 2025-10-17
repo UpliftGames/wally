@@ -37,10 +37,13 @@ impl InstallationContext {
         project_path: &Path,
         shared_path: Option<String>,
         server_path: Option<String>,
+        shared_folder: Option<String>,
+        server_folder: Option<String>,
+        dev_folder: Option<String>,
     ) -> Self {
-        let shared_dir = project_path.join("Packages");
-        let server_dir = project_path.join("ServerPackages");
-        let dev_dir = project_path.join("DevPackages");
+        let shared_dir = project_path.join(shared_folder.unwrap_or_else(|| "Packages".to_string()));
+        let server_dir = project_path.join(server_folder.unwrap_or_else(|| "ServerPackages".to_string()));
+        let dev_dir = project_path.join(dev_folder.unwrap_or_else(|| "DevPackages".to_string()));
 
         let shared_index_dir = shared_dir.join("_Index");
         let server_index_dir = server_dir.join("_Index");

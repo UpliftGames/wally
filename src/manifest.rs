@@ -156,6 +156,24 @@ pub struct PlaceInfo {
     /// Example: `game.ServerScriptStorage.Packages`
     #[serde(default)]
     pub server_packages: Option<String>,
+
+    /// Custom name for the shared packages folder on the filesystem
+    ///
+    /// Example: `MyPackages`
+    #[serde(default)]
+    pub shared_packages_folder: Option<String>,
+
+    /// Custom name for the server packages folder on the filesystem
+    ///
+    /// Example: `MyServerPackages`
+    #[serde(default)]
+    pub server_packages_folder: Option<String>,
+
+    /// Custom name for the dev packages folder on the filesystem
+    ///
+    /// Example: `MyDevPackages`
+    #[serde(default)]
+    pub dev_packages_folder: Option<String>,
 }
 
 impl Default for PlaceInfo {
@@ -163,6 +181,9 @@ impl Default for PlaceInfo {
         Self {
             shared_packages: None,
             server_packages: None,
+            shared_packages_folder: None,
+            server_packages_folder: None,
+            dev_packages_folder: None,
         }
     }
 }

@@ -141,6 +141,9 @@ impl InstallSubcommand {
             &self.project_path,
             manifest.place.shared_packages,
             manifest.place.server_packages,
+            manifest.place.shared_packages_folder,
+            manifest.place.server_packages_folder,
+            manifest.place.dev_packages_folder,
         );
 
         installation.clean()?;
