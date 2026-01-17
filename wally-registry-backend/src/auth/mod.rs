@@ -14,6 +14,9 @@ use serde::{Deserialize, Serialize};
 use crate::error::Error;
 use crate::{config::Config, error::ApiErrorStatus};
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Deserialize, Serialize)]
 #[serde(tag = "type", content = "value", rename_all = "kebab-case")]
 pub enum AuthMode {
@@ -35,6 +38,23 @@ pub enum AuthMode {
 pub struct GithubInfo {
     login: String,
     id: u64,
+    #[serde(skip)]
+    orgs: Vec<String>,
+}
+
+#[derive(Deserialize)]
+struct GithubOrg {
+    login: String,
+}
+
+#[derive(Deserialize)]
+struct GithubOrgMembership {
+    role: String,
+}
+
+#[derive(Deserialize)]
+struct GithubOrgSettings {
+    members_can_create_repositories: Option<bool>,
 }
 
 impl GithubInfo {
@@ -44,6 +64,10 @@ impl GithubInfo {
 
     pub fn id(&self) -> &u64 {
         &self.id
+    }
+
+    pub fn orgs(&self) -> &[String] {
+        &self.orgs
     }
 }
 
@@ -69,6 +93,40 @@ impl fmt::Debug for AuthMode {
             AuthMode::Unauthenticated => write!(formatter, "no authentication"),
         }
     }
+}
+
+async fn can_user_create_in_org(client: &Client, token: &str, org: &str) -> bool {
+    let membership_url = format!("https://api.github.com/user/memberships/orgs/{}", org);
+    if let Ok(response) = client
+        .get(&membership_url)
+        .header("accept", "application/json")
+        .header("user-agent", "wally")
+        .bearer_auth(token)
+        .send()
+        .await
+    {
+        if let Ok(membership) = response.json::<GithubOrgMembership>().await {
+            if membership.role == "admin" {
+                return true;
+            }
+        }
+    }
+
+    let org_url = format!("https://api.github.com/orgs/{}", org);
+    if let Ok(response) = client
+        .get(&org_url)
+        .header("accept", "application/json")
+        .header("user-agent", "wally")
+        .bearer_auth(token)
+        .send()
+        .await
+    {
+        if let Ok(settings) = response.json::<GithubOrgSettings>().await {
+            return settings.members_can_create_repositories.unwrap_or(false);
+        }
+    }
+
+    false
 }
 
 fn match_api_key<T>(request: &Request<'_>, key: &str, result: T) -> Outcome<T, Error> {
@@ -113,7 +171,7 @@ async fn verify_github_token(
         .send()
         .await;
 
-    let github_info = match response {
+    let mut github_info = match response {
         Err(err) => {
             return format_err!(err).status(Status::InternalServerError).into();
         }
@@ -126,6 +184,25 @@ async fn verify_github_token(
             Ok(github_info) => github_info,
         },
     };
+
+    // Fetch user's org memberships and filter to orgs where user can create repos
+    let orgs_response = client
+        .get("https://api.github.com/user/orgs")
+        .header("accept", "application/json")
+        .header("user-agent", "wally")
+        .bearer_auth(&token)
+        .send()
+        .await;
+
+    if let Ok(response) = orgs_response {
+        if let Ok(orgs) = response.json::<Vec<GithubOrg>>().await {
+            for org in orgs {
+                if can_user_create_in_org(&client, &token, &org.login).await {
+                    github_info.orgs.push(org.login.to_lowercase());
+                }
+            }
+        }
+    }
 
     let mut body = HashMap::new();
     body.insert("access_token", &token);
@@ -142,35 +219,37 @@ async fn verify_github_token(
         .send()
         .await;
 
-    let validated_github_info = match response {
-        Err(err) => {
-            return format_err!(err).status(Status::InternalServerError).into();
-        }
+    match response {
+        Err(err) => format_err!(err).status(Status::InternalServerError).into(),
         Ok(response) => {
-            // If a code 422 (unprocessable entity) is returned, it's a sign of
-            // auth failure. Otherwise, we don't know what happened!
             // https://docs.github.com/en/rest/apps/oauth-applications#check-a-token--status-codes
             match response.status() {
-                StatusCode::OK => response.json::<ValidatedGithubInfo>().await,
-                StatusCode::UNPROCESSABLE_ENTITY => {
-                    return anyhow!("GitHub auth was invalid")
-                        .status(Status::Unauthorized)
-                        .into();
+                StatusCode::OK => {
+                    // Token was issued by our OAuth app - validate the response
+                    match response.json::<ValidatedGithubInfo>().await {
+                        Ok(_) => Outcome::Success(WriteAccess::Github(github_info)),
+                        Err(err) => format_err!("Github auth failed: {}", err)
+                            .status(Status::Unauthorized)
+                            .into(),
+                    }
                 }
-                status => {
-                    return format_err!("Github auth failed because: {}", status)
-                        .status(Status::UnprocessableEntity)
-                        .into()
+                StatusCode::NOT_FOUND => {
+                    // Token is valid for GitHub (we successfully called /user above)
+                    // but wasn't issued by our OAuth app. This happens with:
+                    // - Personal Access Tokens (PATs)
+                    // - Fine-grained PATs
+                    // - GitHub Actions tokens
+                    // We trust the github_info from /user since that call succeeded.
+                    Outcome::Success(WriteAccess::Github(github_info))
                 }
+                StatusCode::UNPROCESSABLE_ENTITY => anyhow!("GitHub auth was invalid")
+                    .status(Status::Unauthorized)
+                    .into(),
+                status => format_err!("Github auth failed because: {}", status)
+                    .status(Status::UnprocessableEntity)
+                    .into(),
             }
         }
-    };
-
-    match validated_github_info {
-        Err(err) => format_err!("Github auth failed: {}", err)
-            .status(Status::Unauthorized)
-            .into(),
-        Ok(_) => Outcome::Success(WriteAccess::Github(github_info)),
     }
 }
 
@@ -217,14 +296,19 @@ impl WriteAccess {
         let has_permission = match self {
             WriteAccess::ApiKey => true,
             WriteAccess::Github(github_info) => {
-                match index.is_scope_owner(scope, github_info.id())? {
-                    true => true,
-                    // Only grant write access if the username matches the scope AND the scope has no existing owners
-                    false => {
-                        github_info.login().to_lowercase() == scope
-                            && index.get_scope_owners(scope)?.is_empty()
-                    }
+                if index.is_scope_owner(scope, github_info.id())? {
+                    return Ok(true);
                 }
+
+                let scope_has_no_owners = index.get_scope_owners(scope)?.is_empty();
+                if !scope_has_no_owners {
+                    return Ok(false);
+                }
+
+                let username_matches = github_info.login().to_lowercase() == scope;
+                let user_is_org_member = github_info.orgs().contains(&scope.to_owned());
+
+                username_matches || user_is_org_member
             }
         };
 
