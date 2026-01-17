@@ -1,0 +1,9 @@
+[package]
+name = "biff/dependency-with-types"
+version = "0.1.0"
+license = "MIT"
+realm = "server"
+registry = "test-registries/primary-registry"
+
+[server-dependencies]
+MinimalWithTypes = "biff/minimal-with-types@0.1.0"

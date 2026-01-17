@@ -1,8 +1,5 @@
 use std::{
-    fmt::Display,
-    io,
-    path::{Path, PathBuf},
-    time::Duration,
+    collections::BTreeMap, fmt::Display, io, path::{Path, PathBuf}, time::Duration
 };
 
 use anyhow::{bail, format_err};
@@ -12,6 +9,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use indoc::{formatdoc, indoc};
 
 use crate::{
+    extract_types::{extract_types, ExtractTypesResult},
     manifest::Realm,
     package_contents::PackageContents,
     package_id::PackageId,
@@ -30,6 +28,8 @@ pub struct InstallationContext {
     dev_dir: PathBuf,
     dev_index_dir: PathBuf,
 }
+
+type PackageTypeExports = BTreeMap<PackageId, ExtractTypesResult>;
 
 impl InstallationContext {
     /// Create a new `InstallationContext` for the given path.
@@ -103,43 +103,14 @@ impl InstallationContext {
             .build()
             .unwrap();
 
-        for package_id in resolved_copy.activated {
-            log::debug!("Installing {}...", package_id);
+        for package_id in &resolved_copy.activated {
+            // Shadow because the thread will need to take ownership of this value.
+            let package_id = package_id.clone();
+            if package_id != root_package_id {
+                log::debug!("Downloading package {}...", package_id);
 
-            let shared_deps = resolved.shared_dependencies.get(&package_id);
-            let server_deps = resolved.server_dependencies.get(&package_id);
-            let dev_deps = resolved.dev_dependencies.get(&package_id);
-
-            // We do not need to install the root package, but we should create
-            // package links for its dependencies.
-            if package_id == root_package_id {
-                if let Some(deps) = shared_deps {
-                    self.write_root_package_links(Realm::Shared, deps, &resolved)?;
-                }
-
-                if let Some(deps) = server_deps {
-                    self.write_root_package_links(Realm::Server, deps, &resolved)?;
-                }
-
-                if let Some(deps) = dev_deps {
-                    self.write_root_package_links(Realm::Dev, deps, &resolved)?;
-                }
-            } else {
                 let metadata = resolved.metadata.get(&package_id).unwrap();
                 let package_realm = metadata.origin_realm;
-
-                if let Some(deps) = shared_deps {
-                    self.write_package_links(&package_id, package_realm, deps, &resolved)?;
-                }
-
-                if let Some(deps) = server_deps {
-                    self.write_package_links(&package_id, package_realm, deps, &resolved)?;
-                }
-
-                if let Some(deps) = dev_deps {
-                    self.write_package_links(&package_id, package_realm, deps, &resolved)?;
-                }
-
                 let source_registry = resolved_copy.metadata[&package_id].source_registry.clone();
                 let source_copy = sources.clone();
                 let context = self.clone();
@@ -155,7 +126,12 @@ impl InstallationContext {
                         package_id,
                     ));
                     b.inc(1);
-                    context.write_contents(&package_id, &contents, package_realm)
+
+                    let write_result =
+                        context.write_contents(&package_id, &contents, package_realm);
+                    write_result.map(|path| {
+                        (package_id, extract_types(&path))
+                    })
                 });
 
                 handles.push(handle);
@@ -163,11 +139,53 @@ impl InstallationContext {
         }
 
         let num_packages = handles.len();
-
+        let mut types_for_package = PackageTypeExports::new();
         for handle in handles {
-            runtime
+            let (package_id, exported_types) = runtime
                 .block_on(handle)
                 .expect("Package failed to be installed.")?;
+
+            types_for_package.insert(package_id, exported_types);
+        }
+
+        for package_id in &resolved_copy.activated {
+            log::debug!("Installing package {}...", package_id);
+
+            let shared_deps = resolved.shared_dependencies.get(&package_id);
+            let server_deps = resolved.server_dependencies.get(&package_id);
+            let dev_deps = resolved.dev_dependencies.get(&package_id);
+
+            // Then 3), run these loops, passing in the registry object.
+            // We do not need to install the root package, but we should create
+            // package links for its dependencies.
+            if *package_id == root_package_id {
+                if let Some(deps) = shared_deps {
+                    self.write_root_package_links(Realm::Shared, deps, &resolved, &types_for_package)?;
+                }
+
+                if let Some(deps) = server_deps {
+                    self.write_root_package_links(Realm::Server, deps, &resolved, &types_for_package)?;
+                }
+
+                if let Some(deps) = dev_deps {
+                    self.write_root_package_links(Realm::Dev, deps, &resolved, &types_for_package)?;
+                }
+            } else {
+                let metadata = resolved.metadata.get(&package_id).unwrap();
+                let package_realm = metadata.origin_realm;
+
+                if let Some(deps) = shared_deps {
+                    self.write_package_links(&package_id, package_realm, deps, &resolved, &types_for_package)?;
+                }
+
+                if let Some(deps) = server_deps {
+                    self.write_package_links(&package_id, package_realm, deps, &resolved, &types_for_package)?;
+                }
+
+                if let Some(deps) = dev_deps {
+                    self.write_package_links(&package_id, package_realm, deps, &resolved, &types_for_package)?;
+                }
+            }
         }
 
         bar.finish_and_clear();
@@ -177,27 +195,53 @@ impl InstallationContext {
     }
 
     /// Contents of a package-to-package link within the same index.
-    fn link_sibling_same_index(&self, id: &PackageId) -> String {
-        formatdoc! {r#"
-            return require(script.Parent.Parent["{full_name}"]["{short_name}"])
-            "#,
-            full_name = package_id_file_name(id),
-            short_name = id.name().name()
+    fn link_sibling_same_index(&self, id: &PackageId, exports: &ExtractTypesResult) -> String {
+        // TODO: Here, pass and write set of types
+        if exports.is_empty() {
+            formatdoc! {r#"
+                return require(script.Parent.Parent["{full_name}"]["{short_name}"])
+                "#,
+                full_name = package_id_file_name(id),
+                short_name = id.name().name()
+            }
+        } else {
+            formatdoc! {r#"
+                local MODULE = require(script.Parent.Parent["{full_name}"]["{short_name}"])
+                {exports_string}
+                return MODULE
+                "#,
+                full_name = package_id_file_name(id),
+                short_name = id.name().name(),
+                exports_string = exports.format_forwarding_statements("MODULE")
+            }
         }
+
     }
 
     /// Contents of a root-to-package link within the same index.
-    fn link_root_same_index(&self, id: &PackageId) -> String {
-        formatdoc! {r#"
-            return require(script.Parent._Index["{full_name}"]["{short_name}"])
-            "#,
-            full_name = package_id_file_name(id),
-            short_name = id.name().name()
+    fn link_root_same_index(&self, id: &PackageId, exports: &ExtractTypesResult) -> String {
+        if exports.is_empty() {
+            formatdoc! {r#"
+                return require(script.Parent._Index["{full_name}"]["{short_name}"])
+                "#,
+                full_name = package_id_file_name(id),
+                short_name = id.name().name()
+            }
+        } else {
+            formatdoc! {r#"
+                local MODULE = require(script.Parent._Index["{full_name}"]["{short_name}"])
+                {exports_string}
+                return MODULE
+                "#,
+                full_name = package_id_file_name(id),
+                short_name = id.name().name(),
+                exports_string = exports.format_forwarding_statements("MODULE")
+            }
         }
     }
 
     /// Contents of a link into the shared index from outside the shared index.
-    fn link_shared_index(&self, id: &PackageId) -> anyhow::Result<String> {
+    fn link_shared_index(&self, id: &PackageId, exports: &ExtractTypesResult) -> anyhow::Result<String> {
         let shared_path = self.shared_path.as_ref().ok_or_else(|| {
             format_err!(indoc! {r#"
                 A server or dev dependency is depending on a shared dependency.
@@ -211,19 +255,32 @@ impl InstallationContext {
             "#})
         })?;
 
-        let contents = formatdoc! {r#"
-            return require({packages}._Index["{full_name}"]["{short_name}"])
-            "#,
-            packages = shared_path,
-            full_name = package_id_file_name(id),
-            short_name = id.name().name()
+        let contents = if exports.is_empty() {
+            formatdoc! {r#"
+                return require({packages}._Index["{full_name}"]["{short_name}"])
+                "#,
+                packages = shared_path,
+                full_name = package_id_file_name(id),
+                short_name = id.name().name()
+            }
+        } else {
+            formatdoc! {r#"
+                local MODULE = require({packages}._Index["{full_name}"]["{short_name}"])
+                {exports_string}
+                return MODULE
+                "#,
+                packages = shared_path,
+                full_name = package_id_file_name(id),
+                short_name = id.name().name(),
+                exports_string = exports.format_forwarding_statements("MODULE")
+            }
         };
 
         Ok(contents)
     }
 
     /// Contents of a link into the server index from outside the server index.
-    fn link_server_index(&self, id: &PackageId) -> anyhow::Result<String> {
+    fn link_server_index(&self, id: &PackageId, exports: &ExtractTypesResult) -> anyhow::Result<String> {
         let server_path = self.server_path.as_ref().ok_or_else(|| {
             format_err!(indoc! {r#"
                 A dev dependency is depending on a server dependency.
@@ -237,12 +294,25 @@ impl InstallationContext {
             "#})
         })?;
 
-        let contents = formatdoc! {r#"
-            return require({packages}._Index["{full_name}"]["{short_name}"])
-            "#,
-            packages = server_path,
-            full_name = package_id_file_name(id),
-            short_name = id.name().name()
+        let contents = if exports.is_empty() {
+            formatdoc! {r#"
+                return require({packages}._Index["{full_name}"]["{short_name}"])
+                "#,
+                packages = server_path,
+                full_name = package_id_file_name(id),
+                short_name = id.name().name()
+            }
+        } else {
+            formatdoc! {r#"
+                local MODULE = require({packages}._Index["{full_name}"]["{short_name}"])
+                {exports_string}
+                return MODULE
+                "#,
+                packages = server_path,
+                full_name = package_id_file_name(id),
+                short_name = id.name().name(),
+                exports_string = exports.format_forwarding_statements("MODULE")
+            }
         };
 
         Ok(contents)
@@ -253,6 +323,7 @@ impl InstallationContext {
         root_realm: Realm,
         dependencies: impl IntoIterator<Item = (K, &'a PackageId)>,
         resolved: &Resolve,
+        types: &PackageTypeExports
     ) -> anyhow::Result<()> {
         log::debug!("Writing root package links");
 
@@ -268,11 +339,12 @@ impl InstallationContext {
         for (dep_name, dep_package_id) in dependencies {
             let dependencies_realm = resolved.metadata.get(dep_package_id).unwrap().origin_realm;
             let path = base_path.join(format!("{}.lua", dep_name));
+            let types_for_dep = types.get(dep_package_id).unwrap();
 
             let contents = match (root_realm, dependencies_realm) {
-                (source, dest) if source == dest => self.link_root_same_index(dep_package_id),
-                (_, Realm::Server) => self.link_server_index(dep_package_id)?,
-                (_, Realm::Shared) => self.link_shared_index(dep_package_id)?,
+                (source, dest) if source == dest => self.link_root_same_index(dep_package_id, types_for_dep),
+                (_, Realm::Server) => self.link_server_index(dep_package_id, types_for_dep)?,
+                (_, Realm::Shared) => self.link_shared_index(dep_package_id, types_for_dep)?,
                 (_, Realm::Dev) => {
                     bail!("A dev dependency cannot be depended upon by a non-dev dependency")
                 }
@@ -291,6 +363,7 @@ impl InstallationContext {
         package_realm: Realm,
         dependencies: impl IntoIterator<Item = (K, &'a PackageId)>,
         resolved: &Resolve,
+        types: &PackageTypeExports
     ) -> anyhow::Result<()> {
         log::debug!("Writing package links for {}", package_id);
 
@@ -308,11 +381,12 @@ impl InstallationContext {
         for (dep_name, dep_package_id) in dependencies {
             let dependencies_realm = resolved.metadata.get(dep_package_id).unwrap().origin_realm;
             let path = base_path.join(format!("{}.lua", dep_name));
+            let types_for_dep = types.get(dep_package_id).unwrap();
 
             let contents = match (package_realm, dependencies_realm) {
-                (source, dest) if source == dest => self.link_sibling_same_index(dep_package_id),
-                (_, Realm::Server) => self.link_server_index(dep_package_id)?,
-                (_, Realm::Shared) => self.link_shared_index(dep_package_id)?,
+                (source, dest) if source == dest => self.link_sibling_same_index(dep_package_id, types_for_dep),
+                (_, Realm::Server) => self.link_server_index(dep_package_id, types_for_dep)?,
+                (_, Realm::Shared) => self.link_shared_index(dep_package_id, types_for_dep)?,
                 (_, Realm::Dev) => {
                     bail!("A dev dependency cannot be depended upon by a non-dev dependency")
                 }
@@ -330,7 +404,7 @@ impl InstallationContext {
         package_id: &PackageId,
         contents: &PackageContents,
         realm: Realm,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<PathBuf> {
         let mut path = match realm {
             Realm::Shared => self.shared_index_dir.clone(),
             Realm::Server => self.server_index_dir.clone(),
@@ -343,7 +417,7 @@ impl InstallationContext {
         fs::create_dir_all(&path)?;
         contents.unpack_into_path(&path)?;
 
-        Ok(())
+        Ok(path)
     }
 }
 

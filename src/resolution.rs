@@ -326,11 +326,11 @@ mod tests {
         package_name::PackageName, package_source::InMemoryRegistry, test_package::PackageBuilder,
     };
 
-    fn test_project(registry: InMemoryRegistry, package: PackageBuilder) -> anyhow::Result<()> {
+    fn test_project(test_name: &str, registry: InMemoryRegistry, package: PackageBuilder) -> anyhow::Result<()> {
         let package_sources = PackageSourceMap::new(Box::new(registry.source()));
         let manifest = package.into_manifest();
         let resolve = resolve(&manifest, &Default::default(), &package_sources)?;
-        insta::assert_yaml_snapshot!(resolve);
+        insta::assert_yaml_snapshot!(test_name, resolve);
         Ok(())
     }
 
@@ -339,7 +339,7 @@ mod tests {
         let registry = InMemoryRegistry::new();
 
         let root = PackageBuilder::new("biff/minimal@0.1.0");
-        test_project(registry, root)
+        test_project("minimal", registry, root)
     }
 
     #[test]
@@ -350,7 +350,7 @@ mod tests {
 
         let root = PackageBuilder::new("biff/one-dependency@0.1.0")
             .with_dep("Minimal", "biff/minimal@0.1.0");
-        test_project(registry, root)
+        test_project("one_dependency", registry, root)
     }
 
     #[test]
@@ -364,7 +364,7 @@ mod tests {
 
         let root = PackageBuilder::new("biff/transitive-dependency@0.1.0")
             .with_dep("OneDependency", "biff/one-dependency@0.1.0");
-        test_project(registry, root)
+        test_project("transitive_dependency", registry, root)
     }
 
     /// When there are shared dependencies, Wally should select the same
@@ -380,7 +380,7 @@ mod tests {
             .with_dep("B", "biff/b@1.0.0")
             .with_dep("C", "biff/c@1.0.0");
 
-        test_project(registry, root)
+        test_project("unified_dependencies", registry, root)
     }
 
     /// Server dependencies are allowed to depend on shared dependencies. If a
@@ -399,7 +399,7 @@ mod tests {
         let root =
             PackageBuilder::new("biff/root@1.0.0").with_server_dep("Server", "biff/server@1.0.0");
 
-        test_project(registry, root)
+        test_project("server_to_shared", registry, root)
     }
 
     /// but... if that shared dependency is required by another shared dependency,
@@ -418,7 +418,7 @@ mod tests {
             .with_server_dep("Server", "biff/server@1.0.0")
             .with_dep("Shared", "biff/shared@1.0.0");
 
-        test_project(registry, root)
+        test_project("server_to_shared_and_shared_to_shared", registry, root)
     }
 
     /// Shared dependencies are allowed to depend on server dependencies. Server
@@ -431,7 +431,7 @@ mod tests {
         let root =
             PackageBuilder::new("biff/root@1.0.0").with_server_dep("Server", "biff/server@1.0.0");
 
-        test_project(registry, root)
+        test_project("shared_to_server", registry, root)
     }
 
     #[test]
@@ -443,7 +443,7 @@ mod tests {
 
         let package_sources = PackageSourceMap::new(Box::new(registry.source()));
         let err = resolve(root.manifest(), &Default::default(), &package_sources).unwrap_err();
-        insta::assert_display_snapshot!(err);
+        insta::assert_snapshot!(err);
     }
 
     /// Tests the simple one dependency case, except that a new version of the

@@ -4,47 +4,62 @@ use std::path::Path;
 
 #[test]
 fn minimal() {
-    run_install_test("minimal");
+    let project = run_install_test("minimal");
+    assert_dir_snapshot!(project.path());
+}
+
+#[test]
+fn dependency_with_types() {
+    let project = run_install_test("dependency-with-types");
+    assert_dir_snapshot!(project.path());
 }
 
 #[test]
 fn one_dependency() {
-    run_install_test("one-dependency");
+    let project = run_install_test("one-dependency");
+    assert_dir_snapshot!(project.path());
 }
 
 #[test]
 fn transitive_dependency() {
-    run_install_test("transitive-dependency");
+    let project = run_install_test("transitive-dependency");
+    assert_dir_snapshot!(project.path());
 }
 
 #[test]
 fn private_with_public_dependency() {
-    run_install_test("private-with-public-dependency");
+    let project = run_install_test("private-with-public-dependency");
+    assert_dir_snapshot!(project.path());
 }
 
 #[test]
 fn dev_dependency() {
-    run_install_test("dev-dependency");
+    let project = run_install_test("dev-dependency");
+    assert_dir_snapshot!(project.path());
 }
 
 #[test]
 fn dev_dependency_also_required_as_non_dev() {
-    run_install_test("dev-dependency-also-required-as-non-dev");
+    let project = run_install_test("dev-dependency-also-required-as-non-dev");
+    assert_dir_snapshot!(project.path());
 }
 
 #[test]
 fn cross_realm_dependency() {
-    run_install_test("cross-realm-dependency");
+    let project = run_install_test("cross-realm-dependency");
+    assert_dir_snapshot!(project.path());
 }
 
 #[test]
 fn cross_realm_explicit_dependency() {
-    run_install_test("cross-realm-explicit-dependency");
+    let project = run_install_test("cross-realm-explicit-dependency");
+    assert_dir_snapshot!(project.path());
 }
 
 #[test]
 fn manifest_links() {
-    run_install_test("manifest-links");
+    let project = run_install_test("manifest-links");
+    assert_dir_snapshot!(project.path());
 }
 
 #[test]
@@ -97,7 +112,6 @@ fn run_install_test(name: &str) -> TempProject {
     };
 
     args.run().unwrap();
-
-    assert_dir_snapshot!(project.path());
+    
     project
 }

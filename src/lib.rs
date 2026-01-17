@@ -12,5 +12,6 @@ pub mod package_req;
 pub mod package_source;
 pub mod resolution;
 pub mod test_package;
+mod extract_types;
 
 pub use commands::*;

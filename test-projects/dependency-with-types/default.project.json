@@ -1,0 +1,6 @@
+{
+	"name": "dependency-with-types",
+	"tree": {
+		"$path": "src"
+	}
+}
