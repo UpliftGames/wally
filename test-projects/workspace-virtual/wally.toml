@@ -1,0 +1,4 @@
+[workspace]
+members = ["modules/*"]
+registry = "test-registries/primary-registry"
+realm = "server"

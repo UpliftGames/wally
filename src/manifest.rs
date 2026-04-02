@@ -1,13 +1,13 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
+use crate::dependency_spec::DependencySpec;
 use crate::package_id::PackageId;
 use crate::package_name::PackageName;
-use crate::package_req::PackageReq;
 
 pub const MANIFEST_FILE_NAME: &str = "wally.toml";
 
@@ -21,13 +21,13 @@ pub struct Manifest {
     pub place: PlaceInfo,
 
     #[serde(default)]
-    pub dependencies: BTreeMap<String, PackageReq>,
+    pub dependencies: BTreeMap<String, DependencySpec>,
 
     #[serde(default)]
-    pub server_dependencies: BTreeMap<String, PackageReq>,
+    pub server_dependencies: BTreeMap<String, DependencySpec>,
 
     #[serde(default)]
-    pub dev_dependencies: BTreeMap<String, PackageReq>,
+    pub dev_dependencies: BTreeMap<String, DependencySpec>,
 }
 
 impl Manifest {
@@ -183,5 +183,332 @@ impl Realm {
             (dep_type, dep_realm),
             (Server, _) | (Shared, Shared) | (Dev, _)
         )
+    }
+}
+
+/// Either a concrete value or a directive to inherit from the workspace root.
+///
+/// When a member package specifies `{ workspace = true }` for a field, the
+/// value is resolved from the workspace root manifest at install time.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum WorkspaceInheritable<T> {
+    Defined(T),
+    Workspace { workspace: bool },
+}
+
+impl<T: Clone> WorkspaceInheritable<T> {
+    pub fn is_workspace_inherited(&self) -> bool {
+        matches!(self, WorkspaceInheritable::Workspace { workspace: true })
+    }
+
+    /// Resolve the value: return the defined value directly, or look it up from
+    /// the workspace root. Returns an error when inheritance is requested but
+    /// the workspace doesn't provide a value.
+    pub fn resolve(self, workspace_value: Option<&T>) -> anyhow::Result<T> {
+        match self {
+            WorkspaceInheritable::Defined(v) => Ok(v),
+            WorkspaceInheritable::Workspace { workspace: true } => workspace_value
+                .cloned()
+                .ok_or_else(|| anyhow!("field is set to `workspace = true` but the workspace root does not provide a value")),
+            WorkspaceInheritable::Workspace { workspace: false } => Err(anyhow!(
+                "field has `workspace = false` which is not a valid directive"
+            )),
+        }
+    }
+}
+
+/// Metadata for a `[workspace]` section in a `wally.toml`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct WorkspaceMetadata {
+    pub members: Vec<String>,
+
+    #[serde(default)]
+    pub default_member: Option<PackageName>,
+
+    #[serde(default)]
+    pub registry: Option<String>,
+
+    #[serde(default)]
+    pub realm: Option<Realm>,
+
+    #[serde(default)]
+    pub place: PlaceInfo,
+
+    #[serde(default)]
+    pub dependencies: BTreeMap<String, DependencySpec>,
+}
+
+/// Top-level representation of a `wally.toml` that may contain a `[package]`
+/// section, a `[workspace]` section, or both.
+///
+/// Unlike [`Manifest`], `package` is optional so that workspace-only root
+/// manifests can be represented. Existing commands continue to use
+/// [`Manifest::load()`]; this type is used by workspace-aware code paths.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct ProjectManifest {
+    #[serde(default)]
+    pub package: Option<Package>,
+
+    #[serde(default)]
+    pub workspace: Option<WorkspaceMetadata>,
+
+    #[serde(default)]
+    pub place: PlaceInfo,
+
+    #[serde(default)]
+    pub dependencies: BTreeMap<String, DependencySpec>,
+
+    #[serde(default)]
+    pub server_dependencies: BTreeMap<String, DependencySpec>,
+
+    #[serde(default)]
+    pub dev_dependencies: BTreeMap<String, DependencySpec>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn project_manifest_workspace_only() {
+        let toml_str = r#"
+            [workspace]
+            members = ["packages/*", "lib/*"]
+            registry = "https://github.com/UpliftGames/wally-index"
+            realm = "shared"
+
+            [workspace.dependencies]
+            Roact = "roblox/roact@1.4.0"
+        "#;
+
+        let pm: ProjectManifest = toml::from_str(toml_str).unwrap();
+        assert!(pm.package.is_none());
+        let ws = pm.workspace.as_ref().unwrap();
+        assert_eq!(ws.members, vec!["packages/*", "lib/*"]);
+        assert_eq!(
+            ws.registry.as_deref(),
+            Some("https://github.com/UpliftGames/wally-index")
+        );
+        assert_eq!(ws.realm, Some(Realm::Shared));
+        assert_eq!(ws.dependencies.len(), 1);
+        let roact = ws.dependencies.get("Roact").unwrap();
+        assert_eq!(roact.expect_registry().name().scope(), "roblox");
+    }
+
+    #[test]
+    fn project_manifest_hybrid() {
+        let toml_str = r#"
+            [package]
+            name = "team/mono-root"
+            version = "0.0.0"
+            registry = "https://github.com/UpliftGames/wally-index"
+            realm = "server"
+            private = true
+
+            [workspace]
+            members = ["packages/*"]
+            registry = "https://github.com/UpliftGames/wally-index"
+
+            [dependencies]
+            Signal = "sleitnick/signal@1.0.0"
+        "#;
+
+        let pm: ProjectManifest = toml::from_str(toml_str).unwrap();
+        let pkg = pm.package.as_ref().unwrap();
+        assert_eq!(pkg.name.to_string(), "team/mono-root");
+        assert_eq!(pkg.realm, Realm::Server);
+        assert!(pkg.private);
+
+        let ws = pm.workspace.as_ref().unwrap();
+        assert_eq!(ws.members, vec!["packages/*"]);
+
+        assert_eq!(pm.dependencies.len(), 1);
+    }
+
+    #[test]
+    fn project_manifest_classic_package() {
+        let toml_str = r#"
+            [package]
+            name = "test/my-package"
+            version = "1.0.0"
+            registry = "https://github.com/UpliftGames/wally-index"
+            realm = "shared"
+
+            [dependencies]
+            Roact = "roblox/roact@1.4.0"
+        "#;
+
+        let pm: ProjectManifest = toml::from_str(toml_str).unwrap();
+        assert!(pm.package.is_some());
+        assert!(pm.workspace.is_none());
+        assert_eq!(pm.dependencies.len(), 1);
+    }
+
+    #[test]
+    fn workspace_metadata_deserialization() {
+        let toml_str = r#"
+            members = ["packages/*", "lib/**"]
+            default-member = "team/default-pkg"
+            registry = "https://example.com/index"
+            realm = "server"
+
+            [place]
+            shared-packages = "game.ReplicatedStorage.Packages"
+            server-packages = "game.ServerScriptService.Packages"
+
+            [dependencies]
+            Promise = "evaera/promise@3.0.0"
+            Roact = "roblox/roact@1.4.0"
+        "#;
+
+        let ws: WorkspaceMetadata = toml::from_str(toml_str).unwrap();
+        assert_eq!(ws.members, vec!["packages/*", "lib/**"]);
+        assert_eq!(ws.default_member.as_ref().unwrap().to_string(), "team/default-pkg");
+        assert_eq!(ws.registry.as_deref(), Some("https://example.com/index"));
+        assert_eq!(ws.realm, Some(Realm::Server));
+        assert_eq!(
+            ws.place.shared_packages.as_deref(),
+            Some("game.ReplicatedStorage.Packages")
+        );
+        assert_eq!(
+            ws.place.server_packages.as_deref(),
+            Some("game.ServerScriptService.Packages")
+        );
+        assert_eq!(ws.dependencies.len(), 2);
+    }
+
+    #[test]
+    fn workspace_dependencies_parse() {
+        let toml_str = r#"
+            members = ["packages/*"]
+
+            [dependencies]
+            Roact = "roblox/roact@1.4.0"
+            Promise = "evaera/promise@3.0.0"
+            DataStore = "sleitnick/datastore2@1.0.0"
+        "#;
+
+        let ws: WorkspaceMetadata = toml::from_str(toml_str).unwrap();
+        assert_eq!(ws.dependencies.len(), 3);
+        let promise = ws.dependencies.get("Promise").unwrap();
+        assert_eq!(promise.expect_registry().name().scope(), "evaera");
+        assert_eq!(promise.expect_registry().name().name(), "promise");
+    }
+
+    #[test]
+    fn workspace_inheritable_defined_string() {
+        let toml_str = r#"value = "1.0.0""#;
+
+        #[derive(Deserialize)]
+        struct Helper {
+            value: WorkspaceInheritable<String>,
+        }
+
+        let h: Helper = toml::from_str(toml_str).unwrap();
+        assert!(!h.value.is_workspace_inherited());
+        if let WorkspaceInheritable::Defined(v) = &h.value {
+            assert_eq!(v, "1.0.0");
+        } else {
+            panic!("expected Defined variant");
+        }
+    }
+
+    #[test]
+    fn workspace_inheritable_workspace_true() {
+        let toml_str = r#"value = { workspace = true }"#;
+
+        #[derive(Deserialize)]
+        struct Helper {
+            value: WorkspaceInheritable<String>,
+        }
+
+        let h: Helper = toml::from_str(toml_str).unwrap();
+        assert!(h.value.is_workspace_inherited());
+    }
+
+    #[test]
+    fn workspace_inheritable_resolve_defined() {
+        let wi = WorkspaceInheritable::Defined("local".to_string());
+        let resolved = wi.resolve(Some(&"workspace".to_string())).unwrap();
+        assert_eq!(resolved, "local");
+    }
+
+    #[test]
+    fn workspace_inheritable_resolve_inherited() {
+        let wi: WorkspaceInheritable<String> = WorkspaceInheritable::Workspace { workspace: true };
+        let resolved = wi.resolve(Some(&"from-workspace".to_string())).unwrap();
+        assert_eq!(resolved, "from-workspace");
+    }
+
+    #[test]
+    fn workspace_inheritable_resolve_inherited_missing() {
+        let wi: WorkspaceInheritable<String> = WorkspaceInheritable::Workspace { workspace: true };
+        let result = wi.resolve(None);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("workspace"));
+    }
+
+    #[test]
+    fn workspace_inheritable_resolve_workspace_false() {
+        let wi: WorkspaceInheritable<String> = WorkspaceInheritable::Workspace { workspace: false };
+        let result = wi.resolve(Some(&"anything".to_string()));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn workspace_empty_members_parses() {
+        let toml_str = r#"
+            members = []
+        "#;
+
+        let ws: WorkspaceMetadata = toml::from_str(toml_str).unwrap();
+        assert!(ws.members.is_empty());
+        assert!(ws.dependencies.is_empty());
+        assert!(ws.registry.is_none());
+        assert!(ws.realm.is_none());
+        assert!(ws.default_member.is_none());
+    }
+
+    #[test]
+    fn workspace_inheritable_with_dependency_spec() {
+        let toml_str = r#"value = "roblox/roact@1.4.0""#;
+
+        #[derive(Deserialize)]
+        struct Helper {
+            value: WorkspaceInheritable<DependencySpec>,
+        }
+
+        let h: Helper = toml::from_str(toml_str).unwrap();
+        assert!(!h.value.is_workspace_inherited());
+        if let WorkspaceInheritable::Defined(spec) = &h.value {
+            assert_eq!(spec.expect_registry().name().scope(), "roblox");
+        } else {
+            panic!("expected Defined variant");
+        }
+    }
+
+    #[test]
+    fn workspace_inheritable_dependency_spec_workspace_directive() {
+        // Now that DependencySpec has a Workspace variant, `{ workspace = true }`
+        // is captured by DependencySpec::Workspace before WorkspaceInheritable
+        // gets a chance. The result is Defined(DependencySpec::Workspace { .. }).
+        // This is the correct behavior: workspace.rs uses DependencySpec directly
+        // for dependency maps rather than WorkspaceInheritable<DependencySpec>.
+        let toml_str = r#"value = { workspace = true }"#;
+
+        #[derive(Deserialize)]
+        struct Helper {
+            value: WorkspaceInheritable<DependencySpec>,
+        }
+
+        let h: Helper = toml::from_str(toml_str).unwrap();
+        if let WorkspaceInheritable::Defined(spec) = &h.value {
+            assert!(spec.is_workspace());
+        } else {
+            panic!("expected Defined(DependencySpec::Workspace), got {:?}", h.value);
+        }
     }
 }

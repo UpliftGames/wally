@@ -1,9 +1,11 @@
 mod in_memory;
+mod path;
 mod registry;
 mod test_registry;
 
 pub use self::in_memory::InMemoryRegistry;
 use self::in_memory::InMemoryRegistrySource;
+pub use self::path::PathSource;
 pub use self::registry::Registry;
 pub use self::test_registry::TestRegistry;
 
@@ -104,6 +106,7 @@ pub trait PackageSourceProvider: Sync + Send + Clone {
 #[derive(Clone)]
 pub enum PackageSource {
     InMemory(InMemoryRegistrySource),
+    Path(PathSource),
     Registry(Registry),
     TestRegistry(TestRegistry),
 }
@@ -112,6 +115,7 @@ impl PackageSourceProvider for PackageSource {
     fn update(&self) -> anyhow::Result<()> {
         match self {
             PackageSource::InMemory(source) => source.update(),
+            PackageSource::Path(source) => source.update(),
             PackageSource::Registry(source) => source.update(),
             PackageSource::TestRegistry(source) => source.update(),
         }
@@ -120,6 +124,7 @@ impl PackageSourceProvider for PackageSource {
     fn query(&self, package_req: &PackageReq) -> anyhow::Result<Vec<Manifest>> {
         match self {
             PackageSource::InMemory(source) => source.query(package_req),
+            PackageSource::Path(source) => source.query(package_req),
             PackageSource::Registry(source) => source.query(package_req),
             PackageSource::TestRegistry(source) => source.query(package_req),
         }
@@ -128,6 +133,7 @@ impl PackageSourceProvider for PackageSource {
     fn download_package(&self, package_id: &PackageId) -> anyhow::Result<PackageContents> {
         match self {
             PackageSource::InMemory(source) => source.download_package(package_id),
+            PackageSource::Path(source) => source.download_package(package_id),
             PackageSource::Registry(source) => source.download_package(package_id),
             PackageSource::TestRegistry(source) => source.download_package(package_id),
         }
@@ -136,6 +142,7 @@ impl PackageSourceProvider for PackageSource {
     fn fallback_sources(&self) -> anyhow::Result<Vec<PackageSourceId>> {
         match self {
             PackageSource::InMemory(source) => source.fallback_sources(),
+            PackageSource::Path(source) => source.fallback_sources(),
             PackageSource::Registry(source) => source.fallback_sources(),
             PackageSource::TestRegistry(source) => source.fallback_sources(),
         }

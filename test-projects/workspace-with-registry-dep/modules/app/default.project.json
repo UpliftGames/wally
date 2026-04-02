@@ -1,0 +1,6 @@
+{
+	"name": "app",
+	"tree": {
+		"$path": "src"
+	}
+}

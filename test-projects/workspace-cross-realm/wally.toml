@@ -1,0 +1,7 @@
+[workspace]
+members = ["modules/*"]
+registry = "test-registries/primary-registry"
+
+[workspace.place]
+shared-packages = "game.ReplicatedStorage.Packages"
+server-packages = "game.ServerScriptService.Packages"

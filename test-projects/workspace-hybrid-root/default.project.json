@@ -1,0 +1,6 @@
+{
+	"name": "mono-root",
+	"tree": {
+		"$path": "src"
+	}
+}

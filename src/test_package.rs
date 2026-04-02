@@ -8,6 +8,7 @@ use std::{
 use zip::write::{FileOptions, ZipWriter};
 
 use crate::{
+    dependency_spec::DependencySpec,
     manifest::{Manifest, Package, Realm},
     package_contents::PackageContents,
     package_id::PackageId,
@@ -66,7 +67,9 @@ impl PackageBuilder {
     {
         let req: PackageReq = package_req.as_ref().parse().expect("invalid PackageReq");
 
-        self.manifest.dependencies.insert(alias.into(), req);
+        self.manifest
+            .dependencies
+            .insert(alias.into(), DependencySpec::Registry(req));
         self
     }
 
@@ -77,7 +80,9 @@ impl PackageBuilder {
     {
         let req: PackageReq = package_req.as_ref().parse().expect("invalid PackageReq");
 
-        self.manifest.server_dependencies.insert(alias.into(), req);
+        self.manifest
+            .server_dependencies
+            .insert(alias.into(), DependencySpec::Registry(req));
         self
     }
 

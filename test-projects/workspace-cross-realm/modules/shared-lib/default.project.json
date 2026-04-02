@@ -1,0 +1,6 @@
+{
+	"name": "shared-lib",
+	"tree": {
+		"$path": "src"
+	}
+}

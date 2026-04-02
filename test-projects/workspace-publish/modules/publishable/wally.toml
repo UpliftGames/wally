@@ -1,0 +1,9 @@
+[package]
+name = "scope/publishable"
+version = "1.0.0"
+license = "MIT"
+realm = "shared"
+registry = "test-registries/primary-registry"
+
+[dependencies]
+Sibling = { path = "../sibling" }

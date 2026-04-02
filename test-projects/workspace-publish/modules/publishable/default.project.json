@@ -1,0 +1,6 @@
+{
+	"name": "publishable",
+	"tree": {
+		"$path": "src"
+	}
+}

@@ -12,14 +12,17 @@ metadata:
     realm: shared
     origin_realm: shared
     source_registry: DefaultRegistry
+    is_workspace_member: false
   biff/server@1.0.0:
     realm: server
     origin_realm: server
     source_registry: DefaultRegistry
+    is_workspace_member: false
   biff/shared@1.0.0:
     realm: shared
     origin_realm: shared
     source_registry: DefaultRegistry
+    is_workspace_member: false
 shared_dependencies:
   biff/root@1.0.0:
     Shared: biff/shared@1.0.0

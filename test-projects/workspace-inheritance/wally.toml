@@ -1,0 +1,7 @@
+[workspace]
+members = ["modules/*"]
+registry = "test-registries/primary-registry"
+realm = "shared"
+
+[workspace.dependencies]
+MinimalShared = "biff/minimal-shared@0.1.0"

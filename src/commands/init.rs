@@ -16,12 +16,23 @@ realm = "shared"
 [dependencies]
 "#;
 
+const DEFAULT_WORKSPACE_MANIFEST: &str = r#"[workspace]
+members = ["modules/*"]
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+"#;
+
 /// Initialize a new Wally project.
 #[derive(Debug, StructOpt)]
 pub struct InitSubcommand {
     /// The path to the project to initialize. Defaults to the current
     /// directory.
     path: Option<PathBuf>,
+
+    /// Initialize a workspace root manifest instead of a single-package
+    /// manifest.
+    #[structopt(long = "workspace")]
+    pub workspace: bool,
 }
 
 impl InitSubcommand {
@@ -53,26 +64,34 @@ impl InitSubcommand {
             }
         }
 
-        let canonical = fs_err::canonicalize(&path);
-        let package_name = match &canonical {
-            Ok(canonical) => canonical
-                .file_name()
-                .and_then(|name| name.to_str())
-                .context("Folder name contained invalid Unicode")?,
-            Err(_) => "unknown",
-        };
+        if self.workspace {
+            fs_err::write(&manifest_path, DEFAULT_WORKSPACE_MANIFEST)?;
+            println!(
+                "Initialized workspace in {}",
+                path.display()
+            );
+        } else {
+            let canonical = fs_err::canonicalize(&path);
+            let package_name = match &canonical {
+                Ok(canonical) => canonical
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .context("Folder name contained invalid Unicode")?,
+                Err(_) => "unknown",
+            };
 
-        let mut doc = DEFAULT_MANIFEST
-            .parse::<Document>()
-            .expect("Built-in default manifest was invalid TOML");
+            let mut doc = DEFAULT_MANIFEST
+                .parse::<Document>()
+                .expect("Built-in default manifest was invalid TOML");
 
-        let full_name = format!("{}/{}", whoami::username(), package_name)
-            .to_lowercase()
-            .replace(" ", "-");
-        doc["package"]["name"] = value(full_name.clone());
+            let full_name = format!("{}/{}", whoami::username(), package_name)
+                .to_lowercase()
+                .replace(" ", "-");
+            doc["package"]["name"] = value(full_name.clone());
 
-        fs_err::write(manifest_path, doc.to_string())?;
-        println!("Initialized project {} in {}", full_name, path.display());
+            fs_err::write(manifest_path, doc.to_string())?;
+            println!("Initialized project {} in {}", full_name, path.display());
+        }
 
         Ok(())
     }

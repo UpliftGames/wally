@@ -1,0 +1,6 @@
+{
+	"name": "server-pkg",
+	"tree": {
+		"$path": "src"
+	}
+}

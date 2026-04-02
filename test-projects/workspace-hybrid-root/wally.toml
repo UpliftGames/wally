@@ -1,0 +1,17 @@
+[package]
+name = "team/mono-root"
+version = "0.0.0"
+license = "MIT"
+realm = "server"
+registry = "test-registries/primary-registry"
+private = true
+
+[workspace]
+members = ["modules/*"]
+registry = "test-registries/primary-registry"
+
+[workspace.place]
+shared-packages = "game.ReplicatedStorage.Packages"
+
+[dependencies]
+Helper = { path = "modules/helper" }

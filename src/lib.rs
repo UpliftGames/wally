@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod commands;
+pub mod dependency_spec;
 pub mod git_util;
 pub mod installation;
 pub mod lockfile;
@@ -12,5 +13,6 @@ pub mod package_req;
 pub mod package_source;
 pub mod resolution;
 pub mod test_package;
+pub mod workspace;
 
 pub use commands::*;

@@ -11,10 +11,9 @@ use structopt::StructOpt;
 
 use crate::installation::InstallationContext;
 use crate::lockfile::Lockfile;
-use crate::manifest::Manifest;
-use crate::package_id::PackageId;
 use crate::package_source::{PackageSource, PackageSourceMap, Registry, TestRegistry};
-use crate::resolution::resolve;
+use crate::resolution::resolve_workspace;
+use crate::workspace::Workspace;
 
 use super::utils::{generate_dependency_changes, render_update_difference};
 use super::GlobalOptions;
@@ -33,18 +32,19 @@ pub struct InstallSubcommand {
 
 impl InstallSubcommand {
     pub fn run(self, global: GlobalOptions) -> anyhow::Result<()> {
-        let manifest = Manifest::load(&self.project_path)?;
+        let workspace_root = Workspace::discover_root(&self.project_path)?;
+        let workspace = Workspace::load(&workspace_root)?;
 
-        let lockfile = Lockfile::load(&self.project_path)?
-            .unwrap_or_else(|| Lockfile::from_manifest(&manifest));
+        let lockfile = Lockfile::load(workspace.root())?
+            .unwrap_or_else(|| Lockfile::from_workspace(&workspace));
 
         let default_registry: Box<PackageSource> = if global.test_registry {
             Box::new(PackageSource::TestRegistry(TestRegistry::new(
-                &manifest.package.registry,
+                workspace.registry(),
             )))
         } else {
             Box::new(PackageSource::Registry(Registry::from_registry_spec(
-                &manifest.package.registry,
+                workspace.registry(),
             )?))
         };
 
@@ -66,7 +66,8 @@ impl InstallSubcommand {
                 SetForegroundColor(Color::Reset)
             ));
 
-            let latest_graph = resolve(&manifest, &BTreeSet::new(), &package_sources)?;
+            let latest_graph =
+                resolve_workspace(&workspace, &BTreeSet::new(), &package_sources)?;
 
             if try_to_use != latest_graph.activated {
                 progress.finish_and_clear();
@@ -113,17 +114,26 @@ impl InstallSubcommand {
             SetForegroundColor(Color::Reset)
         ));
 
-        let resolved = resolve(&manifest, &try_to_use, &package_sources)?;
+        let resolved = resolve_workspace(&workspace, &try_to_use, &package_sources)?;
+
+        let member_count = workspace.members().len();
+        let total_deps = resolved.activated.len();
+        let external_deps = total_deps.saturating_sub(member_count);
 
         progress.println(format!(
-            "{}   Resolved {}{} dependencies",
+            "{}   Resolved {}{} dependencies{}",
             SetForegroundColor(Color::DarkGreen),
             SetForegroundColor(Color::Reset),
-            resolved.activated.len() - 1
+            external_deps,
+            if member_count > 1 {
+                format!(" ({} workspace members)", member_count)
+            } else {
+                String::new()
+            }
         ));
 
-        let new_lockfile = Lockfile::from_resolve(&resolved);
-        new_lockfile.save(&self.project_path)?;
+        let new_lockfile = Lockfile::from_resolve(&resolved, Some(workspace.root()));
+        new_lockfile.save(workspace.root())?;
 
         progress.println(format!(
             "{}  Generated {}lockfile",
@@ -136,11 +146,17 @@ impl InstallSubcommand {
             SetForegroundColor(Color::DarkGreen),
             SetForegroundColor(Color::Reset)
         ));
-        let root_package_id = PackageId::new(manifest.package.name, manifest.package.version);
+
+        let root_package_ids: BTreeSet<_> = workspace
+            .members()
+            .values()
+            .map(|m| m.package_id())
+            .collect();
+
         let installation = InstallationContext::new(
-            &self.project_path,
-            manifest.place.shared_packages,
-            manifest.place.server_packages,
+            workspace.root(),
+            workspace.place().shared_packages.clone(),
+            workspace.place().server_packages.clone(),
         );
 
         installation.clean()?;
@@ -151,7 +167,7 @@ impl InstallSubcommand {
         ));
         progress.finish_and_clear();
 
-        installation.install(package_sources, root_package_id, resolved)?;
+        installation.install(package_sources, root_package_ids, resolved)?;
 
         Ok(())
     }

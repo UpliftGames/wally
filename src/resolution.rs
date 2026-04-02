@@ -1,15 +1,17 @@
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::path::{Path, PathBuf};
 
-use anyhow::bail;
-use anyhow::format_err;
+use anyhow::{bail, format_err};
 use semver::Version;
 use serde::Serialize;
 
+use crate::dependency_spec::DependencySpec;
 use crate::manifest::{Manifest, Realm};
 use crate::package_id::PackageId;
 use crate::package_req::PackageReq;
 use crate::package_source::{PackageSourceId, PackageSourceMap, PackageSourceProvider};
+use crate::workspace::Workspace;
 
 /// A completely resolved graph of packages returned by `resolve`.
 ///
@@ -57,8 +59,12 @@ pub struct ResolvePackageMetadata {
     pub realm: Realm,
     pub origin_realm: Realm,
     pub source_registry: PackageSourceId,
+    /// `true` when this package is a local workspace member (activated via
+    /// [`resolve_workspace`]) rather than a package fetched from a registry.
+    pub is_workspace_member: bool,
 }
 
+/// Resolve dependencies for a single-package project.
 pub fn resolve(
     root_manifest: &Manifest,
     try_to_use: &BTreeSet<PackageId>,
@@ -75,50 +81,169 @@ pub fn resolve(
             realm: root_manifest.package.realm,
             origin_realm: root_manifest.package.realm,
             source_registry: PackageSourceId::DefaultRegistry,
+            is_workspace_member: false,
         },
     );
 
     // Queue of all dependency requests that need to be resolved.
     let mut packages_to_visit = VecDeque::new();
 
-    for (alias, req) in &root_manifest.dependencies {
-        packages_to_visit.push_back(DependencyRequest {
-            request_source: root_manifest.package_id(),
-            request_realm: Realm::Shared,
-            origin_realm: Realm::Shared,
-            package_alias: alias.clone(),
-            package_req: req.clone(),
-        });
+    enqueue_manifest_deps(
+        root_manifest,
+        root_manifest.package_id(),
+        None,
+        &mut packages_to_visit,
+    );
+
+    resolve_queued(
+        &mut resolve,
+        &mut packages_to_visit,
+        try_to_use,
+        package_sources,
+        None,
+    )?;
+
+    Ok(resolve)
+}
+
+/// Resolve dependencies for a multi-member workspace.
+///
+/// All workspace members are activated as roots with
+/// [`PackageSourceId::Path`]. Path dependencies between members are resolved
+/// eagerly by looking up the target in the workspace member set. Registry
+/// dependencies follow the standard resolution path.
+pub fn resolve_workspace(
+    workspace: &Workspace,
+    try_to_use: &BTreeSet<PackageId>,
+    package_sources: &PackageSourceMap,
+) -> anyhow::Result<Resolve> {
+    let mut resolve = Resolve::default();
+    let mut packages_to_visit = VecDeque::new();
+
+    let is_single_package = workspace.is_single_package();
+
+    for (member_dir, manifest) in workspace.members() {
+        let member_id = manifest.package_id();
+        resolve.activated.insert(member_id.clone());
+
+        // Single-package projects are treated identically to the legacy
+        // `resolve()` path: the root is not a workspace member.
+        let (source_registry, is_workspace_member) = if is_single_package {
+            (PackageSourceId::DefaultRegistry, false)
+        } else {
+            (PackageSourceId::Path(member_dir.clone()), true)
+        };
+
+        resolve.metadata.insert(
+            member_id.clone(),
+            ResolvePackageMetadata {
+                realm: manifest.package.realm,
+                origin_realm: manifest.package.realm,
+                source_registry,
+                is_workspace_member,
+            },
+        );
+
+        enqueue_manifest_deps(
+            manifest,
+            member_id,
+            Some(member_dir.as_path()),
+            &mut packages_to_visit,
+        );
     }
 
-    for (alias, req) in &root_manifest.server_dependencies {
-        packages_to_visit.push_back(DependencyRequest {
-            request_source: root_manifest.package_id(),
-            request_realm: Realm::Server,
-            origin_realm: Realm::Server,
-            package_alias: alias.clone(),
-            package_req: req.clone(),
-        });
-    }
+    resolve_queued(
+        &mut resolve,
+        &mut packages_to_visit,
+        try_to_use,
+        package_sources,
+        Some(workspace),
+    )?;
 
-    for (alias, req) in &root_manifest.dev_dependencies {
-        packages_to_visit.push_back(DependencyRequest {
-            request_source: root_manifest.package_id(),
-            request_realm: Realm::Dev,
-            origin_realm: Realm::Dev,
-            package_alias: alias.clone(),
-            package_req: req.clone(),
-        });
-    }
+    Ok(resolve)
+}
 
-    // Workhorse loop: resolve all dependencies, depth-first.
+/// Core BFS resolution loop shared by [`resolve`] and [`resolve_workspace`].
+fn resolve_queued(
+    resolve: &mut Resolve,
+    packages_to_visit: &mut VecDeque<DependencyRequest>,
+    try_to_use: &BTreeSet<PackageId>,
+    package_sources: &PackageSourceMap,
+    workspace: Option<&Workspace>,
+) -> anyhow::Result<()> {
+    // Workhorse loop: resolve all dependencies, breadth-first.
     'outer: while let Some(dependency_request) = packages_to_visit.pop_front() {
+        // -------------------------------------------------------------
+        // Path dependencies: resolve eagerly against the workspace
+        // -------------------------------------------------------------
+        if let DependencyRequestKind::Path(ref target_dir) = dependency_request.kind {
+            let ws = workspace.expect(
+                "path dependency encountered but no workspace context is available",
+            );
+
+            let target_manifest = ws.get_member_at_path(target_dir).ok_or_else(|| {
+                format_err!(
+                    "path dependency '{}' at {} does not point to a workspace member",
+                    dependency_request.package_alias,
+                    target_dir.display()
+                )
+            })?;
+
+            if !Realm::is_dependency_valid(
+                dependency_request.request_realm,
+                target_manifest.package.realm,
+            ) {
+                bail!(
+                    "Package {} has a {:?} dependency '{}' on {}, \
+                     but {} has realm {:?} which is not compatible",
+                    dependency_request.request_source,
+                    dependency_request.request_realm,
+                    dependency_request.package_alias,
+                    target_manifest.package_id(),
+                    target_manifest.package_id(),
+                    target_manifest.package.realm,
+                );
+            }
+
+            let target_id = target_manifest.package_id();
+
+            // All workspace members were activated as roots, so the target
+            // must already be in the metadata map.
+            let metadata = resolve.metadata.get_mut(&target_id).unwrap_or_else(|| {
+                panic!(
+                    "workspace member {} should have been activated as a root",
+                    target_id
+                )
+            });
+
+            let merged =
+                merge_origin_realm(metadata.origin_realm, dependency_request.origin_realm);
+            metadata.origin_realm = merged;
+
+            resolve.activate(
+                dependency_request.request_source.clone(),
+                dependency_request.package_alias.clone(),
+                merged,
+                target_id,
+            );
+
+            continue 'outer;
+        }
+
+        // -------------------------------------------------------------
+        // Registry dependencies
+        // -------------------------------------------------------------
+        let package_req = match &dependency_request.kind {
+            DependencyRequestKind::Registry(req) => req,
+            _ => unreachable!("non-registry, non-path request in resolve loop"),
+        };
+
         // Locate all already-activated packages that might match this
         // dependency request.
         let mut matching_activated: Vec<_> = resolve
             .activated
             .iter()
-            .filter(|package_id| package_id.name() == dependency_request.package_req.name())
+            .filter(|package_id| package_id.name() == package_req.name())
             .cloned()
             .collect();
 
@@ -129,7 +254,7 @@ pub fn resolve(
         // Check for the highest version already-activated package that matches
         // our constraints.
         for package_id in &matching_activated {
-            if dependency_request.package_req.matches_id(package_id) {
+            if package_req.matches_id(package_id) {
                 let metadata = resolve
                     .metadata
                     .get_mut(package_id)
@@ -143,13 +268,8 @@ pub fn resolve(
                 // if they usually belong to another realm. Likewise we want to keep shared
                 // dependencies in the server realm unless they are explicitly required as a
                 // shared dependency.
-                let realm_match = match (metadata.origin_realm, dependency_request.origin_realm) {
-                    (_, Realm::Shared) => Realm::Shared,
-                    (Realm::Shared, _) => Realm::Shared,
-                    (_, Realm::Server) => Realm::Server,
-                    (Realm::Server, _) => Realm::Server,
-                    (Realm::Dev, Realm::Dev) => Realm::Dev,
-                };
+                let realm_match =
+                    merge_origin_realm(metadata.origin_realm, dependency_request.origin_realm);
 
                 metadata.origin_realm = realm_match;
 
@@ -173,7 +293,7 @@ pub fn resolve(
 
                 // Pull all of the possible candidate versions of the package we're
                 // looking for from the highest priority source which has them.
-                match registry.query(&dependency_request.package_req) {
+                match registry.query(package_req) {
                     Ok(manifests) => Some((source, manifests)),
                     Err(_) => None,
                 }
@@ -181,7 +301,7 @@ pub fn resolve(
             .ok_or_else(|| {
                 format_err!(
                     "Failed to find a source for {}",
-                    dependency_request.package_req
+                    package_req
                 )
             })?;
 
@@ -245,28 +365,17 @@ pub fn resolve(
                     realm: candidate.package.realm,
                     origin_realm: dependency_request.origin_realm,
                     source_registry: source_registry.clone(),
+                    is_workspace_member: false,
                 },
             );
 
-            for (alias, req) in &candidate.dependencies {
-                packages_to_visit.push_back(DependencyRequest {
-                    request_source: candidate_id.clone(),
-                    request_realm: Realm::Shared,
-                    origin_realm: dependency_request.origin_realm,
-                    package_alias: alias.clone(),
-                    package_req: req.clone(),
-                })
-            }
-
-            for (alias, req) in &candidate.server_dependencies {
-                packages_to_visit.push_back(DependencyRequest {
-                    request_source: candidate_id.clone(),
-                    request_realm: Realm::Server,
-                    origin_realm: dependency_request.origin_realm,
-                    package_alias: alias.clone(),
-                    package_req: req.clone(),
-                })
-            }
+            enqueue_transitive_deps(
+                candidate,
+                candidate_id.clone(),
+                dependency_request.origin_realm,
+                None,
+                packages_to_visit,
+            );
 
             continue 'outer;
         }
@@ -276,7 +385,7 @@ pub fn resolve(
                 "No packages were found that matched ({req_realm:?}) {req}.\nAre you sure this is \
                  a {req_realm:?} dependency?",
                 req_realm = dependency_request.request_realm,
-                req = dependency_request.package_req,
+                req = package_req,
             );
         } else {
             let conflicting_debug: Vec<_> = conflicting
@@ -288,14 +397,121 @@ pub fn resolve(
                 "All possible candidates for package {req} ({req_realm:?}) conflicted with other \
                  packages that were already installed. These packages were previously selected: \
                  {conflicting}",
-                req = dependency_request.package_req,
+                req = package_req,
                 req_realm = dependency_request.request_realm,
                 conflicting = conflicting_debug.join(", "),
             );
         }
     }
 
-    Ok(resolve)
+    Ok(())
+}
+
+/// Merge two origin realms, selecting the least restrictive (most visible).
+/// Shared is the least restrictive, Dev is the most restrictive.
+fn merge_origin_realm(existing: Realm, incoming: Realm) -> Realm {
+    match (existing, incoming) {
+        (_, Realm::Shared) | (Realm::Shared, _) => Realm::Shared,
+        (_, Realm::Server) | (Realm::Server, _) => Realm::Server,
+        (Realm::Dev, Realm::Dev) => Realm::Dev,
+    }
+}
+
+/// Convert a [`DependencySpec`] into a [`DependencyRequestKind`].
+///
+/// `source_dir` is required when path dependencies may be present (i.e. in a
+/// workspace context). It is used to resolve relative paths.
+fn dep_spec_to_request_kind(
+    alias: &str,
+    spec: &DependencySpec,
+    source_dir: Option<&Path>,
+) -> DependencyRequestKind {
+    match spec {
+        DependencySpec::Registry(req) => DependencyRequestKind::Registry(req.clone()),
+        DependencySpec::Path(path_spec) => {
+            let dir = source_dir.unwrap_or_else(|| {
+                panic!(
+                    "path dependency '{}' encountered without source directory context",
+                    alias
+                )
+            });
+            DependencyRequestKind::Path(dir.join(&path_spec.path))
+        }
+        DependencySpec::Workspace { .. } => {
+            panic!(
+                "dependency '{}' is DependencySpec::Workspace which should have been \
+                 resolved during workspace loading",
+                alias
+            );
+        }
+    }
+}
+
+/// Enqueue all dependencies from a root manifest (shared, server, and dev).
+fn enqueue_manifest_deps(
+    manifest: &Manifest,
+    source_id: PackageId,
+    source_dir: Option<&Path>,
+    queue: &mut VecDeque<DependencyRequest>,
+) {
+    for (alias, spec) in &manifest.dependencies {
+        queue.push_back(DependencyRequest {
+            request_source: source_id.clone(),
+            request_realm: Realm::Shared,
+            origin_realm: Realm::Shared,
+            package_alias: alias.clone(),
+            kind: dep_spec_to_request_kind(alias, spec, source_dir),
+        });
+    }
+
+    for (alias, spec) in &manifest.server_dependencies {
+        queue.push_back(DependencyRequest {
+            request_source: source_id.clone(),
+            request_realm: Realm::Server,
+            origin_realm: Realm::Server,
+            package_alias: alias.clone(),
+            kind: dep_spec_to_request_kind(alias, spec, source_dir),
+        });
+    }
+
+    for (alias, spec) in &manifest.dev_dependencies {
+        queue.push_back(DependencyRequest {
+            request_source: source_id.clone(),
+            request_realm: Realm::Dev,
+            origin_realm: Realm::Dev,
+            package_alias: alias.clone(),
+            kind: dep_spec_to_request_kind(alias, spec, source_dir),
+        });
+    }
+}
+
+/// Enqueue transitive dependencies (shared + server only, not dev).
+fn enqueue_transitive_deps(
+    manifest: &Manifest,
+    source_id: PackageId,
+    origin_realm: Realm,
+    source_dir: Option<&Path>,
+    queue: &mut VecDeque<DependencyRequest>,
+) {
+    for (alias, spec) in &manifest.dependencies {
+        queue.push_back(DependencyRequest {
+            request_source: source_id.clone(),
+            request_realm: Realm::Shared,
+            origin_realm,
+            package_alias: alias.clone(),
+            kind: dep_spec_to_request_kind(alias, spec, source_dir),
+        });
+    }
+
+    for (alias, spec) in &manifest.server_dependencies {
+        queue.push_back(DependencyRequest {
+            request_source: source_id.clone(),
+            request_realm: Realm::Server,
+            origin_realm,
+            package_alias: alias.clone(),
+            kind: dep_spec_to_request_kind(alias, spec, source_dir),
+        });
+    }
 }
 
 fn compatible(a: &Version, b: &Version) -> bool {
@@ -310,12 +526,17 @@ fn compatible(a: &Version, b: &Version) -> bool {
     }
 }
 
-pub struct DependencyRequest {
+enum DependencyRequestKind {
+    Registry(PackageReq),
+    Path(PathBuf),
+}
+
+struct DependencyRequest {
     request_source: PackageId,
     request_realm: Realm,
     origin_realm: Realm,
     package_alias: String,
-    package_req: PackageReq,
+    kind: DependencyRequestKind,
 }
 
 #[cfg(test)]
@@ -497,5 +718,645 @@ mod tests {
         insta::assert_yaml_snapshot!(new_resolved);
 
         Ok(())
+    }
+
+    // =====================================================================
+    // Workspace resolution tests
+    // =====================================================================
+
+    mod workspace_tests {
+        use super::*;
+        use std::fs;
+        use tempfile::TempDir;
+
+        fn write_manifest(dir: &std::path::Path, content: &str) {
+            fs::create_dir_all(dir).unwrap();
+            fs::write(dir.join("wally.toml"), content).unwrap();
+        }
+
+        fn assert_activated(resolve: &Resolve, name: &str) {
+            let pkg_name: PackageName = name.parse().unwrap();
+            assert!(
+                resolve
+                    .activated
+                    .iter()
+                    .any(|id| id.name() == &pkg_name),
+                "expected {} to be activated, activated: {:?}",
+                name,
+                resolve.activated
+            );
+        }
+
+        fn find_package_id(resolve: &Resolve, name: &str) -> PackageId {
+            let pkg_name: PackageName = name.parse().unwrap();
+            resolve
+                .activated
+                .iter()
+                .find(|id| id.name() == &pkg_name)
+                .cloned()
+                .unwrap_or_else(|| panic!("package {} not found in activated set", name))
+        }
+
+        /// Two members, no cross-deps -- basic workspace resolution.
+        #[test]
+        fn workspace_two_members_no_cross_deps() -> anyhow::Result<()> {
+            let tmp = TempDir::new()?;
+            write_manifest(
+                tmp.path(),
+                r#"
+                [workspace]
+                members = ["modules/*"]
+                registry = "https://example.com/index"
+                realm = "server"
+                "#,
+            );
+            write_manifest(
+                &tmp.path().join("modules/alpha"),
+                r#"
+                [package]
+                name = "team/alpha"
+                version = "0.1.0"
+                registry = "https://example.com/index"
+                realm = "server"
+                "#,
+            );
+            write_manifest(
+                &tmp.path().join("modules/beta"),
+                r#"
+                [package]
+                name = "team/beta"
+                version = "0.2.0"
+                registry = "https://example.com/index"
+                realm = "server"
+                "#,
+            );
+
+            let workspace = Workspace::load(tmp.path())?;
+            let registry = InMemoryRegistry::new();
+            let sources = PackageSourceMap::new(Box::new(registry.source()));
+            let resolved = resolve_workspace(&workspace, &Default::default(), &sources)?;
+
+            assert_eq!(resolved.activated.len(), 2);
+            assert_activated(&resolved, "team/alpha");
+            assert_activated(&resolved, "team/beta");
+
+            let alpha_id = find_package_id(&resolved, "team/alpha");
+            let beta_id = find_package_id(&resolved, "team/beta");
+
+            assert!(matches!(
+                resolved.metadata[&alpha_id].source_registry,
+                PackageSourceId::Path(_)
+            ));
+            assert!(matches!(
+                resolved.metadata[&beta_id].source_registry,
+                PackageSourceId::Path(_)
+            ));
+
+            Ok(())
+        }
+
+        /// A depends on B via path -- path dep creates correct edge.
+        #[test]
+        fn workspace_path_dep_a_to_b() -> anyhow::Result<()> {
+            let tmp = TempDir::new()?;
+            write_manifest(
+                tmp.path(),
+                r#"
+                [workspace]
+                members = ["modules/*"]
+                registry = "https://example.com/index"
+                realm = "shared"
+                "#,
+            );
+            write_manifest(
+                &tmp.path().join("modules/foo"),
+                r#"
+                [package]
+                name = "team/foo"
+                version = "1.0.0"
+                registry = "https://example.com/index"
+                realm = "shared"
+
+                [dependencies]
+                Bar = { path = "../bar" }
+                "#,
+            );
+            write_manifest(
+                &tmp.path().join("modules/bar"),
+                r#"
+                [package]
+                name = "team/bar"
+                version = "1.0.0"
+                registry = "https://example.com/index"
+                realm = "shared"
+                "#,
+            );
+
+            let workspace = Workspace::load(tmp.path())?;
+            let registry = InMemoryRegistry::new();
+            let sources = PackageSourceMap::new(Box::new(registry.source()));
+            let resolved = resolve_workspace(&workspace, &Default::default(), &sources)?;
+
+            assert_eq!(resolved.activated.len(), 2);
+
+            let foo_id = find_package_id(&resolved, "team/foo");
+            let bar_id = find_package_id(&resolved, "team/bar");
+
+            let foo_shared_deps = &resolved.shared_dependencies[&foo_id];
+            assert_eq!(foo_shared_deps.get("Bar"), Some(&bar_id));
+
+            Ok(())
+        }
+
+        /// Diamond: A -> B (path) + A -> C (registry), B -> C (registry).
+        /// C should be unified (activated once).
+        #[test]
+        fn workspace_diamond_path_and_registry() -> anyhow::Result<()> {
+            let tmp = TempDir::new()?;
+            write_manifest(
+                tmp.path(),
+                r#"
+                [workspace]
+                members = ["modules/*"]
+                registry = "https://example.com/index"
+                realm = "shared"
+                "#,
+            );
+            write_manifest(
+                &tmp.path().join("modules/app"),
+                r#"
+                [package]
+                name = "team/app"
+                version = "1.0.0"
+                registry = "https://example.com/index"
+                realm = "shared"
+
+                [dependencies]
+                Lib = { path = "../lib" }
+                Util = "ext/util@1.0.0"
+                "#,
+            );
+            write_manifest(
+                &tmp.path().join("modules/lib"),
+                r#"
+                [package]
+                name = "team/lib"
+                version = "1.0.0"
+                registry = "https://example.com/index"
+                realm = "shared"
+
+                [dependencies]
+                Util = "ext/util@1.0.0"
+                "#,
+            );
+
+            let workspace = Workspace::load(tmp.path())?;
+            let registry = InMemoryRegistry::new();
+            registry.publish(PackageBuilder::new("ext/util@1.0.0"));
+            let sources = PackageSourceMap::new(Box::new(registry.source()));
+            let resolved = resolve_workspace(&workspace, &Default::default(), &sources)?;
+
+            // 2 workspace members + 1 registry package = 3
+            assert_eq!(resolved.activated.len(), 3);
+
+            let app_id = find_package_id(&resolved, "team/app");
+            let lib_id = find_package_id(&resolved, "team/lib");
+            let util_id = find_package_id(&resolved, "ext/util");
+
+            // app -> lib (path), app -> util (registry)
+            let app_deps = &resolved.shared_dependencies[&app_id];
+            assert_eq!(app_deps.get("Lib"), Some(&lib_id));
+            assert_eq!(app_deps.get("Util"), Some(&util_id));
+
+            // lib -> util (registry)
+            let lib_deps = &resolved.shared_dependencies[&lib_id];
+            assert_eq!(lib_deps.get("Util"), Some(&util_id));
+
+            // util is a registry package
+            assert_eq!(
+                resolved.metadata[&util_id].source_registry,
+                PackageSourceId::DefaultRegistry
+            );
+
+            Ok(())
+        }
+
+        /// Path dep to non-member directory should error.
+        #[test]
+        fn workspace_path_dep_non_member_errors() {
+            let tmp = TempDir::new().unwrap();
+            write_manifest(
+                tmp.path(),
+                r#"
+                [workspace]
+                members = ["modules/*"]
+                registry = "https://example.com/index"
+                realm = "shared"
+                "#,
+            );
+            write_manifest(
+                &tmp.path().join("modules/foo"),
+                r#"
+                [package]
+                name = "team/foo"
+                version = "1.0.0"
+                registry = "https://example.com/index"
+                realm = "shared"
+
+                [dependencies]
+                External = { path = "../../nonexistent" }
+                "#,
+            );
+
+            let workspace = Workspace::load(tmp.path()).unwrap();
+            let registry = InMemoryRegistry::new();
+            let sources = PackageSourceMap::new(Box::new(registry.source()));
+            let result = resolve_workspace(&workspace, &Default::default(), &sources);
+            assert!(result.is_err());
+            let err = result.unwrap_err().to_string();
+            assert!(
+                err.contains("External") || err.contains("workspace member"),
+                "error should mention the dependency name or workspace: {}",
+                err
+            );
+        }
+
+        /// Shared member cannot depend on server member via [dependencies].
+        #[test]
+        fn workspace_realm_validation_shared_cannot_dep_on_server() {
+            let tmp = TempDir::new().unwrap();
+            write_manifest(
+                tmp.path(),
+                r#"
+                [workspace]
+                members = ["modules/*"]
+                registry = "https://example.com/index"
+                "#,
+            );
+            write_manifest(
+                &tmp.path().join("modules/client"),
+                r#"
+                [package]
+                name = "team/client"
+                version = "1.0.0"
+                registry = "https://example.com/index"
+                realm = "shared"
+
+                [dependencies]
+                ServerLib = { path = "../server-lib" }
+                "#,
+            );
+            write_manifest(
+                &tmp.path().join("modules/server-lib"),
+                r#"
+                [package]
+                name = "team/server-lib"
+                version = "1.0.0"
+                registry = "https://example.com/index"
+                realm = "server"
+                "#,
+            );
+
+            let workspace = Workspace::load(tmp.path()).unwrap();
+            let registry = InMemoryRegistry::new();
+            let sources = PackageSourceMap::new(Box::new(registry.source()));
+            let result = resolve_workspace(&workspace, &Default::default(), &sources);
+            assert!(result.is_err());
+            let err = result.unwrap_err().to_string();
+            assert!(
+                err.contains("realm") || err.contains("compatible"),
+                "error should mention realm incompatibility: {}",
+                err
+            );
+        }
+
+        /// Server member CAN depend on shared member (server deps can use shared).
+        /// Because shared-lib is pre-activated as a root with origin_realm=Shared,
+        /// the merged origin stays Shared and the edge is recorded in shared_dependencies.
+        #[test]
+        fn workspace_server_member_depends_on_shared_via_path() -> anyhow::Result<()> {
+            let tmp = TempDir::new()?;
+            write_manifest(
+                tmp.path(),
+                r#"
+                [workspace]
+                members = ["modules/*"]
+                registry = "https://example.com/index"
+                "#,
+            );
+            write_manifest(
+                &tmp.path().join("modules/svc"),
+                r#"
+                [package]
+                name = "team/svc"
+                version = "1.0.0"
+                registry = "https://example.com/index"
+                realm = "server"
+
+                [server-dependencies]
+                SharedLib = { path = "../shared-lib" }
+                "#,
+            );
+            write_manifest(
+                &tmp.path().join("modules/shared-lib"),
+                r#"
+                [package]
+                name = "team/shared-lib"
+                version = "1.0.0"
+                registry = "https://example.com/index"
+                realm = "shared"
+                "#,
+            );
+
+            let workspace = Workspace::load(tmp.path())?;
+            let registry = InMemoryRegistry::new();
+            let sources = PackageSourceMap::new(Box::new(registry.source()));
+            let resolved = resolve_workspace(&workspace, &Default::default(), &sources)?;
+
+            let svc_id = find_package_id(&resolved, "team/svc");
+            let shared_lib_id = find_package_id(&resolved, "team/shared-lib");
+
+            // shared-lib is pre-activated with origin_realm=Shared, so the
+            // merged origin is Shared and the edge lands in shared_dependencies.
+            let svc_shared_deps = &resolved.shared_dependencies[&svc_id];
+            assert_eq!(svc_shared_deps.get("SharedLib"), Some(&shared_lib_id));
+
+            assert_eq!(
+                resolved.metadata[&shared_lib_id].origin_realm,
+                Realm::Shared
+            );
+
+            Ok(())
+        }
+
+        /// Origin realm merging: a shared member initially activated as Shared
+        /// stays Shared even when also depended upon from a server context.
+        #[test]
+        fn workspace_origin_realm_merging() -> anyhow::Result<()> {
+            let tmp = TempDir::new()?;
+            write_manifest(
+                tmp.path(),
+                r#"
+                [workspace]
+                members = ["modules/*"]
+                registry = "https://example.com/index"
+                "#,
+            );
+            write_manifest(
+                &tmp.path().join("modules/shared-user"),
+                r#"
+                [package]
+                name = "team/shared-user"
+                version = "1.0.0"
+                registry = "https://example.com/index"
+                realm = "shared"
+
+                [dependencies]
+                Common = { path = "../common" }
+                "#,
+            );
+            write_manifest(
+                &tmp.path().join("modules/server-user"),
+                r#"
+                [package]
+                name = "team/server-user"
+                version = "1.0.0"
+                registry = "https://example.com/index"
+                realm = "server"
+
+                [server-dependencies]
+                Common = { path = "../common" }
+                "#,
+            );
+            write_manifest(
+                &tmp.path().join("modules/common"),
+                r#"
+                [package]
+                name = "team/common"
+                version = "1.0.0"
+                registry = "https://example.com/index"
+                realm = "shared"
+                "#,
+            );
+
+            let workspace = Workspace::load(tmp.path())?;
+            let registry = InMemoryRegistry::new();
+            let sources = PackageSourceMap::new(Box::new(registry.source()));
+            let resolved = resolve_workspace(&workspace, &Default::default(), &sources)?;
+
+            let common_id = find_package_id(&resolved, "team/common");
+            // Common is depended on from both shared and server contexts.
+            // The merge should promote to Shared (least restrictive).
+            assert_eq!(resolved.metadata[&common_id].origin_realm, Realm::Shared);
+
+            Ok(())
+        }
+
+        /// Dev deps are resolved for member roots.
+        #[test]
+        fn workspace_dev_deps_resolved_for_members() -> anyhow::Result<()> {
+            let tmp = TempDir::new()?;
+            write_manifest(
+                tmp.path(),
+                r#"
+                [workspace]
+                members = ["modules/*"]
+                registry = "https://example.com/index"
+                realm = "shared"
+                "#,
+            );
+            write_manifest(
+                &tmp.path().join("modules/lib"),
+                r#"
+                [package]
+                name = "team/lib"
+                version = "1.0.0"
+                registry = "https://example.com/index"
+                realm = "shared"
+
+                [dev-dependencies]
+                TestEZ = "roblox/testez@0.4.0"
+                "#,
+            );
+
+            let workspace = Workspace::load(tmp.path())?;
+            let registry = InMemoryRegistry::new();
+            registry.publish(PackageBuilder::new("roblox/testez@0.4.0"));
+            let sources = PackageSourceMap::new(Box::new(registry.source()));
+            let resolved = resolve_workspace(&workspace, &Default::default(), &sources)?;
+
+            // lib + testez
+            assert_eq!(resolved.activated.len(), 2);
+
+            let lib_id = find_package_id(&resolved, "team/lib");
+            let testez_id = find_package_id(&resolved, "roblox/testez");
+
+            let lib_dev_deps = &resolved.dev_dependencies[&lib_id];
+            assert_eq!(lib_dev_deps.get("TestEZ"), Some(&testez_id));
+
+            // TestEZ should have origin_realm = Dev (only used via dev deps)
+            assert_eq!(resolved.metadata[&testez_id].origin_realm, Realm::Dev);
+
+            Ok(())
+        }
+
+        /// Lockfile try_to_use bias works in workspace context.
+        #[test]
+        fn workspace_try_to_use_bias() -> anyhow::Result<()> {
+            let tmp = TempDir::new()?;
+            write_manifest(
+                tmp.path(),
+                r#"
+                [workspace]
+                members = ["modules/*"]
+                registry = "https://example.com/index"
+                realm = "shared"
+                "#,
+            );
+            write_manifest(
+                &tmp.path().join("modules/app"),
+                r#"
+                [package]
+                name = "team/app"
+                version = "1.0.0"
+                registry = "https://example.com/index"
+                realm = "shared"
+
+                [dependencies]
+                Util = "ext/util@1.0.0"
+                "#,
+            );
+
+            let workspace = Workspace::load(tmp.path())?;
+            let registry = InMemoryRegistry::new();
+            registry.publish(PackageBuilder::new("ext/util@1.0.0"));
+            let sources = PackageSourceMap::new(Box::new(registry.source()));
+
+            let first = resolve_workspace(&workspace, &Default::default(), &sources)?;
+
+            // Publish a newer version, but bias toward old
+            registry.publish(PackageBuilder::new("ext/util@1.1.0"));
+            let biased = resolve_workspace(&workspace, &first.activated, &sources)?;
+
+            let util_id = find_package_id(&biased, "ext/util");
+            assert_eq!(
+                util_id.version().to_string(),
+                "1.0.0",
+                "should prefer the try_to_use version"
+            );
+
+            Ok(())
+        }
+
+        /// Mutual path deps between members.
+        #[test]
+        fn workspace_mutual_path_deps() -> anyhow::Result<()> {
+            let tmp = TempDir::new()?;
+            write_manifest(
+                tmp.path(),
+                r#"
+                [workspace]
+                members = ["modules/*"]
+                registry = "https://example.com/index"
+                realm = "shared"
+                "#,
+            );
+            write_manifest(
+                &tmp.path().join("modules/a"),
+                r#"
+                [package]
+                name = "team/a"
+                version = "1.0.0"
+                registry = "https://example.com/index"
+                realm = "shared"
+
+                [dependencies]
+                B = { path = "../b" }
+                "#,
+            );
+            write_manifest(
+                &tmp.path().join("modules/b"),
+                r#"
+                [package]
+                name = "team/b"
+                version = "1.0.0"
+                registry = "https://example.com/index"
+                realm = "shared"
+
+                [dependencies]
+                A = { path = "../a" }
+                "#,
+            );
+
+            let workspace = Workspace::load(tmp.path())?;
+            let registry = InMemoryRegistry::new();
+            let sources = PackageSourceMap::new(Box::new(registry.source()));
+            let resolved = resolve_workspace(&workspace, &Default::default(), &sources)?;
+
+            assert_eq!(resolved.activated.len(), 2);
+
+            let a_id = find_package_id(&resolved, "team/a");
+            let b_id = find_package_id(&resolved, "team/b");
+
+            let a_deps = &resolved.shared_dependencies[&a_id];
+            assert_eq!(a_deps.get("B"), Some(&b_id));
+
+            let b_deps = &resolved.shared_dependencies[&b_id];
+            assert_eq!(b_deps.get("A"), Some(&a_id));
+
+            Ok(())
+        }
+
+        /// Single-package project through resolve_workspace produces same
+        /// results as through resolve.
+        #[test]
+        fn workspace_single_package_matches_resolve() -> anyhow::Result<()> {
+            let tmp = TempDir::new()?;
+            write_manifest(
+                tmp.path(),
+                r#"
+                [package]
+                name = "biff/minimal"
+                version = "0.1.0"
+                registry = "https://example.com/index"
+                realm = "shared"
+
+                [dependencies]
+                Dep = "ext/dep@1.0.0"
+                "#,
+            );
+
+            let workspace = Workspace::load(tmp.path())?;
+            let registry = InMemoryRegistry::new();
+            registry.publish(PackageBuilder::new("ext/dep@1.0.0"));
+            let sources = PackageSourceMap::new(Box::new(registry.source()));
+
+            let ws_resolved = resolve_workspace(&workspace, &Default::default(), &sources)?;
+
+            // The same packages should be activated
+            assert_eq!(ws_resolved.activated.len(), 2);
+            assert_activated(&ws_resolved, "biff/minimal");
+            assert_activated(&ws_resolved, "ext/dep");
+
+            let root_id = find_package_id(&ws_resolved, "biff/minimal");
+            let dep_id = find_package_id(&ws_resolved, "ext/dep");
+
+            let root_deps = &ws_resolved.shared_dependencies[&root_id];
+            assert_eq!(root_deps.get("Dep"), Some(&dep_id));
+
+            // Single-package root uses DefaultRegistry (identical to legacy resolve())
+            assert_eq!(
+                ws_resolved.metadata[&root_id].source_registry,
+                PackageSourceId::DefaultRegistry
+            );
+            assert!(!ws_resolved.metadata[&root_id].is_workspace_member);
+            // Dep should come from the registry
+            assert_eq!(
+                ws_resolved.metadata[&dep_id].source_registry,
+                PackageSourceId::DefaultRegistry
+            );
+
+            Ok(())
+        }
     }
 }

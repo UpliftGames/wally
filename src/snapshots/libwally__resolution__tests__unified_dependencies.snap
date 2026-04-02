@@ -13,18 +13,22 @@ metadata:
     realm: shared
     origin_realm: shared
     source_registry: DefaultRegistry
+    is_workspace_member: false
   biff/b@1.0.0:
     realm: shared
     origin_realm: shared
     source_registry: DefaultRegistry
+    is_workspace_member: false
   biff/c@1.0.0:
     realm: shared
     origin_realm: shared
     source_registry: DefaultRegistry
+    is_workspace_member: false
   biff/d@1.0.0:
     realm: shared
     origin_realm: shared
     source_registry: DefaultRegistry
+    is_workspace_member: false
 shared_dependencies:
   biff/a@1.0.0:
     B: biff/b@1.0.0

@@ -6,12 +6,13 @@ use std::time::Duration;
 
 use crate::installation::InstallationContext;
 use crate::lockfile::Lockfile;
-use crate::manifest::Manifest;
 use crate::package_id::PackageId;
 use crate::package_name::PackageName;
 use crate::package_req::PackageReq;
 use crate::package_source::{PackageSource, PackageSourceMap, Registry, TestRegistry};
-use crate::{resolution, GlobalOptions};
+use crate::resolution::resolve_workspace;
+use crate::workspace::Workspace;
+use crate::GlobalOptions;
 use crossterm::style::{Attribute, Color, SetAttribute, SetForegroundColor};
 use indicatif::{ProgressBar, ProgressStyle};
 use structopt::StructOpt;
@@ -32,28 +33,27 @@ pub struct UpdateSubcommand {
 
 impl UpdateSubcommand {
     pub fn run(self, global: GlobalOptions) -> anyhow::Result<()> {
-        let manifest = Manifest::load(&self.project_path)?;
+        let workspace_root = Workspace::discover_root(&self.project_path)?;
+        let workspace = Workspace::load(&workspace_root)?;
 
-        let lockfile = match Lockfile::load(&self.project_path)? {
+        let lockfile = match Lockfile::load(workspace.root())? {
             Some(lockfile) => lockfile,
-            None => Lockfile::from_manifest(&manifest),
+            None => Lockfile::from_workspace(&workspace),
         };
 
         let default_registry: Box<PackageSource> = if global.test_registry {
             Box::new(PackageSource::TestRegistry(TestRegistry::new(
-                &manifest.package.registry,
+                workspace.registry(),
             )))
         } else {
             Box::new(PackageSource::Registry(Registry::from_registry_spec(
-                &manifest.package.registry,
+                workspace.registry(),
             )?))
         };
 
         let mut package_sources = PackageSourceMap::new(default_registry);
         package_sources.add_fallbacks()?;
 
-        // If the user didn't specify any targets, then update all of the packages.
-        // Otherwise, find the target packages to update.
         let try_to_use = if self.package_specs.is_empty() {
             println!(
                 "{}   Selected {} all dependencies to try update",
@@ -65,7 +65,6 @@ impl UpdateSubcommand {
         } else {
             let try_to_use: BTreeSet<PackageId> = lockfile
                 .as_ids()
-                // We update the target packages by removing the package from the list of packages to try to keep.
                 .filter(|package_id| !self.given_package_id_satisifies_targets(package_id))
                 .collect();
 
@@ -89,13 +88,17 @@ impl UpdateSubcommand {
                 SetForegroundColor(Color::Reset)
             ));
 
-        let resolved_graph = resolution::resolve(&manifest, &try_to_use, &package_sources)?;
+        let resolved_graph = resolve_workspace(&workspace, &try_to_use, &package_sources)?;
+
+        let member_count = workspace.members().len();
+        let total_deps = resolved_graph.activated.len();
+        let external_deps = total_deps.saturating_sub(member_count);
 
         progress.println(format!(
             "{}   Resolved {}{} total dependencies",
             SetForegroundColor(Color::DarkGreen),
             SetForegroundColor(Color::Reset),
-            resolved_graph.activated.len() - 1
+            external_deps
         ));
 
         progress.enable_steady_tick(Duration::from_millis(100));
@@ -107,7 +110,8 @@ impl UpdateSubcommand {
             render_update_difference(&dependency_changes, &mut std::io::stdout()).unwrap();
         });
 
-        Lockfile::from_resolve(&resolved_graph).save(&self.project_path)?;
+        Lockfile::from_resolve(&resolved_graph, Some(workspace.root()))
+            .save(workspace.root())?;
 
         progress.println(format!(
             "{}    Updated {}lockfile",
@@ -115,11 +119,16 @@ impl UpdateSubcommand {
             SetForegroundColor(Color::Reset)
         ));
 
-        let root_package_id = manifest.package_id();
+        let root_package_ids: BTreeSet<_> = workspace
+            .members()
+            .values()
+            .map(|m| m.package_id())
+            .collect();
+
         let installation_context = InstallationContext::new(
-            &self.project_path,
-            manifest.place.shared_packages,
-            manifest.place.server_packages,
+            workspace.root(),
+            workspace.place().shared_packages.clone(),
+            workspace.place().server_packages.clone(),
         );
 
         progress.set_message(format!(
@@ -143,7 +152,7 @@ impl UpdateSubcommand {
             SetForegroundColor(Color::Reset)
         ));
 
-        installation_context.install(package_sources, root_package_id, resolved_graph)?;
+        installation_context.install(package_sources, root_package_ids, resolved_graph)?;
 
         Ok(())
     }

@@ -1,0 +1,9 @@
+[package]
+name = "team/foo"
+version = "0.1.0"
+license = "MIT"
+realm = "shared"
+registry = "test-registries/primary-registry"
+
+[dependencies]
+Bar = { path = "../bar" }

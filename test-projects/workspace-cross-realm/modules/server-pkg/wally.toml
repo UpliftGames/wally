@@ -1,0 +1,9 @@
+[package]
+name = "team/server-pkg"
+version = "0.1.0"
+license = "MIT"
+realm = "server"
+registry = "test-registries/primary-registry"
+
+[server-dependencies]
+SharedLib = { path = "../shared-lib" }

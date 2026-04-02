@@ -1,0 +1,6 @@
+[package]
+name = "team/helper"
+version = "1.0.0"
+license = "MIT"
+realm = "shared"
+registry = "test-registries/primary-registry"

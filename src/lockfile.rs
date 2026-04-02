@@ -10,6 +10,8 @@ use semver::Version;
 use serde::{Deserialize, Serialize};
 
 use crate::package_id;
+use crate::package_source::PackageSourceId;
+use crate::workspace::Workspace;
 use crate::{
     manifest::Manifest, package_id::PackageId, package_name::PackageName, resolution::Resolve,
 };
@@ -50,23 +52,57 @@ impl Lockfile {
         }
     }
 
-    pub fn from_resolve(resolve: &Resolve) -> Self {
+    pub fn from_workspace(workspace: &Workspace) -> Self {
+        Self {
+            registry: workspace.registry().to_string(),
+            packages: Vec::new(),
+        }
+    }
+
+    pub fn from_resolve(resolve: &Resolve, workspace_root: Option<&Path>) -> Self {
         let mut packages = Vec::new();
 
         for package_id in &resolve.activated {
             let dependencies = [
-                grab_dependencies(&package_id, &resolve.shared_dependencies),
-                grab_dependencies(&package_id, &resolve.server_dependencies),
-                grab_dependencies(&package_id, &resolve.dev_dependencies),
+                grab_dependencies(package_id, &resolve.shared_dependencies),
+                grab_dependencies(package_id, &resolve.server_dependencies),
+                grab_dependencies(package_id, &resolve.dev_dependencies),
             ]
             .concat();
 
-            packages.push(LockPackage::Registry(RegistryLockPackage {
-                name: package_id.name().clone(),
-                version: package_id.version().clone(),
-                checksum: None,
-                dependencies,
-            }));
+            let metadata = resolve.metadata.get(package_id);
+            let is_workspace_member = metadata
+                .map(|m| m.is_workspace_member)
+                .unwrap_or(false);
+
+            if is_workspace_member {
+                let member_dir = match &metadata.unwrap().source_registry {
+                    PackageSourceId::Path(p) => p,
+                    _ => unreachable!("workspace member must have Path source"),
+                };
+
+                let relative_path = match workspace_root {
+                    Some(root) => member_dir
+                        .strip_prefix(root)
+                        .map(|p| p.to_string_lossy().into_owned())
+                        .unwrap_or_else(|_| member_dir.to_string_lossy().into_owned()),
+                    None => member_dir.to_string_lossy().into_owned(),
+                };
+
+                packages.push(LockPackage::Workspace(WorkspaceLockPackage {
+                    name: package_id.name().clone(),
+                    version: package_id.version().clone(),
+                    path: relative_path,
+                    dependencies,
+                }));
+            } else {
+                packages.push(LockPackage::Registry(RegistryLockPackage {
+                    name: package_id.name().clone(),
+                    version: package_id.version().clone(),
+                    checksum: None,
+                    dependencies,
+                }));
+            }
         }
 
         Self {
@@ -103,6 +139,21 @@ impl Lockfile {
             writeln!(file, "[[package]]")?;
 
             match lock_package {
+                LockPackage::Workspace(ws_package) => {
+                    writeln!(file, "name = \"{}\"", ws_package.name)?;
+                    writeln!(file, "version = \"{}\"", ws_package.version)?;
+                    writeln!(file, "path = \"{}\"", ws_package.path)?;
+
+                    if ws_package.dependencies.is_empty() {
+                        writeln!(file, "dependencies = []")?;
+                    } else {
+                        writeln!(file, "dependencies = [")?;
+                        for dependency in ws_package.dependencies.iter() {
+                            writeln!(file, "\t[\"{}\", \"{}\"],", dependency.0, dependency.1)?;
+                        }
+                        writeln!(file, "]")?;
+                    }
+                }
                 LockPackage::Registry(registry_lock_package) => {
                     writeln!(file, "name = \"{}\"", registry_lock_package.name)?;
                     writeln!(file, "version = \"{}\"", registry_lock_package.version)?;
@@ -111,7 +162,7 @@ impl Lockfile {
                         writeln!(file, "checksum = \"{}\"", checksum)?;
                     }
 
-                    if registry_lock_package.dependencies.len() == 0 {
+                    if registry_lock_package.dependencies.is_empty() {
                         writeln!(file, "dependencies = []")?;
                     } else {
                         writeln!(file, "dependencies = [")?;
@@ -126,7 +177,7 @@ impl Lockfile {
                     writeln!(file, "rev = \"{}\"", git_lock_package.rev)?;
                     writeln!(file, "commit = \"{}\"", git_lock_package.commit)?;
 
-                    if git_lock_package.dependencies.len() == 0 {
+                    if git_lock_package.dependencies.is_empty() {
                         writeln!(file, "dependencies = []")?;
                     } else {
                         writeln!(file, "dependencies = [")?;
@@ -148,6 +199,9 @@ impl Lockfile {
 
     pub fn as_ids(&self) -> impl Iterator<Item = PackageId> + '_ {
         self.packages.iter().map(|lock_package| match lock_package {
+            LockPackage::Workspace(ws_package) => {
+                PackageId::new(ws_package.name.clone(), ws_package.version.clone())
+            }
             LockPackage::Registry(lock_package) => {
                 PackageId::new(lock_package.name.clone(), lock_package.version.clone())
             }
@@ -156,11 +210,27 @@ impl Lockfile {
     }
 }
 
+/// Serde variant ordering matters: `Workspace` must come before `Registry`
+/// because both have `name` + `version`, but only `Workspace` has a required
+/// `path` field. With `#[serde(untagged)]`, serde tries variants in
+/// declaration order -- entries with `path` match `Workspace`; entries without
+/// `path` fall through to `Registry`.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum LockPackage {
+    Workspace(WorkspaceLockPackage),
     Registry(RegistryLockPackage),
     Git(GitLockPackage),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct WorkspaceLockPackage {
+    pub name: PackageName,
+    pub version: Version,
+    pub path: String,
+
+    #[serde(default)]
+    pub dependencies: Vec<(String, PackageId)>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -181,4 +251,255 @@ pub struct GitLockPackage {
 
     #[serde(default)]
     pub dependencies: Vec<PackageId>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::package_source::PackageSourceId;
+    use crate::resolution::{Resolve, ResolvePackageMetadata};
+    use crate::manifest::Realm;
+    use std::collections::BTreeSet;
+
+    fn make_id(s: &str) -> PackageId {
+        s.parse().unwrap()
+    }
+
+    #[test]
+    fn from_resolve_registry_only() {
+        let id = make_id("biff/cool@1.0.0");
+        let mut resolve = Resolve::default();
+        resolve.activated.insert(id.clone());
+        resolve.metadata.insert(
+            id.clone(),
+            ResolvePackageMetadata {
+                realm: Realm::Shared,
+                origin_realm: Realm::Shared,
+                source_registry: PackageSourceId::DefaultRegistry,
+                is_workspace_member: false,
+            },
+        );
+
+        let lockfile = Lockfile::from_resolve(&resolve, None);
+        assert_eq!(lockfile.packages.len(), 1);
+        assert!(matches!(&lockfile.packages[0], LockPackage::Registry(_)));
+    }
+
+    #[test]
+    fn from_resolve_workspace_member() {
+        let id = make_id("team/foo@1.0.0");
+        let mut resolve = Resolve::default();
+        resolve.activated.insert(id.clone());
+        resolve.metadata.insert(
+            id.clone(),
+            ResolvePackageMetadata {
+                realm: Realm::Shared,
+                origin_realm: Realm::Shared,
+                source_registry: PackageSourceId::Path("/workspace/modules/foo".into()),
+                is_workspace_member: true,
+            },
+        );
+
+        let lockfile = Lockfile::from_resolve(&resolve, Some(Path::new("/workspace")));
+        assert_eq!(lockfile.packages.len(), 1);
+        match &lockfile.packages[0] {
+            LockPackage::Workspace(ws) => {
+                assert_eq!(ws.name.to_string(), "team/foo");
+                assert_eq!(ws.path, "modules/foo");
+            }
+            other => panic!("expected Workspace variant, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn from_resolve_mixed_workspace_and_registry() {
+        let ws_id = make_id("team/foo@1.0.0");
+        let reg_id = make_id("ext/util@2.0.0");
+
+        let mut resolve = Resolve::default();
+        resolve.activated.insert(ws_id.clone());
+        resolve.activated.insert(reg_id.clone());
+        resolve.metadata.insert(
+            ws_id.clone(),
+            ResolvePackageMetadata {
+                realm: Realm::Shared,
+                origin_realm: Realm::Shared,
+                source_registry: PackageSourceId::Path("/ws/modules/foo".into()),
+                is_workspace_member: true,
+            },
+        );
+        resolve.metadata.insert(
+            reg_id.clone(),
+            ResolvePackageMetadata {
+                realm: Realm::Shared,
+                origin_realm: Realm::Shared,
+                source_registry: PackageSourceId::DefaultRegistry,
+                is_workspace_member: false,
+            },
+        );
+
+        let mut shared_deps = BTreeMap::new();
+        shared_deps.insert("Util".to_string(), reg_id.clone());
+        resolve.shared_dependencies.insert(ws_id.clone(), shared_deps);
+
+        let lockfile = Lockfile::from_resolve(&resolve, Some(Path::new("/ws")));
+        assert_eq!(lockfile.packages.len(), 2);
+
+        let ws_count = lockfile.packages.iter().filter(|p| matches!(p, LockPackage::Workspace(_))).count();
+        let reg_count = lockfile.packages.iter().filter(|p| matches!(p, LockPackage::Registry(_))).count();
+        assert_eq!(ws_count, 1);
+        assert_eq!(reg_count, 1);
+    }
+
+    #[test]
+    fn lockfile_round_trip_with_workspace_packages() {
+        let toml_str = r#"# This file is automatically @generated by Wally.
+# It is not intended for manual editing.
+registry = "test"
+
+[[package]]
+name = "team/foo"
+version = "1.0.0"
+path = "modules/foo"
+dependencies = [
+	["Bar", "team/bar@2.0.0"],
+]
+
+[[package]]
+name = "team/bar"
+version = "2.0.0"
+path = "modules/bar"
+dependencies = []
+
+[[package]]
+name = "ext/util"
+version = "3.0.0"
+dependencies = []
+
+"#;
+
+        let lockfile: Lockfile = toml::from_str(toml_str).unwrap();
+        assert_eq!(lockfile.packages.len(), 3);
+
+        match &lockfile.packages[0] {
+            LockPackage::Workspace(ws) => {
+                assert_eq!(ws.name.to_string(), "team/foo");
+                assert_eq!(ws.path, "modules/foo");
+                assert_eq!(ws.dependencies.len(), 1);
+                assert_eq!(ws.dependencies[0].0, "Bar");
+            }
+            other => panic!("expected Workspace, got {:?}", other),
+        }
+
+        match &lockfile.packages[1] {
+            LockPackage::Workspace(ws) => {
+                assert_eq!(ws.name.to_string(), "team/bar");
+                assert_eq!(ws.path, "modules/bar");
+            }
+            other => panic!("expected Workspace, got {:?}", other),
+        }
+
+        match &lockfile.packages[2] {
+            LockPackage::Registry(reg) => {
+                assert_eq!(reg.name.to_string(), "ext/util");
+            }
+            other => panic!("expected Registry, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn old_lockfile_backward_compat() {
+        let toml_str = r#"registry = "https://github.com/UpliftGames/wally-index"
+
+[[package]]
+name = "biff/cool-package"
+version = "0.1.0"
+dependencies = []
+
+[[package]]
+name = "roblox/roact"
+version = "1.4.0"
+checksum = "abc123"
+dependencies = [
+	["Signal", "sleitnick/signal@1.0.0"],
+]
+
+"#;
+
+        let lockfile: Lockfile = toml::from_str(toml_str).unwrap();
+        assert_eq!(lockfile.packages.len(), 2);
+        assert!(matches!(&lockfile.packages[0], LockPackage::Registry(_)));
+        assert!(matches!(&lockfile.packages[1], LockPackage::Registry(_)));
+    }
+
+    #[test]
+    fn as_ids_includes_workspace_packages() {
+        let toml_str = r#"registry = "test"
+
+[[package]]
+name = "team/foo"
+version = "1.0.0"
+path = "modules/foo"
+dependencies = []
+
+[[package]]
+name = "ext/util"
+version = "2.0.0"
+dependencies = []
+
+"#;
+
+        let lockfile: Lockfile = toml::from_str(toml_str).unwrap();
+        let ids: BTreeSet<PackageId> = lockfile.as_ids().collect();
+        assert_eq!(ids.len(), 2);
+        assert!(ids.contains(&make_id("team/foo@1.0.0")));
+        assert!(ids.contains(&make_id("ext/util@2.0.0")));
+    }
+
+    #[test]
+    fn save_and_reload_with_workspace_packages() {
+        let tmp = tempfile::TempDir::new().unwrap();
+
+        let lockfile = Lockfile {
+            registry: "test".to_owned(),
+            packages: vec![
+                LockPackage::Workspace(WorkspaceLockPackage {
+                    name: "team/foo".parse().unwrap(),
+                    version: "1.0.0".parse().unwrap(),
+                    path: "modules/foo".to_owned(),
+                    dependencies: vec![
+                        ("Bar".to_owned(), make_id("team/bar@2.0.0")),
+                    ],
+                }),
+                LockPackage::Registry(RegistryLockPackage {
+                    name: "ext/util".parse().unwrap(),
+                    version: "3.0.0".parse().unwrap(),
+                    checksum: None,
+                    dependencies: vec![],
+                }),
+            ],
+        };
+
+        lockfile.save(tmp.path()).unwrap();
+
+        let reloaded = Lockfile::load(tmp.path()).unwrap().unwrap();
+        assert_eq!(reloaded.packages.len(), 2);
+
+        match &reloaded.packages[0] {
+            LockPackage::Workspace(ws) => {
+                assert_eq!(ws.name.to_string(), "team/foo");
+                assert_eq!(ws.path, "modules/foo");
+                assert_eq!(ws.dependencies.len(), 1);
+            }
+            other => panic!("expected Workspace, got {:?}", other),
+        }
+
+        match &reloaded.packages[1] {
+            LockPackage::Registry(reg) => {
+                assert_eq!(reg.name.to_string(), "ext/util");
+            }
+            other => panic!("expected Registry, got {:?}", other),
+        }
+    }
 }

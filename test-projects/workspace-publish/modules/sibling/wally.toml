@@ -1,0 +1,6 @@
+[package]
+name = "scope/sibling"
+version = "2.0.0"
+license = "MIT"
+realm = "shared"
+registry = "test-registries/primary-registry"

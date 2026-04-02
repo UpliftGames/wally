@@ -10,6 +10,7 @@ metadata:
     realm: shared
     origin_realm: shared
     source_registry: DefaultRegistry
+    is_workspace_member: false
 shared_dependencies: {}
 server_dependencies: {}
 dev_dependencies: {}
