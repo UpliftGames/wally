@@ -4,7 +4,7 @@ expression: result
 snapshot_kind: text
 ---
 ServerPackages:
-  Minimal.lua: "return require(script.Parent._Index[\"biff_minimal@0.1.0\"][\"minimal\"])\n"
+  Minimal.luau: "return require(script.Parent._Index[\"biff_minimal@0.1.0\"][\"minimal\"])\n"
   _Index:
     biff_minimal@0.1.0:
       minimal:
