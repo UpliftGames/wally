@@ -35,6 +35,8 @@ pub fn read_path(path: &Path) -> anyhow::Result<Entry> {
         Ok(Entry::Dir(children))
     } else {
         let contents = fs_err::read_to_string(path)?;
-        Ok(Entry::File(contents))
+        // Normalize line endings for stable cross-platform snapshots
+        let normalized = contents.replace("\r\n", "\n");
+        Ok(Entry::File(normalized))
     }
 }

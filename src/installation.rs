@@ -19,6 +19,59 @@ use crate::{
     resolution::Resolve,
 };
 
+/// Extract type re-exports from module content
+fn extract_type_reexports(content: &str) -> Vec<String> {
+    let mut reexports = Vec::new();
+    for line in content.lines() {
+        let trimmed = line.trim_start();
+        if !trimmed.starts_with("export type ") {
+            continue;
+        }
+
+        let rest = &trimmed["export type ".len()..];
+
+        let (type_name, generics_opt) = if let Some(lt_rel) = rest.find('<') {
+            let name = rest[..lt_rel].trim();
+            let gt_rel = match rest[lt_rel + 1..].find('>') {
+                Some(i) => lt_rel + 1 + i,
+                None => continue,
+            };
+            let generics = &rest[lt_rel + 1..gt_rel];
+            (name, Some(generics.trim()))
+        } else {
+            let name_end = rest.find('=').unwrap_or(rest.len());
+            (rest[..name_end].trim(), None)
+        };
+
+        let mut rhs_generics: Vec<String> = Vec::new();
+        if let Some(generics) = generics_opt {
+            for raw in generics.split(',') {
+                let name_only = raw.splitn(2, '=').next().unwrap().trim();
+                if !name_only.is_empty() {
+                    rhs_generics.push(name_only.to_string());
+                }
+            }
+        }
+
+        let lhs_suffix = if let Some(generics) = generics_opt {
+            format!("<{}>", generics)
+        } else {
+            String::new()
+        };
+        let rhs_suffix = if rhs_generics.is_empty() {
+            String::new()
+        } else {
+            format!("<{}>", rhs_generics.join(", "))
+        };
+
+        reexports.push(format!(
+            "export type {}{} = REQUIRED_MODULE.{}{}",
+            type_name, lhs_suffix, type_name, rhs_suffix
+        ));
+    }
+    reexports
+}
+
 #[derive(Clone)]
 pub struct InstallationContext {
     shared_dir: PathBuf,
@@ -37,7 +90,7 @@ impl InstallationContext {
         project_path: &Path,
         shared_path: Option<String>,
         server_path: Option<String>,
-    ) -> Self {
+    ) -> anyhow::Result<Self> {
         let shared_dir = project_path.join("Packages");
         let server_dir = project_path.join("ServerPackages");
         let dev_dir = project_path.join("DevPackages");
@@ -46,7 +99,7 @@ impl InstallationContext {
         let server_index_dir = server_dir.join("_Index");
         let dev_index_dir = dev_dir.join("_Index");
 
-        Self {
+        Ok(Self {
             shared_dir,
             shared_index_dir,
             shared_path,
@@ -55,7 +108,7 @@ impl InstallationContext {
             server_path,
             dev_dir,
             dev_index_dir,
-        }
+        })
     }
 
     /// Delete the existing index, if it exists.
@@ -106,39 +159,14 @@ impl InstallationContext {
         for package_id in resolved_copy.activated {
             log::debug!("Installing {}...", package_id);
 
-            let shared_deps = resolved.shared_dependencies.get(&package_id);
-            let server_deps = resolved.server_dependencies.get(&package_id);
-            let dev_deps = resolved.dev_dependencies.get(&package_id);
 
             // We do not need to install the root package, but we should create
             // package links for its dependencies.
             if package_id == root_package_id {
-                if let Some(deps) = shared_deps {
-                    self.write_root_package_links(Realm::Shared, deps, &resolved)?;
-                }
-
-                if let Some(deps) = server_deps {
-                    self.write_root_package_links(Realm::Server, deps, &resolved)?;
-                }
-
-                if let Some(deps) = dev_deps {
-                    self.write_root_package_links(Realm::Dev, deps, &resolved)?;
-                }
+                // Defer link writing until after all packages are unpacked
             } else {
                 let metadata = resolved.metadata.get(&package_id).unwrap();
                 let package_realm = metadata.origin_realm;
-
-                if let Some(deps) = shared_deps {
-                    self.write_package_links(&package_id, package_realm, deps, &resolved)?;
-                }
-
-                if let Some(deps) = server_deps {
-                    self.write_package_links(&package_id, package_realm, deps, &resolved)?;
-                }
-
-                if let Some(deps) = dev_deps {
-                    self.write_package_links(&package_id, package_realm, deps, &resolved)?;
-                }
 
                 let source_registry = resolved_copy.metadata[&package_id].source_registry.clone();
                 let source_copy = sources.clone();
@@ -171,6 +199,37 @@ impl InstallationContext {
         }
 
         bar.finish_and_clear();
+
+        // After unpacking all package contents, write link thunks with type re-exports.
+        // Root package links
+        if let Some(deps) = resolved.shared_dependencies.get(&root_package_id) {
+            self.write_root_package_links(Realm::Shared, deps, &resolved)?;
+        }
+        if let Some(deps) = resolved.server_dependencies.get(&root_package_id) {
+            self.write_root_package_links(Realm::Server, deps, &resolved)?;
+        }
+        if let Some(deps) = resolved.dev_dependencies.get(&root_package_id) {
+            self.write_root_package_links(Realm::Dev, deps, &resolved)?;
+        }
+
+        // Links for each non-root package
+        for (pkg_id, metadata) in &resolved.metadata {
+            if pkg_id == &root_package_id {
+                continue;
+            }
+            let package_realm = metadata.origin_realm;
+
+            if let Some(deps) = resolved.shared_dependencies.get(pkg_id) {
+                self.write_package_links(pkg_id, package_realm, deps, &resolved)?;
+            }
+            if let Some(deps) = resolved.server_dependencies.get(pkg_id) {
+                self.write_package_links(pkg_id, package_realm, deps, &resolved)?;
+            }
+            if let Some(deps) = resolved.dev_dependencies.get(pkg_id) {
+                self.write_package_links(pkg_id, package_realm, deps, &resolved)?;
+            }
+        }
+
         log::info!("Downloaded {} packages!", num_packages);
 
         Ok(())
@@ -229,7 +288,7 @@ impl InstallationContext {
                 A dev dependency is depending on a server dependency.
                 To link these packages correctly you must declare where server
                 packages are placed in the roblox datamodel in your wally.toml.
-                
+
                 This typically looks like:
 
                 [place]
@@ -246,6 +305,68 @@ impl InstallationContext {
         };
 
         Ok(contents)
+    }
+
+    /// Generate thunk content with type re-exports for a package link
+    fn generate_thunk_with_types(&self, require_expr: &str, target_file_path: Option<&Path>) -> String {
+        // Accept either "require(...)" or "return require(...)" for convenience
+        let mut expr = require_expr.trim();
+        if let Some(stripped) = expr.strip_prefix("return ") {
+            expr = stripped.trim_start();
+        }
+
+        // Collect re-exports, if any
+        let mut reexports: Vec<String> = Vec::new();
+        if let Some(target_path) = target_file_path {
+            if let Ok(target_content) = std::fs::read_to_string(target_path) {
+                reexports = extract_type_reexports(&target_content);
+            }
+        }
+
+        // Preserve legacy one-liner if there are no exported types
+        if reexports.is_empty() {
+            // Always include trailing newline to keep snapshot output stable
+            format!("return {}\n", expr)
+        } else {
+            let mut content = format!("local REQUIRED_MODULE = {}\n", expr);
+            for reexport in reexports {
+                content.push_str(&reexport);
+                content.push('\n');
+            }
+            content.push_str("return REQUIRED_MODULE\n");
+            content
+        }
+    }
+
+    /// Resolve the target entry module file for a package (no sourcemap, minimal checks)
+    fn resolve_package_file(&self, package_id: &PackageId, realm: Realm) -> Option<PathBuf> {
+        let index_dir = match realm {
+            Realm::Shared => &self.shared_index_dir,
+            Realm::Server => &self.server_index_dir,
+            Realm::Dev => &self.dev_index_dir,
+        };
+
+        let package_dir = index_dir
+            .join(package_id_file_name(package_id))
+            .join(package_id.name().name());
+
+        // Common layouts for Wally packages
+        let candidates = [
+            package_dir.join(format!("{}.lua", package_id.name().name())),
+            package_dir.join(format!("{}.luau", package_id.name().name())),
+            package_dir.join("init.lua"),
+            package_dir.join("init.luau"),
+            package_dir.join("src").join("init.lua"),
+            package_dir.join("src").join("init.luau"),
+        ];
+
+        for cand in candidates {
+            if cand.exists() {
+                return Some(cand);
+            }
+        }
+
+        None
     }
 
     fn write_root_package_links<'a, K: Display>(
@@ -269,7 +390,7 @@ impl InstallationContext {
             let dependencies_realm = resolved.metadata.get(dep_package_id).unwrap().origin_realm;
             let path = base_path.join(format!("{}.lua", dep_name));
 
-            let contents = match (root_realm, dependencies_realm) {
+            let require_expr = match (root_realm, dependencies_realm) {
                 (source, dest) if source == dest => self.link_root_same_index(dep_package_id),
                 (_, Realm::Server) => self.link_server_index(dep_package_id)?,
                 (_, Realm::Shared) => self.link_shared_index(dep_package_id)?,
@@ -277,6 +398,9 @@ impl InstallationContext {
                     bail!("A dev dependency cannot be depended upon by a non-dev dependency")
                 }
             };
+
+            let target_file = self.resolve_package_file(dep_package_id, dependencies_realm);
+            let contents = self.generate_thunk_with_types(&require_expr, target_file.as_deref());
 
             log::trace!("Writing {}", path.display());
             fs::write(path, contents)?;
@@ -309,7 +433,7 @@ impl InstallationContext {
             let dependencies_realm = resolved.metadata.get(dep_package_id).unwrap().origin_realm;
             let path = base_path.join(format!("{}.lua", dep_name));
 
-            let contents = match (package_realm, dependencies_realm) {
+            let require_expr = match (package_realm, dependencies_realm) {
                 (source, dest) if source == dest => self.link_sibling_same_index(dep_package_id),
                 (_, Realm::Server) => self.link_server_index(dep_package_id)?,
                 (_, Realm::Shared) => self.link_shared_index(dep_package_id)?,
@@ -317,6 +441,9 @@ impl InstallationContext {
                     bail!("A dev dependency cannot be depended upon by a non-dev dependency")
                 }
             };
+
+            let target_file = self.resolve_package_file(dep_package_id, dependencies_realm);
+            let contents = self.generate_thunk_with_types(&require_expr, target_file.as_deref());
 
             log::trace!("Writing {}", path.display());
             fs::write(path, contents)?;

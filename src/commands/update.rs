@@ -120,7 +120,7 @@ impl UpdateSubcommand {
             &self.project_path,
             manifest.place.shared_packages,
             manifest.place.server_packages,
-        );
+        )?;
 
         progress.set_message(format!(
             "{}  Cleaning {}package destination...",

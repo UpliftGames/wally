@@ -30,12 +30,14 @@ impl Registry {
     /// `registry` field of a package manifest.
     pub fn from_registry_spec(spec: &str) -> anyhow::Result<Self> {
         let index_url = Url::parse(spec)?;
-
+        // Force Rustls to avoid Windows schannel/native-tls issues
+        let client = Client::builder().use_rustls_tls().build()?;
+ 
         Ok(Self {
             index_url,
             auth_token: OnceCell::new(),
             index: OnceCell::new(),
-            client: Client::new(),
+            client,
         })
     }
 

@@ -12,7 +12,6 @@ use structopt::StructOpt;
 use crate::installation::InstallationContext;
 use crate::lockfile::Lockfile;
 use crate::manifest::Manifest;
-use crate::package_id::PackageId;
 use crate::package_source::{PackageSource, PackageSourceMap, Registry, TestRegistry};
 use crate::resolution::resolve;
 
@@ -136,12 +135,13 @@ impl InstallSubcommand {
             SetForegroundColor(Color::DarkGreen),
             SetForegroundColor(Color::Reset)
         ));
-        let root_package_id = PackageId::new(manifest.package.name, manifest.package.version);
+
+        let root_package_id = manifest.package_id();
         let installation = InstallationContext::new(
             &self.project_path,
             manifest.place.shared_packages,
             manifest.place.server_packages,
-        );
+        )?;
 
         installation.clean()?;
         progress.println(format!(

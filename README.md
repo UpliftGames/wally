@@ -7,6 +7,7 @@
 
 * [Installation](#installation)
 * [Commands](#commands)
+* [Type Re-export Functionality](#type-re-export-functionality)
 * [Prior Art](#prior-art)
 * [Manifest Format](#manifest-format)
 * [Lockfile Format](#lockfile-format)
@@ -189,6 +190,13 @@ exclude = ["node_modules"]
 # Packages can be marked as private to prevent them from being published.
 private = true
 
+[place]
+# Where the shared packages folder is located in the Roblox Datamodel
+shared-packages = "game.ReplicatedStorage.Packages"
+
+# Where the server packages folder is located in the Roblox Datamodel
+server-packages = "game.ServerScriptStorage.Packages"
+
 [dependencies]
 # Most dependencies will look like this.
 #
@@ -210,6 +218,39 @@ Promise = "evaera/promise@2.0.1"
 # Dev dependencies can be server or shared but are only needed during development.
 TestEZ = "roblox/testez@0.4.1"
 ```
+
+## Type Re-export Functionality
+
+Wally automatically generates type re-exports to improve Luau type checking support in Roblox projects. This runs as a post-pass immediately after installation.
+
+### How it works
+
+- After installation, Wally traverses `Packages`, `ServerPackages`, and `DevPackages` and inspects generated link thunks.
+- It resolves the `require(...)` target using the filesystem relative to the thunk location:
+  - Supports `script.Parent` chains and `game.*.Packages` paths.
+  - Probes module files in this order: exact path, `{name}.lua` / `{name}.luau`, `init.lua` / `init.luau`, `src/init.lua` / `src/init.luau`.
+- It scans the target module textually for lines beginning with `export type` and emits re-exports into the thunk:
+  - Keeps the original generic parameter list on the left-hand side.
+  - Uses only generic names (not defaults) on the right-hand side.
+  - Includes variadic generic packs (e.g., `T...`).
+
+### Example
+
+A simple package thunk like:
+```lua
+return require(script.Parent.Parent["scope/package"]["package"])
+```
+
+Becomes a type-aware thunk like:
+```lua
+local REQUIRED_MODULE = require(script.Parent.Parent["scope/package"]["package"])
+
+export type MyExportedType = REQUIRED_MODULE.MyExportedType
+
+return REQUIRED_MODULE
+```
+
+This enables proper type checking when using Wally packages in your Roblox projects.
 
 ## Lockfile Format
 The lockfile contains the exact versions of each dependency that a project depends on. They're a critical feature that ensures that everyone who works on a game is getting the exact same version of every package.
