@@ -20,39 +20,31 @@ Wally has two pieces that work together: a command line tool named `wally` and a
 
 ## Installation
 
-### With Aftman (preferred)
-[Aftman][aftman] is the toolchain manager we recommend. You can use it to install Wally:
+### With Rokit (preferred)
+[Rokit][rokit] is the toolchain manager we recommend. You can use it to install Wally:
 
 In your project (preferred)
 ```bash
-aftman init
-aftman add UpliftGames/wally
-aftman install
+rokit init
+rokit add UpliftGames/wally
 ```
 
 Or install wally globally
 ```bash
-aftman add --global UpliftGames/wally
-aftman install
+rokit add --global UpliftGames/wally
 ```
 
-[aftman]: https://github.com/LPGhatguy/aftman
+Rokit also works in projects that already use Aftman or Foreman.
 
-### Homebrew
-[Homebrew][homebrew] is also a convenient way to install wally! (only for MacOS/Linux)
-```bash
-brew install wally
-```
-
-[homebrew]: https://brew.sh/
+[rokit]: https://github.com/rojo-rbx/rokit
 
 ### From GitHub
-Pre-built binaries are available for Windows, macOS, and Linux from the [GitHub Releases Page for Wally][releases].
+Pre-built binaries are available for Windows, macOS, and Linux, on both x86_64 and aarch64, from the [GitHub Releases Page for Wally][releases].
 
 [releases]: https://github.com/UpliftGames/wally/releases
 
 ### From Source
-It's straightforward to compile Wally from source. Wally requires Rust 1.80.0 or newer.
+It's straightforward to compile Wally from source. Wally is tested with Rust 1.98.1 or newer.
 
 Clone the repository and use:
 

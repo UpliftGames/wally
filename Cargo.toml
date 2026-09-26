@@ -1,9 +1,9 @@
 [package]
 name = "wally"
 description = "Package manager for Roblox"
-version = "0.3.2"
+version = "0.4.0-alpha.0"
 license = "MPL-2.0"
-authors = ["Lucien Greathouse <lucien@uplift.games>"]
+authors = ["Uplift Games <wally@uplift.games>"]
 edition = "2018"
 homepage = "https://wally.run"
 repository = "https://github.com/UpliftGames/wally"
