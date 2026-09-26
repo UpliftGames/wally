@@ -135,6 +135,7 @@ jobs:
       - name: Publish crates
         uses: katyo/publish-crates@02cc2f1ad653fb25c7d1ff9eb590a8a50d06186b # v2
         with:
+          args: --package wally
           dry-run: false
           check-repo: true
           registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
