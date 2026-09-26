@@ -79,6 +79,7 @@ jobs:
       - name: Build binary
         run: |
           cargo build \
+          --package wally \
           --locked --all-features \
           --release --target ${{ matrix.cargo-target }}
 
