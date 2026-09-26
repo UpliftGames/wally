@@ -28,6 +28,12 @@ pub enum AuthMode {
         #[serde(rename = "client-secret")]
         client_secret: String,
     },
+    GithubOAuthPrivate {
+        #[serde(rename = "client-id")]
+        client_id: String,
+        #[serde(rename = "client-secret")]
+        client_secret: String,
+    },
     Unauthenticated,
 }
 
@@ -60,12 +66,24 @@ struct ValidatedGithubInfo {
     app: ValidatedGithubApp,
 }
 
+#[derive(Deserialize)]
+struct GithubPermissionInfo {
+    permission: String,
+}
+
+impl GithubPermissionInfo {
+    pub fn permission(&self) -> &str {
+        &self.permission
+    }
+}
+
 impl fmt::Debug for AuthMode {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match self {
             AuthMode::ApiKey(_) => write!(formatter, "API key"),
             AuthMode::DoubleApiKey { .. } => write!(formatter, "double API key"),
             AuthMode::GithubOAuth { .. } => write!(formatter, "Github OAuth"),
+            AuthMode::GithubOAuthPrivate { .. } => write!(formatter, "Github OAuth (private)"),
             AuthMode::Unauthenticated => write!(formatter, "no authentication"),
         }
     }
@@ -90,11 +108,42 @@ fn match_api_key<T>(request: &Request<'_>, key: &str, result: T) -> Outcome<T, E
     }
 }
 
-async fn verify_github_token(
+fn extract_github_owner_repo(url: &str) -> Option<(String, String)> {
+    // Remove "https://" or "http://"
+    let url = url.strip_prefix("https://")
+        .or_else(|| url.strip_prefix("http://"))
+        .unwrap_or(url);
+
+    // Remove trailing ".git" or "/"
+    let url = url.trim_end_matches(".git").trim_end_matches('/');
+
+    // Now expect: github.com/org/repo
+    let parts: Vec<&str> = url.split('/').collect();
+    if parts.len() >= 3 && parts[0] == "github.com" {
+        let org = parts[1].to_string();
+        let repo = parts[2].to_string();
+        Some((org, repo))
+    } else {
+        None
+    }
+}
+
+trait GithubAccessor {
+    fn construct(info: GithubInfo) -> Self;
+}
+
+#[derive(PartialEq, Eq)]
+enum IndexAccessPolicy {
+    Optional,
+    Required,
+}
+
+async fn verify_github<AccessType: GithubAccessor>(
     request: &Request<'_>,
     client_id: &str,
     client_secret: &str,
-) -> Outcome<WriteAccess, Error> {
+    index_access_policy: IndexAccessPolicy,
+) -> Outcome<AccessType, Error> {
     let token: String = match request.headers().get_one("authorization") {
         Some(key) if key.starts_with("Bearer ") => (key[6..].trim()).to_owned(),
         _ => {
@@ -166,17 +215,73 @@ async fn verify_github_token(
         }
     };
 
-    match validated_github_info {
-        Err(err) => format_err!("Github auth failed: {}", err)
+    if let Err(err) = validated_github_info {
+        return format_err!("Github auth failed: {}", err)
             .status(Status::Unauthorized)
-            .into(),
-        Ok(_) => Outcome::Success(WriteAccess::Github(github_info)),
+            .into()
     }
+
+    if index_access_policy == IndexAccessPolicy::Required {
+        let config = request
+            .guard::<&State<Config>>()
+            .await
+            .expect("Failed to load config");
+
+        let username = github_info.login();
+
+        // These two lines will panic if the backend config isn't setup correctly
+        let (owner, repo) = extract_github_owner_repo(config.index_url.as_str()).unwrap();
+        let token = config.github_token.clone().unwrap();
+
+        let response = client
+            .get(format!(
+                "https://api.github.com/repos/{owner}/{repo}/collaborators/{username}/permission"
+            ))
+            .header("accept", "application/json")
+            .header("user-agent", "wally")
+            .bearer_auth(token)
+            .send()
+            .await;
+
+        let permission_info = match response {
+            Err(err) => {
+                return format_err!(err).status(Status::InternalServerError).into();
+            }
+            Ok(response) => match response.json::<GithubPermissionInfo>().await {
+                Err(err) => {
+                    return format_err!("Github auth failed: {}", err)
+                        .status(Status::Unauthorized)
+                        .into();
+                }
+                Ok(permission_info) => permission_info,
+            },
+        };
+
+        match permission_info.permission() {
+            "admin" | "write" | "read" => {}
+            _ => {
+                return anyhow!("GitHub auth was invalid")
+                    .status(Status::Unauthorized)
+                    .into();
+            }
+        }
+    }
+
+    Outcome::Success(AccessType::construct(github_info))
 }
+
 
 pub enum ReadAccess {
     Public,
     ApiKey,
+    #[allow(dead_code)]
+    Github(GithubInfo),
+}
+
+impl GithubAccessor for ReadAccess {
+    fn construct(info: GithubInfo) -> Self {
+        ReadAccess::Github(info)
+    }
 }
 
 #[rocket::async_trait]
@@ -192,6 +297,10 @@ impl<'r> FromRequest<'r> for ReadAccess {
         match &config.auth {
             AuthMode::Unauthenticated => Outcome::Success(ReadAccess::Public),
             AuthMode::GithubOAuth { .. } => Outcome::Success(ReadAccess::Public),
+            AuthMode::GithubOAuthPrivate {
+                client_id,
+                client_secret,
+            } => verify_github::<ReadAccess>(request, client_id, client_secret, IndexAccessPolicy::Required).await,
             AuthMode::ApiKey(key) => match_api_key(request, key, ReadAccess::ApiKey),
             AuthMode::DoubleApiKey { read, .. } => match read {
                 None => Outcome::Success(ReadAccess::Public),
@@ -204,6 +313,12 @@ impl<'r> FromRequest<'r> for ReadAccess {
 pub enum WriteAccess {
     ApiKey,
     Github(GithubInfo),
+}
+
+impl GithubAccessor for WriteAccess {
+    fn construct(info: GithubInfo) -> Self {
+        WriteAccess::Github(info)
+    }
 }
 
 impl WriteAccess {
@@ -253,7 +368,11 @@ impl<'r> FromRequest<'r> for WriteAccess {
             AuthMode::GithubOAuth {
                 client_id,
                 client_secret,
-            } => verify_github_token(request, client_id, client_secret).await,
+            } => verify_github::<WriteAccess>(request, client_id, client_secret, IndexAccessPolicy::Optional).await,
+            AuthMode::GithubOAuthPrivate {
+                client_id,
+                client_secret,
+            } => verify_github::<WriteAccess>(request, client_id, client_secret, IndexAccessPolicy::Required).await,
         }
     }
 }
