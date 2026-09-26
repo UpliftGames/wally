@@ -7,7 +7,10 @@ use serde::{Deserialize, Serialize};
 macro_rules! assert_dir_snapshot {
     ( $path:expr ) => {
         let result = crate::util::read_path($path).unwrap();
-        insta::assert_yaml_snapshot!(result);
+
+        let thread = std::thread::current();
+        let test_name = thread.name().unwrap().rsplit("::").next().unwrap();
+        insta::assert_yaml_snapshot!(test_name, result);
     };
 }
 

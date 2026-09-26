@@ -27,7 +27,7 @@ fn init_test_index_remote() -> anyhow::Result<url::Url> {
         &[],
     )?;
 
-    Ok(url::Url::from_directory_path(temp_dir.into_path()).unwrap())
+    Ok(url::Url::from_directory_path(temp_dir.keep()).unwrap())
 }
 
 fn add_test_packages(output_dir: &Path) -> anyhow::Result<()> {
@@ -49,7 +49,7 @@ fn new_client(auth: AuthMode) -> Client {
 }
 
 fn new_client_with_remote(auth: AuthMode, index_url: url::Url) -> Client {
-    let package_path = tempfile::tempdir().unwrap().into_path();
+    let package_path = tempfile::tempdir().unwrap().keep();
     add_test_packages(&package_path).unwrap();
 
     let figment = Figment::from(rocket::Config::default()).merge(Serialized::globals(Config {
