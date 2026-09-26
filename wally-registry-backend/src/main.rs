@@ -51,6 +51,8 @@ use crate::storage::{GcsStorage, LocalStorage, StorageBackend, StorageOutput};
 
 #[cfg(feature = "s3-storage")]
 use crate::storage::S3Storage;
+#[cfg(feature = "gh-storage")]
+use storage::GithubStorage;
 
 #[get("/")]
 fn root() -> content::RawJson<serde_json::Value> {
@@ -66,6 +68,7 @@ async fn package_contents(
     scope: String,
     name: String,
     version: String,
+    _config: &State<Config>,
     _cli_version: Result<WallyVersion, Error>,
 ) -> Result<(ContentType, ReaderStream![StorageOutput]), Error> {
     _read?;
@@ -234,6 +237,12 @@ pub fn server(figment: Figment) -> rocket::Rocket<Build> {
         StorageMode::Gcs { bucket, cache_size } => {
             Box::new(configure_gcs(bucket, cache_size).unwrap())
         }
+        #[cfg(feature = "gh-storage")]
+        StorageMode::Github {
+            owner,
+            repo,
+            cache_size,
+        } => Box::new(configure_gh(owner, repo, &config.github_token, cache_size).unwrap()),
         #[cfg(feature = "s3-storage")]
         StorageMode::S3 { bucket, cache_size } => {
             Box::new(configure_s3(bucket, cache_size).unwrap())
@@ -281,6 +290,31 @@ fn configure_gcs(bucket: String, cache_size: Option<u64>) -> anyhow::Result<GcsS
     let client = Client::new(token_provider).into_bucket_client(bucket);
 
     Ok(GcsStorage::new(client, cache_size))
+}
+
+#[cfg(feature = "gh-storage")]
+fn configure_gh(
+    owner: String,
+    repo: String,
+    token: &Option<String>,
+    cache_size: Option<u64>,
+) -> anyhow::Result<GithubStorage> {
+    use octorust::auth::Credentials;
+    use octorust::Client;
+
+    let github = Client::new(
+        concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION")),
+        Credentials::Token(
+            token
+                .clone()
+                .or(std::env::var("GH_ACCESS_TOKEN").ok())
+                .ok_or(format_err!(
+                    "GitHub token not found. Please set github_token in the config or provide the GH_ACCESS_TOKEN environment variable."
+                ))?,
+        ),
+    )?;
+
+    Ok(GithubStorage::new(github, owner, repo, cache_size))
 }
 
 #[cfg(feature = "s3-storage")]
