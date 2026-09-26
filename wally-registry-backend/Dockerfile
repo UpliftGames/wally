@@ -1,4 +1,4 @@
-FROM rust:1.81-slim-bookworm AS build
+FROM rust:1.98.1-slim-trixie AS build
 WORKDIR /usr/app
 
 # Debian Slim doesn't install certificates by default, but we kinda want those.
@@ -24,13 +24,13 @@ COPY ./wally-registry-backend ./wally-registry-backend/
 RUN touch wally-registry-backend/src/main.rs
 RUN cargo build --package wally-registry-backend --release
 
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 # Install the same SSL packages as in our build image.
 RUN apt-get update
 RUN apt-get install -y git ca-certificates libssl-dev && rm -rf /var/lib/apt/lists/*
 
-RUN useradd -ms /bin/bash 1000
+RUN useradd -ms /bin/bash -u 1000 wally
 
 COPY --chown=1000 --from=build /usr/app/target/release/wally-registry-backend "/app/launch"
 COPY --chown=1000 --from=build /usr/app/wally-registry-backend/Rocket.toml "/app/Rocket.toml"
