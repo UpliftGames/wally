@@ -1,41 +1,94 @@
+# Adapted from Rokit's CI workflow:
+# https://github.com/rojo-rbx/rokit/blob/main/.github/workflows/ci.yaml
+
 name: CI
 
 on:
   push:
-    branches:
-    - main
-
+    branches: ["main"]
   pull_request:
-    branches:
-    - main
+    branches: ["main"]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
-  build:
+  fmt:
+    name: Check formatting
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      with:
-        persist-credentials: false
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
-      with:
-        components: rustfmt, clippy
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          components: rustfmt
 
-    - name: Build
-      run: |
-        sudo apt-get install libssl-dev
-        cargo build --verbose --locked
+      - name: Check Formatting
+        run: cargo fmt -- --check
 
-    - name: Lint
-      run: |
-        cargo fmt -- --check
-        cargo clippy
+  ci:
+    needs: ["fmt"]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x86_64
+            runner-os: windows-2022
+            cargo-target: x86_64-pc-windows-msvc
 
-    - name: Test
-      run: cargo test --verbose --locked
+          - name: Windows aarch64
+            runner-os: windows-11-arm
+            cargo-target: aarch64-pc-windows-msvc
+
+          - name: Linux x86_64
+            runner-os: ubuntu-22.04
+            cargo-target: x86_64-unknown-linux-gnu
+
+          - name: Linux aarch64
+            runner-os: ubuntu-22.04-arm
+            cargo-target: aarch64-unknown-linux-gnu
+
+          - name: macOS x86_64
+            runner-os: macos-15
+            cargo-target: x86_64-apple-darwin
+
+          - name: macOS aarch64
+            runner-os: macos-15
+            cargo-target: aarch64-apple-darwin
+
+    name: CI - ${{ matrix.name }}
+    runs-on: ${{ matrix.runner-os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          components: clippy
+          targets: ${{ matrix.cargo-target }}
+
+      - name: Build
+        run: |
+          cargo build \
+          --locked --all-features \
+          --target ${{ matrix.cargo-target }}
+
+      - name: Lint
+        run: |
+          cargo clippy \
+          --locked --all-features \
+          --target ${{ matrix.cargo-target }}
+
+      - name: Test
+        run: |
+          cargo test \
+          --locked --all-features \
+          --target ${{ matrix.cargo-target }}
