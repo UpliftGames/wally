@@ -9,33 +9,33 @@ on:
     branches:
     - main
 
+permissions:
+  contents: read
+
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        rust_version: [stable]
-
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
 
-    - name: Setup Rust toolchain
-      run: rustup default ${{ matrix.rust_version }}
-
-    - uses: Swatinem/rust-cache@v2
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+      with:
+        components: rustfmt, clippy
 
     - name: Build
       run: |
         sudo apt-get install libssl-dev
         cargo build --verbose --locked
 
-    - name: Run tests
-      run: cargo test --verbose --locked
-
-    - name: Rustfmt and Clippy
+    - name: Lint
       run: |
         cargo fmt -- --check
         cargo clippy
-      if: matrix.rust_version == 'stable'
+
+    - name: Test
+      run: cargo test --verbose --locked
