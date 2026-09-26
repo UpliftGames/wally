@@ -16,13 +16,20 @@ COPY wally-registry-backend/Cargo.toml /usr/app/wally-registry-backend/
 COPY Cargo.toml Cargo.lock /usr/app/
 COPY src/ /usr/app/src/
 
-RUN cargo build --package wally-registry-backend --release
+ARG WALLY_BACKEND_BUILD_FEATURES
+RUN if [ -n "$WALLY_BACKEND_BUILD_FEATURES" ]; then \
+        cargoFeatures="--features $WALLY_BACKEND_BUILD_FEATURES"; \
+    fi && \
+    cargo build --package wally-registry-backend --release $cargoFeatures
 
 # Copy actual application source in and force a modified timestamp so that
 # Cargo will rebuild.
 COPY ./wally-registry-backend ./wally-registry-backend/
 RUN touch wally-registry-backend/src/main.rs
-RUN cargo build --package wally-registry-backend --release
+RUN if [ -n "$WALLY_BACKEND_BUILD_FEATURES" ]; then \
+        cargoFeatures="--features $WALLY_BACKEND_BUILD_FEATURES"; \
+    fi && \
+    cargo build --package wally-registry-backend --release $cargoFeatures
 
 FROM debian:bookworm-slim
 
