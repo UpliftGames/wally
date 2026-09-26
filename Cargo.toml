@@ -5,6 +5,9 @@ version = "0.3.2"
 license = "MPL-2.0"
 authors = ["Lucien Greathouse <lucien@uplift.games>"]
 edition = "2018"
+homepage = "https://wally.run"
+repository = "https://github.com/UpliftGames/wally"
+include = ["/src", "/README.md", "/CHANGELOG.md", "/LICENSE.txt"]
 
 [workspace]
 members = [
@@ -65,3 +68,4 @@ serial_test = "2.0.0"
 
 [features]
 vendored-libgit2 = ["git2/vendored-libgit2"]
+vendored-openssl = ["git2/vendored-openssl"]
