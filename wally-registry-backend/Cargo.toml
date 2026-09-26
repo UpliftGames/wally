@@ -1,7 +1,7 @@
 [package]
 name = "wally-registry-backend"
-version = "0.3.2"
-authors = ["Lucien Greathouse <lucien@playadopt.me>"]
+version = "0.4.0-alpha.0"
+authors = ["Uplift Games <wally@uplift.games>"]
 edition = "2018"
 publish = false
 
