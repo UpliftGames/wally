@@ -330,7 +330,11 @@ mod tests {
         let package_sources = PackageSourceMap::new(Box::new(registry.source()));
         let manifest = package.into_manifest();
         let resolve = resolve(&manifest, &Default::default(), &package_sources)?;
-        insta::assert_yaml_snapshot!(resolve);
+
+        // Name the snapshot after the calling test, not this helper.
+        let thread = std::thread::current();
+        let test_name = thread.name().unwrap().rsplit("::").next().unwrap();
+        insta::assert_yaml_snapshot!(test_name, resolve);
         Ok(())
     }
 
@@ -443,7 +447,7 @@ mod tests {
 
         let package_sources = PackageSourceMap::new(Box::new(registry.source()));
         let err = resolve(root.manifest(), &Default::default(), &package_sources).unwrap_err();
-        insta::assert_display_snapshot!(err);
+        insta::assert_snapshot!(err);
     }
 
     /// Tests the simple one dependency case, except that a new version of the
