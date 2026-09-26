@@ -43,9 +43,12 @@ jobs:
             runner-os: windows-2022
             cargo-target: x86_64-pc-windows-msvc
 
+          # The registry backend depends on ring 0.16, which doesn't build for
+          # Windows on ARM, so only check the CLI there.
           - name: Windows aarch64
             runner-os: windows-11-arm
             cargo-target: aarch64-pc-windows-msvc
+            cargo-args: --package wally
 
           - name: Linux x86_64
             runner-os: ubuntu-22.04
@@ -79,16 +82,16 @@ jobs:
         run: |
           cargo build \
           --locked --all-features \
-          --target ${{ matrix.cargo-target }}
+          --target ${{ matrix.cargo-target }} ${{ matrix.cargo-args }}
 
       - name: Lint
         run: |
           cargo clippy \
           --locked --all-features \
-          --target ${{ matrix.cargo-target }}
+          --target ${{ matrix.cargo-target }} ${{ matrix.cargo-args }}
 
       - name: Test
         run: |
           cargo test \
           --locked --all-features \
-          --target ${{ matrix.cargo-target }}
+          --target ${{ matrix.cargo-target }} ${{ matrix.cargo-args }}
