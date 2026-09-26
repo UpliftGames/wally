@@ -1,4 +1,1 @@
-test-projects/*.toml text eol=lf
-test-projects/*.lua text eol=lf
-test-projects/*.json text eol=lf
-*.sh text eol=lf
+* text=auto eol=lf
