@@ -26,12 +26,12 @@ Wally has two pieces that work together: a command line tool named `wally` and a
 In your project (preferred)
 ```bash
 rokit init
-rokit add UpliftGames/wally
+rokit add wally
 ```
 
 Or install wally globally
 ```bash
-rokit add --global UpliftGames/wally
+rokit add --global wally
 ```
 
 Rokit also works in projects that already use Aftman or Foreman.
