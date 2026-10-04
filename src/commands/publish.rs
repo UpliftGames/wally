@@ -85,8 +85,7 @@ impl PublishSubcommand {
         if response.status().is_success() {
             println!("Package published successfully!");
         } else {
-            println!("Error: {}", response.status());
-            println!("{}", response.text()?);
+            bail!("Error: {}\n{}", response.status(), response.text()?);
         }
 
         Ok(())
