@@ -2,8 +2,8 @@ use crate::temp_project::TempProject;
 use fs_err as fs;
 use insta::assert_snapshot;
 use libwally::{
-    package_name::PackageName, package_req::PackageReq, Args, GlobalOptions, PackageSpec,
-    Subcommand, UpdateSubcommand,
+    Args, GlobalOptions, PackageSpec, Subcommand, UpdateSubcommand, package_name::PackageName,
+    package_req::PackageReq,
 };
 use std::{path::Path, str::FromStr};
 

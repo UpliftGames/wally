@@ -3,11 +3,11 @@
 use std::io::Cursor;
 
 use rocket::{
+    Request, Response,
     http::{ContentType, Status},
     outcome::Outcome::Failure,
     request::Outcome,
     response::Responder,
-    Request, Response,
 };
 use serde::Serialize;
 

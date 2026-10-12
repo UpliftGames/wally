@@ -4,8 +4,8 @@ use std::time::Duration;
 
 use anyhow::format_err;
 use opener;
-use reqwest::blocking::Client;
 use reqwest::Url;
+use reqwest::blocking::Client;
 use serde::Deserialize;
 use structopt::StructOpt;
 

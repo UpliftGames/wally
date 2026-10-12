@@ -61,10 +61,10 @@ impl InstallationContext {
     /// Delete the existing index, if it exists.
     pub fn clean(&self) -> anyhow::Result<()> {
         fn remove_ignore_not_found(path: &Path) -> io::Result<()> {
-            if let Err(err) = fs::remove_dir_all(path) {
-                if err.kind() != io::ErrorKind::NotFound {
-                    return Err(err);
-                }
+            if let Err(err) = fs::remove_dir_all(path)
+                && err.kind() != io::ErrorKind::NotFound
+            {
+                return Err(err);
             }
 
             Ok(())

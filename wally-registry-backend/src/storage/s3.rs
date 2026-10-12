@@ -5,7 +5,7 @@ use futures::TryStreamExt;
 use libwally::package_id::PackageId;
 use moka::sync::Cache;
 
-use rusoto_s3::{GetObjectRequest, PutObjectRequest, S3Client, S3};
+use rusoto_s3::{GetObjectRequest, PutObjectRequest, S3, S3Client};
 
 use super::{StorageBackend, StorageOutput};
 
@@ -32,10 +32,10 @@ impl S3Storage {
 #[async_trait]
 impl StorageBackend for S3Storage {
     async fn read(&self, key: &PackageId) -> anyhow::Result<StorageOutput> {
-        if let Some(cache) = &self.cache {
-            if cache.contains_key(key) {
-                return Ok(Box::new(Cursor::new(cache.get(key).unwrap())));
-            }
+        if let Some(cache) = &self.cache
+            && cache.contains_key(key)
+        {
+            return Ok(Box::new(Cursor::new(cache.get(key).unwrap())));
         }
 
         let name = key.to_string();

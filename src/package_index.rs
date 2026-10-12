@@ -3,8 +3,8 @@ use std::io::{BufReader, ErrorKind, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use anyhow::{anyhow, Context};
-use fs_err::{create_dir_all, File, OpenOptions};
+use anyhow::{Context, anyhow};
+use fs_err::{File, OpenOptions, create_dir_all};
 use git2::Repository;
 use serde::{Deserialize, Serialize};
 use tempfile::TempDir;

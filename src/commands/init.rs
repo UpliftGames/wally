@@ -1,9 +1,9 @@
 use std::env::current_dir;
 use std::path::PathBuf;
 
-use anyhow::{bail, Context};
+use anyhow::{Context, bail};
 use structopt::StructOpt;
-use toml_edit::{value, Document};
+use toml_edit::{Document, value};
 
 use crate::manifest::MANIFEST_FILE_NAME;
 

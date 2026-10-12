@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
-use toml_edit::{table, value, Document, Item};
+use toml_edit::{Document, Item, table, value};
 
 const DEFAULT_AUTH_TOML: &str = r#"
 # This is where Wally stores details for authenticating with registries.

@@ -14,13 +14,13 @@ use std::convert::TryInto;
 use std::io::{Cursor, Read, Seek};
 use std::sync::RwLock;
 
-use anyhow::{format_err, Context};
+use anyhow::{Context, format_err};
 use figment::{
-    providers::{Env, Format, Toml},
     Figment,
+    providers::{Env, Format, Toml},
 };
 use libwally::{
-    manifest::{Manifest, MANIFEST_FILE_NAME},
+    manifest::{MANIFEST_FILE_NAME, Manifest},
     package_id::PackageId,
     package_index::PackageIndex,
     package_name::PackageName,
@@ -30,14 +30,14 @@ use rocket::http::Header;
 use rocket::request::{FromRequest, Outcome};
 use rocket::response::stream::ReaderStream;
 use rocket::serde::json::Json;
+use rocket::{Build, Request, Response};
 use rocket::{
+    State,
     data::{Data, ToByteUnit},
     fairing::AdHoc,
     http::{ContentType, Status},
     response::content,
-    State,
 };
-use rocket::{Build, Request, Response};
 use semver::Version;
 use serde_json::json;
 use storage::StorageMode;
@@ -175,12 +175,12 @@ async fn publish(
 
     let package_metadata = index.get_package_metadata(manifest.package_id().name());
 
-    if let Ok(metadata) = package_metadata {
-        if metadata.versions.iter().any(|published_manifest| {
+    if let Ok(metadata) = package_metadata
+        && metadata.versions.iter().any(|published_manifest| {
             published_manifest.package.version == manifest.package.version
-        }) {
-            return Err(format_err!("package already exists in index").status(Status::Conflict));
-        }
+        })
+    {
+        return Err(format_err!("package already exists in index").status(Status::Conflict));
     }
 
     storage
@@ -267,11 +267,11 @@ pub fn server(figment: Figment) -> rocket::Rocket<Build> {
 
 fn configure_gcs(bucket: String, cache_size: Option<u64>) -> anyhow::Result<GcsStorage> {
     use cloud_storage_lite::{
-        token_provider::{
-            oauth::{OAuthTokenProvider, ServiceAccount, SCOPE_STORAGE_FULL_CONTROL},
-            RenewingTokenProvider,
-        },
         Client,
+        token_provider::{
+            RenewingTokenProvider,
+            oauth::{OAuthTokenProvider, SCOPE_STORAGE_FULL_CONTROL, ServiceAccount},
+        },
     };
 
     let token_provider = RenewingTokenProvider::new(OAuthTokenProvider::new(
@@ -287,7 +287,7 @@ fn configure_gcs(bucket: String, cache_size: Option<u64>) -> anyhow::Result<GcsS
 fn configure_s3(bucket: String, cache_size: Option<u64>) -> anyhow::Result<S3Storage> {
     use std::env;
 
-    use rusoto_core::{credential::ChainProvider, request::HttpClient, Region};
+    use rusoto_core::{Region, credential::ChainProvider, request::HttpClient};
 
     use rusoto_s3::S3Client;
 

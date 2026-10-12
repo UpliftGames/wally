@@ -5,9 +5,9 @@ use constant_time_eq::constant_time_eq;
 use libwally::{package_id::PackageId, package_index::PackageIndex};
 use reqwest::{Client, StatusCode};
 use rocket::{
+    Request, State,
     http::Status,
     request::{FromRequest, Outcome},
-    Request, State,
 };
 use serde::{Deserialize, Serialize};
 
@@ -160,7 +160,7 @@ async fn verify_github_token(
                 status => {
                     return format_err!("Github auth failed because: {}", status)
                         .status(Status::UnprocessableEntity)
-                        .into()
+                        .into();
                 }
             }
         }

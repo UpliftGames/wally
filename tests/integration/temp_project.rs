@@ -1,6 +1,6 @@
 use fs_err as fs;
 use std::path::{Path, PathBuf};
-use tempfile::{tempdir, TempDir};
+use tempfile::{TempDir, tempdir};
 use walkdir::WalkDir;
 
 /// A handle to a project contained in a temporary directory. The project is
