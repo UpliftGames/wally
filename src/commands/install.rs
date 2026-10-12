@@ -1,12 +1,8 @@
-use std::collections::BTreeSet;
-
-use std::io::Write;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use crossterm::style::{Attribute, Color, SetAttribute, SetForegroundColor};
+use crossterm::style::{Color, SetForegroundColor};
 use indicatif::{ProgressBar, ProgressStyle};
-
 use structopt::StructOpt;
 
 use crate::installation::InstallationContext;
@@ -16,7 +12,6 @@ use crate::package_id::PackageId;
 use crate::package_source::{PackageSource, PackageSourceMap, Registry, TestRegistry};
 use crate::resolution::resolve;
 
-use super::utils::{generate_dependency_changes, render_update_difference};
 use super::GlobalOptions;
 
 /// Install all of the dependencies of this project.
@@ -25,10 +20,6 @@ pub struct InstallSubcommand {
     /// Path to the project to install dependencies for.
     #[structopt(long = "project-path", default_value = ".")]
     pub project_path: PathBuf,
-
-    /// Flag to error if the lockfile does not match with the latest dependencies.
-    #[structopt(long = "locked")]
-    pub locked: bool,
 }
 
 impl InstallSubcommand {
@@ -58,54 +49,6 @@ impl InstallSubcommand {
         );
 
         progress.enable_steady_tick(Duration::from_millis(100));
-
-        if self.locked {
-            progress.println(format!(
-                "{} Verifying {}lockfile is up-to-date...",
-                SetForegroundColor(Color::DarkGreen),
-                SetForegroundColor(Color::Reset)
-            ));
-
-            let latest_graph = resolve(&manifest, &BTreeSet::new(), &package_sources)?;
-
-            if try_to_use != latest_graph.activated {
-                progress.finish_and_clear();
-
-                let old_dependencies = &try_to_use;
-
-                let changes =
-                    generate_dependency_changes(old_dependencies, &latest_graph.activated);
-                let mut error_output = Vec::new();
-
-                writeln!(
-                    error_output,
-                    "{} The Lockfile is out of date and wasn't changed due to --locked{}",
-                    SetForegroundColor(Color::Yellow),
-                    SetForegroundColor(Color::Reset)
-                )?;
-
-                render_update_difference(&changes, &mut error_output)?;
-
-                writeln!(
-                    error_output,
-                    "{}{} Suggestion{}{} try running wally update",
-                    SetAttribute(Attribute::Bold),
-                    SetForegroundColor(Color::DarkGreen),
-                    SetForegroundColor(Color::Reset),
-                    SetAttribute(Attribute::Reset)
-                )?;
-
-                anyhow::bail!(String::from_utf8(error_output)
-                    .expect("output from render_update_difference should always be utf-8"));
-            }
-
-            progress.println(format!(
-                "{}   Verified {}lockfile is up-to-date...{}",
-                SetForegroundColor(Color::DarkGreen),
-                SetForegroundColor(Color::Green),
-                SetForegroundColor(Color::Reset)
-            ));
-        }
 
         progress.println(format!(
             "{} Resolving {}packages...",

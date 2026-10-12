@@ -61,10 +61,8 @@ Parity with:
 * `cargo init`
 * `npm init`
 
-### `wally install [--locked]`
+### `wally install`
 Installs all packages.
-
-`--locked` matches `cargo XXX --locked`, which will error if there is not an up-to-date lockfile. Intended for use on CI machines.
 
 Parity with:
 * `npm install` with no arguments

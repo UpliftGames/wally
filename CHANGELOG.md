@@ -1,14 +1,12 @@
 # Wally Changelog
 
 ## Unreleased Changes
-* Added --locked flag for the install subcommand ([#119])
 * Added homepage and repository fields to package manifest ([#211])
 * Improved lockfile formatting for better text diffs **lockfiles will change** ([#214])
 * Fixed building the CLI on its own, such as with `cargo install` ([#218])
 * Upgraded dependencies ([#267])
 * Pre-built binaries are now available for Windows, macOS, and Linux on both x86_64 and aarch64 ([#267])
 
-[#119]: https://github.com/UpliftGames/wally/pull/119
 [#211]: https://github.com/UpliftGames/wally/pull/211
 [#214]: https://github.com/UpliftGames/wally/pull/214
 [#218]: https://github.com/UpliftGames/wally/pull/218
