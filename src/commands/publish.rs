@@ -82,12 +82,15 @@ impl PublishSubcommand {
             .body(contents.data().to_owned())
             .send()?;
 
-        if response.status().is_success() {
-            println!("Package published successfully!");
-        } else {
-            println!("Error: {}", response.status());
-            println!("{}", response.text()?);
+        if !response.status().is_success() {
+            bail!(
+                "Failed to publish package: {}\n{}",
+                response.status(),
+                response.text()?
+            );
         }
+
+        println!("Package published successfully!");
 
         Ok(())
     }
