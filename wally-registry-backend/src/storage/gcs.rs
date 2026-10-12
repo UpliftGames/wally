@@ -30,10 +30,10 @@ impl GcsStorage {
 #[async_trait]
 impl StorageBackend for GcsStorage {
     async fn read(&self, key: &PackageId) -> anyhow::Result<StorageOutput> {
-        if let Some(cache) = &self.cache {
-            if cache.contains_key(key) {
-                return Ok(Box::new(Cursor::new(cache.get(key).unwrap())));
-            }
+        if let Some(cache) = &self.cache
+            && cache.contains_key(key)
+        {
+            return Ok(Box::new(Cursor::new(cache.get(key).unwrap())));
         }
 
         let name = key.to_string();

@@ -6,7 +6,7 @@ use fs_err::File;
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use serde_json::json;
 use walkdir::WalkDir;
-use zip::{write::FileOptions, ZipArchive, ZipWriter};
+use zip::{ZipArchive, ZipWriter, write::FileOptions};
 
 use crate::manifest::Manifest;
 

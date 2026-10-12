@@ -2,7 +2,7 @@ use std::path::Path;
 
 use fs_err::File;
 use libwally::{
-    git_util, package_contents::PackageContents, Args, GlobalOptions, PublishSubcommand, Subcommand,
+    Args, GlobalOptions, PublishSubcommand, Subcommand, git_util, package_contents::PackageContents,
 };
 use serial_test::serial;
 use tempfile::tempdir;

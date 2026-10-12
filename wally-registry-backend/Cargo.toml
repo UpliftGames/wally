@@ -2,7 +2,7 @@
 name = "wally-registry-backend"
 version = "0.4.0-alpha.0"
 authors = ["Uplift Games <wally@uplift.games>"]
-edition = "2018"
+edition = "2024"
 publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

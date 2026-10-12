@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Context;
 use async_trait::async_trait;
 use libwally::package_id::PackageId;
-use tokio::fs::{create_dir_all, File, OpenOptions};
+use tokio::fs::{File, OpenOptions, create_dir_all};
 use tokio::io::AsyncWriteExt;
 
 use super::{StorageBackend, StorageOutput};

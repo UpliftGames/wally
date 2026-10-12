@@ -1,13 +1,13 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Context};
+use anyhow::{Context, bail};
 use structopt::StructOpt;
 use ubyte::ToByteUnit;
 use url::Url;
 
 use crate::{
-    auth::AuthStore, manifest::Manifest, package_contents::PackageContents,
-    package_index::PackageIndex, GlobalOptions,
+    GlobalOptions, auth::AuthStore, manifest::Manifest, package_contents::PackageContents,
+    package_index::PackageIndex,
 };
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");

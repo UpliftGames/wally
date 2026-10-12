@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use figment::{providers::Serialized, Figment};
+use figment::{Figment, providers::Serialized};
 use libwally::test_package::PackageBuilder;
 use rocket::{
     http::{Accept, ContentType, Header, Status},

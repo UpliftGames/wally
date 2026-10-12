@@ -7,8 +7,8 @@ use tantivy::query::QueryParser;
 
 use serde::{Deserialize, Serialize};
 use tantivy::tokenizer::{LowerCaser, NgramTokenizer, TextAnalyzer};
-use tantivy::{schema::*, IndexReader, ReloadPolicy};
 use tantivy::{Index, IndexWriter};
+use tantivy::{IndexReader, ReloadPolicy, schema::*};
 use walkdir::{DirEntry, WalkDir};
 
 static DOC_LIMIT: usize = 100;

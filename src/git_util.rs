@@ -7,7 +7,7 @@
 use std::io;
 use std::path::Path;
 
-use anyhow::{bail, format_err, Context};
+use anyhow::{Context, bail, format_err};
 use git2::build::RepoBuilder;
 use git2::{
     Cred, CredentialType, FetchOptions, RemoteCallbacks, Repository, RepositoryInitOptions,

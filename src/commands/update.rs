@@ -11,7 +11,7 @@ use crate::package_id::PackageId;
 use crate::package_name::PackageName;
 use crate::package_req::PackageReq;
 use crate::package_source::{PackageSource, PackageSourceMap, Registry, TestRegistry};
-use crate::{resolution, GlobalOptions};
+use crate::{GlobalOptions, resolution};
 use crossterm::style::{Attribute, Color, SetAttribute, SetForegroundColor};
 use indicatif::{ProgressBar, ProgressStyle};
 use structopt::StructOpt;
