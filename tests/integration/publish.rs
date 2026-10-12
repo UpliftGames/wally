@@ -1,4 +1,7 @@
+use std::io::{BufRead, BufReader, Read, Write};
+use std::net::TcpListener;
 use std::path::Path;
+use std::thread;
 
 use fs_err::File;
 use libwally::{
@@ -6,6 +9,8 @@ use libwally::{
 };
 use serial_test::serial;
 use tempfile::tempdir;
+
+use crate::temp_project::TempProject;
 
 /// If the user tries to publish without providing any auth tokens
 /// then we should prompt them to provide a token via 'wally login'
@@ -118,4 +123,80 @@ fn check_token_arg() {
 
     args.run()
         .expect("Publish did not use the provided token in the publish request");
+}
+
+#[test]
+fn check_rejected_publish_errors() {
+    let error = publish_with_response("422 Unprocessable Entity", "Version already exists")
+        .expect_err("Expected publish to return an error");
+
+    let message = error.to_string();
+    assert!(message.contains("422"), "{}", message);
+    assert!(message.contains("Version already exists"), "{}", message);
+}
+
+#[test]
+fn check_accepted_publish_succeeds() {
+    publish_with_response("200 OK", "").expect("Expected publish to succeed");
+}
+
+fn publish_with_response(status: &str, body: &str) -> anyhow::Result<()> {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let api = format!("http://{}", listener.local_addr().unwrap());
+
+    let registry = tempdir().unwrap();
+    let index_path = registry.path().join("index");
+    fs_err::create_dir(&index_path).unwrap();
+    fs_err::write(
+        index_path.join("config.json"),
+        format!(r#"{{"api":"{api}"}}"#),
+    )
+    .unwrap();
+    git_util::init_test_repo(&index_path).unwrap();
+
+    let project = TempProject::new(Path::new(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/test-projects/minimal"
+    )))
+    .unwrap();
+    let manifest_path = project.path().join("wally.toml");
+    let manifest = fs_err::read_to_string(&manifest_path).unwrap().replace(
+        r#""test-registries/primary-registry""#,
+        &format!("'{}'", registry.path().display()),
+    );
+    fs_err::write(&manifest_path, manifest).unwrap();
+
+    let response = format!(
+        "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        body.len()
+    );
+    thread::spawn(move || {
+        let (stream, _) = listener.accept().unwrap();
+        let mut reader = BufReader::new(stream);
+
+        let mut content_length = 0;
+        let mut line = String::new();
+        while reader.read_line(&mut line).unwrap() > 2 {
+            if let Some(value) = line.to_ascii_lowercase().strip_prefix("content-length:") {
+                content_length = value.trim().parse().unwrap();
+            }
+            line.clear();
+        }
+        reader.read_exact(&mut vec![0; content_length]).unwrap();
+
+        reader.into_inner().write_all(response.as_bytes()).unwrap();
+    });
+
+    Args {
+        global: GlobalOptions {
+            test_registry: true,
+            use_temp_index: true,
+            ..Default::default()
+        },
+        subcommand: Subcommand::Publish(PublishSubcommand {
+            project_path: project.path().to_owned(),
+            token: Some("token".to_owned()),
+        }),
+    }
+    .run()
 }
