@@ -4,7 +4,7 @@ expression: result
 snapshot_kind: text
 ---
 Packages:
-  Minimal.lua: "return require(script.Parent._Index[\"biff_minimal-shared@0.1.0\"][\"minimal-shared\"])\n"
+  Minimal.luau: "return require(script.Parent._Index[\"biff_minimal-shared@0.1.0\"][\"minimal-shared\"])\n"
   _Index:
     biff_minimal-shared@0.1.0:
       minimal-shared:
@@ -15,13 +15,13 @@ Packages:
 ServerPackages:
   _Index:
     biff_server-depends-on-shared@0.1.0:
-      Minimal.lua: "return require(game.ReplicatedStorage.Packages._Index[\"biff_minimal-shared@0.1.0\"][\"minimal-shared\"])\n"
+      Minimal.luau: "return require(game.ReplicatedStorage.Packages._Index[\"biff_minimal-shared@0.1.0\"][\"minimal-shared\"])\n"
       server-depends-on-shared:
         default.project.json: "{\n  \"name\": \"server-depends-on-shared\",\n  \"tree\": {\n    \"$path\": \"src\"\n  }\n}"
         src:
           init.lua: "local Minimal = require(script.Parent.Minimal)\n\nreturn function()\n\tprint(Minimal)\nend"
         wally.toml: "[package]\nname = \"biff/server-depends-on-shared\"\nversion = \"0.1.0\"\nlicense = \"MIT\"\nrealm = \"server\"\nregistry = \"test-registries/primary-registry\"\n\n[dependencies]\nMinimal = \"biff/minimal-shared@0.1.0\"\n"
-  sdos.lua: "return require(script.Parent._Index[\"biff_server-depends-on-shared@0.1.0\"][\"server-depends-on-shared\"])\n"
+  sdos.luau: "return require(script.Parent._Index[\"biff_server-depends-on-shared@0.1.0\"][\"server-depends-on-shared\"])\n"
 default.project.json: "{\n\t\"name\": \"cross-realm-explicit-dependency\",\n\t\"tree\": {\n\t\t\"$path\": \"src\"\n\t}\n}"
 src:
   init.lua: "local Minimal = require(script.Parent.Minimal)\nlocal sdos = require(script.Parent.sdos)\n\nreturn function()\n\tprint(Minimal)\n\tsdos()\nend"

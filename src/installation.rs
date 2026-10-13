@@ -267,7 +267,7 @@ impl InstallationContext {
 
         for (dep_name, dep_package_id) in dependencies {
             let dependencies_realm = resolved.metadata.get(dep_package_id).unwrap().origin_realm;
-            let path = base_path.join(format!("{}.lua", dep_name));
+            let path = base_path.join(format!("{}.luau", dep_name));
 
             let contents = match (root_realm, dependencies_realm) {
                 (source, dest) if source == dest => self.link_root_same_index(dep_package_id),
@@ -307,7 +307,7 @@ impl InstallationContext {
 
         for (dep_name, dep_package_id) in dependencies {
             let dependencies_realm = resolved.metadata.get(dep_package_id).unwrap().origin_realm;
-            let path = base_path.join(format!("{}.lua", dep_name));
+            let path = base_path.join(format!("{}.luau", dep_name));
 
             let contents = match (package_realm, dependencies_realm) {
                 (source, dest) if source == dest => self.link_sibling_same_index(dep_package_id),

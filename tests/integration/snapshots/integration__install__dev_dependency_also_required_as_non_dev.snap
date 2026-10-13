@@ -4,19 +4,19 @@ expression: result
 snapshot_kind: text
 ---
 DevPackages:
-  Minimal.lua: "return require(game.ServerScriptStorage.Packages._Index[\"biff_minimal@0.1.0\"][\"minimal\"])\n"
+  Minimal.luau: "return require(game.ServerScriptStorage.Packages._Index[\"biff_minimal@0.1.0\"][\"minimal\"])\n"
 ServerPackages:
-  Transitive.lua: "return require(script.Parent._Index[\"biff_transitive-dependency@0.1.0\"][\"transitive-dependency\"])\n"
+  Transitive.luau: "return require(script.Parent._Index[\"biff_transitive-dependency@0.1.0\"][\"transitive-dependency\"])\n"
   _Index:
     biff_minimal@0.1.0:
       minimal:
         init.lua: "return \"hey\""
     biff_one-dependency@0.1.0:
-      Minimal.lua: "return require(script.Parent.Parent[\"biff_minimal@0.1.0\"][\"minimal\"])\n"
+      Minimal.luau: "return require(script.Parent.Parent[\"biff_minimal@0.1.0\"][\"minimal\"])\n"
       one-dependency:
         init.lua: "return \"hey\""
     biff_transitive-dependency@0.1.0:
-      OneDependency.lua: "return require(script.Parent.Parent[\"biff_one-dependency@0.1.0\"][\"one-dependency\"])\n"
+      OneDependency.luau: "return require(script.Parent.Parent[\"biff_one-dependency@0.1.0\"][\"one-dependency\"])\n"
       transitive-dependency:
         init.lua: "return \"hey\""
 default.project.json: "{\n\t\"name\": \"dev-dependency\",\n\t\"tree\": {\n\t\t\"$path\": \"src\"\n\t}\n}"
