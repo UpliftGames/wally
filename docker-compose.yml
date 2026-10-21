@@ -5,6 +5,8 @@ services:
     build:
       context: .
       dockerfile: wally-registry-backend/Dockerfile
+      args:
+        - WALLY_BACKEND_BUILD_FEATURES=${WALLY_BACKEND_BUILD_FEATURES}
     ports:
       - "8000:8000"
 
