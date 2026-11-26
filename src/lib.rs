@@ -10,6 +10,7 @@ pub mod package_index;
 pub mod package_name;
 pub mod package_req;
 pub mod package_source;
+pub mod registry_error;
 pub mod resolution;
 pub mod test_package;
 

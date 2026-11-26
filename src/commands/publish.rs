@@ -7,7 +7,7 @@ use url::Url;
 
 use crate::{
     GlobalOptions, auth::AuthStore, manifest::Manifest, package_contents::PackageContents,
-    package_index::PackageIndex,
+    package_index::PackageIndex, registry_error::registry_error_message,
 };
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -86,7 +86,7 @@ impl PublishSubcommand {
             bail!(
                 "Failed to publish package: {}\n{}",
                 response.status(),
-                response.text()?
+                registry_error_message(response.text()?)
             );
         }
 
