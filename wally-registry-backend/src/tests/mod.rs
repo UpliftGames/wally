@@ -312,3 +312,15 @@ fn publish_then_publish_elsewhere() {
 #[test]
 #[ignore]
 fn yank() {}
+
+#[test]
+fn unknown_route_returns_json() {
+    let client = new_client(AuthMode::Unauthenticated);
+    let response = client.get("/v1/does-not-exist").dispatch();
+
+    Expectation {
+        status: Status::NotFound,
+        content_type: ContentType::JSON,
+    }
+    .assert(response);
+}
