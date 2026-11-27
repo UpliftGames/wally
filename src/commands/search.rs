@@ -7,7 +7,10 @@ use reqwest::{blocking::Client, header::AUTHORIZATION};
 use serde::Deserialize;
 use structopt::StructOpt;
 
-use crate::{auth::AuthStore, manifest::Manifest, package_index::PackageIndex};
+use crate::{
+    auth::AuthStore, manifest::Manifest, package_index::PackageIndex,
+    registry_error::registry_error_message,
+};
 
 /// Search a registry for packages matching a query.
 #[derive(Debug, StructOpt)]
@@ -45,7 +48,7 @@ impl SearchSubcommand {
             bail!(
                 "Failed to search: {} {}",
                 response.status(),
-                response.text()?
+                registry_error_message(response.text()?)
             );
         }
 

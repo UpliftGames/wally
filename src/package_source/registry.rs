@@ -12,6 +12,7 @@ use crate::package_id::PackageId;
 use crate::package_index::PackageIndex;
 use crate::package_req::PackageReq;
 use crate::package_source::PackageContents;
+use crate::registry_error::registry_error_message;
 
 use super::{PackageSourceId, PackageSourceProvider};
 
@@ -101,7 +102,7 @@ impl PackageSourceProvider for Registry {
                 package_id,
                 self.api_url()?,
                 response.status(),
-                response.text()?
+                registry_error_message(response.text()?)
             );
         }
 
