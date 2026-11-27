@@ -8,6 +8,7 @@
 * Pre-built binaries are now available for Windows, macOS, and Linux on both x86_64 and aarch64 ([#267])
 * Upgrade Rust edition to 2024 ([#273])
 * Fixed `wally publish` exiting successfully when the registry rejects the upload ([#274])
+* The registry now returns JSON instead of HTML for errors Rocket handles itself, such as unknown routes and oversized uploads ([#275])
 
 [#211]: https://github.com/UpliftGames/wally/pull/211
 [#214]: https://github.com/UpliftGames/wally/pull/214
@@ -15,6 +16,7 @@
 [#267]: https://github.com/UpliftGames/wally/pull/267
 [#273]: https://github.com/UpliftGames/wally/pull/273
 [#259]: https://github.com/UpliftGames/wally/pull/274
+[#275]: https://github.com/UpliftGames/wally/pull/275
 
 ## 0.3.2 (2023-06-05)
 * Added private field to package manifest ([#9])([#76])

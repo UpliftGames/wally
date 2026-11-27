@@ -59,6 +59,21 @@ fn root() -> content::RawJson<serde_json::Value> {
     }))
 }
 
+/// Errors produced by Rocket itself (unknown routes, payloads over the size
+/// limit, etc.) would otherwise be rendered as HTML. Return them in the same
+/// JSON shape as `error::Error` so the CLI can show a readable message.
+#[catch(default)]
+fn default_catcher(status: Status, _request: &Request<'_>) -> (Status, Json<serde_json::Value>) {
+    let reason = status.reason().unwrap_or("Unknown error");
+
+    (
+        status,
+        Json(json!({
+            "message": format!("{} {}", status.code, reason),
+        })),
+    )
+}
+
 #[get("/v1/package-contents/<scope>/<name>/<version>")]
 async fn package_contents(
     storage: &State<Box<dyn StorageBackend>>,
@@ -258,6 +273,7 @@ pub fn server(figment: Figment) -> rocket::Rocket<Build> {
                 cors_options,
             ],
         )
+        .register("/", catchers![default_catcher])
         .manage(storage_backend)
         .manage(package_index)
         .manage(RwLock::new(search_backend))
